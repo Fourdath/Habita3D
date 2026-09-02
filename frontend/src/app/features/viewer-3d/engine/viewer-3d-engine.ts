@@ -1,21 +1,23 @@
 import * as THREE from 'three';
 import { Octree } from 'three/addons/math/Octree.js';
 
-import { parseFloorplan } from '../../../core/floorplan/cubicasa-parser';
-import { FLOORPLAN_SCALE_METERS_PER_UNIT, FLOORPLAN_URL } from '../../../core/floorplan/floorplan.constants';
+import { FLOORPLAN_URL } from '../../../core/floorplan/floorplan.constants';
 
-import { buildFloorplanGroup, createFloorplanMaterials } from './floorplan-geometry';
+import { FloorplanSceneManager } from './floorplan-scene-manager';
 import { KeyboardMovementInput } from './movement-input';
 import { PlayerController } from './player-controller';
 import { PointerLockLookInput } from './pointer-lock-look-input';
+import { disposeObject3D } from './three-object-disposal';
 import { CAMERA_FAR, CAMERA_FOV, CAMERA_NEAR, MAX_DELTA_TIME, STEPS_PER_FRAME } from './viewer-3d.constants';
 import type { MovementInputSource, Viewer3DEngineCallbacks } from './viewer-3d.types';
 
 /**
- * Three.js engine for the first-person walkthrough. Loads the CubiCasa floor plan,
+ * Three.js engine for the first-person walkthrough. Loads a CubiCasa floor plan,
  * turns it into real geometry (walls with door/window openings, floor), and feeds
  * that geometry into the same Octree + PlayerController collision pipeline used by
- * the viewer since its first technical test.
+ * the viewer since its first technical test. Floor-plan lifecycle (load/replace/
+ * dispose) lives in FloorplanSceneManager so a new plan — the default one on start,
+ * or a user-picked SVG later — is loaded the same way either time.
  */
 export class Viewer3DEngine {
   private readonly scene = new THREE.Scene();
@@ -23,6 +25,7 @@ export class Viewer3DEngine {
   private readonly renderer: THREE.WebGLRenderer;
   private readonly clock = new THREE.Clock();
   private readonly worldOctree = new Octree();
+  private readonly floorplanScene: FloorplanSceneManager;
   private readonly resizeObserver: ResizeObserver;
 
   private readonly movementInput: MovementInputSource;
@@ -51,6 +54,7 @@ export class Viewer3DEngine {
     this.container.appendChild(this.renderer.domElement);
 
     this.setupScene();
+    this.floorplanScene = new FloorplanSceneManager(this.scene, this.worldOctree);
 
     this.movementInput = new KeyboardMovementInput();
     this.lookInput = new PointerLockLookInput(this.renderer.domElement, this.camera, (locked) =>
@@ -64,11 +68,22 @@ export class Viewer3DEngine {
 
     this.renderer.setAnimationLoop(this.animate);
 
-    this.loadScenario();
+    this.loadDefaultFloorplan();
   }
 
   requestPointerLock(): void {
     this.lookInput.requestLock();
+  }
+
+  /**
+   * Loads a floor plan from raw SVG text — e.g. a user-picked file, already
+   * validated by core/floorplan/floorplan-file.ts — replacing whatever is currently
+   * shown. Throws (leaving the current scenario fully intact, see
+   * FloorplanSceneManager.load) if the SVG doesn't parse into a usable plan.
+   */
+  loadFloorplanFromSvgText(svgText: string): void {
+    this.floorplanScene.load(svgText);
+    this.player.respawn();
   }
 
   dispose(): void {
@@ -82,12 +97,7 @@ export class Viewer3DEngine {
     this.movementInput.dispose();
     this.lookInput.dispose();
 
-    this.scene.traverse((object) => {
-      if (object instanceof THREE.Mesh) {
-        object.geometry.dispose();
-        this.disposeMaterial(object.material);
-      }
-    });
+    disposeObject3D(this.scene);
 
     this.renderer.dispose();
     this.renderer.domElement.remove();
@@ -116,13 +126,7 @@ export class Viewer3DEngine {
     this.scene.add(directionalLight);
   }
 
-  /**
-   * Fetches the CubiCasa SVG, parses it into a Floorplan, builds its Three.js
-   * geometry (walls with real door/window openings, floor), adds it to the scene,
-   * and builds the world Octree from that same geometry so collisions match exactly
-   * what's rendered — no separate collision mesh to keep in sync.
-   */
-  private async loadScenario(): Promise<void> {
+  private async loadDefaultFloorplan(): Promise<void> {
     try {
       const response = await fetch(FLOORPLAN_URL);
       if (!response.ok) {
@@ -130,14 +134,7 @@ export class Viewer3DEngine {
       }
 
       const svgText = await response.text();
-      const floorplan = parseFloorplan(svgText, { scaleMetersPerUnit: FLOORPLAN_SCALE_METERS_PER_UNIT });
-      if (floorplan.walls.length === 0) {
-        throw new Error('El plano CubiCasa no contiene muros.');
-      }
-
-      const floorplanGroup = buildFloorplanGroup(floorplan, createFloorplanMaterials());
-      this.scene.add(floorplanGroup);
-      this.worldOctree.fromGraphNode(floorplanGroup);
+      this.loadFloorplanFromSvgText(svgText);
 
       this.callbacks.onReady?.();
     } catch (error) {
@@ -165,17 +162,5 @@ export class Viewer3DEngine {
     const width = this.container.clientWidth || 1;
     const height = this.container.clientHeight || 1;
     return width / height;
-  }
-
-  private disposeMaterial(material: THREE.Material | THREE.Material[]): void {
-    const materials = Array.isArray(material) ? material : [material];
-    for (const mat of materials) {
-      for (const value of Object.values(mat)) {
-        if (value instanceof THREE.Texture) {
-          value.dispose();
-        }
-      }
-      mat.dispose();
-    }
   }
 }

@@ -1,6 +1,8 @@
 import { AfterViewInit, Component, ElementRef, OnDestroy, ViewChild, signal } from '@angular/core';
 import { IonContent, IonSpinner } from '@ionic/angular';
 
+import { readFloorplanFile } from '../../core/floorplan/floorplan-file';
+
 import { Viewer3DEngine } from './engine/viewer-3d-engine';
 import type { ViewerStatus } from './engine/viewer-3d.types';
 
@@ -17,6 +19,9 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
   readonly status = signal<ViewerStatus>('loading');
   readonly pointerLocked = signal(false);
   readonly errorMessage = signal('');
+
+  readonly loadingFloorplan = signal(false);
+  readonly floorplanError = signal<string | null>(null);
 
   private engine: Viewer3DEngine | null = null;
 
@@ -39,6 +44,32 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
 
   onStartClick(): void {
     this.engine?.requestPointerLock();
+  }
+
+  /**
+   * Reads and validates the picked SVG entirely in memory (never uploaded, never
+   * written into public/) and hands it to the engine. On any failure — bad
+   * extension/size/XML, or a structurally invalid plan — the current house stays
+   * exactly as it was; only floorplanError() is set, so the 3D view is unaffected.
+   */
+  async onFloorplanFileSelected(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0] ?? null;
+    input.value = '';
+    if (!file) {
+      return;
+    }
+
+    this.loadingFloorplan.set(true);
+    try {
+      const svgText = await readFloorplanFile(file);
+      this.engine?.loadFloorplanFromSvgText(svgText);
+      this.floorplanError.set(null);
+    } catch (error) {
+      this.floorplanError.set(error instanceof Error ? error.message : 'No se pudo cargar el plano seleccionado.');
+    } finally {
+      this.loadingFloorplan.set(false);
+    }
   }
 
   private handleError(error: unknown): void {

@@ -27,5 +27,18 @@
         </ul>
       </button>
     }
+
+    @if (status() === 'ready') {
+      <div class="viewer-3d__floorplan-picker">
+        <label class="viewer-3d__floorplan-picker-button">
+          Cargar plano SVG
+          <input type="file" accept=".svg" [disabled]="loadingFloorplan()" (change)="onFloorplanFileSelected($event)" hidden />
+        </label>
+
+        @if (floorplanError()) {
+          <p class="viewer-3d__floorplan-picker-error">{{ floorplanError() }}</p>
+        }
+      </div>
+    }
   </div>
 </ion-content>

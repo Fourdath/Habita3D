@@ -91,12 +91,22 @@ export class PlayerController {
     }
   }
 
+  /**
+   * Resets the player to the default spawn point with zero velocity and a level
+   * look direction. Used both when falling out of bounds and when a new floor plan
+   * is loaded at runtime (the previous position may no longer be valid geometry).
+   */
+  respawn(): void {
+    this.collider.start.set(0, PLAYER_CAPSULE_RADIUS, 0);
+    this.collider.end.set(0, 1, 0);
+    this.velocity.set(0, 0, 0);
+    this.camera.position.copy(this.collider.end);
+    this.camera.rotation.set(0, 0, 0);
+  }
+
   private respawnIfOutOfBounds(): void {
     if (this.collider.end.y <= OUT_OF_BOUNDS_Y) {
-      this.collider.start.set(0, PLAYER_CAPSULE_RADIUS, 0);
-      this.collider.end.set(0, 1, 0);
-      this.velocity.set(0, 0, 0);
-      this.camera.rotation.set(0, 0, 0);
+      this.respawn();
     }
   }
 
