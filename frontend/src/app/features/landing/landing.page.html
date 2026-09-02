@@ -1,20 +1,63 @@
-<ion-header [translucent]="true">
-  <ion-toolbar>
-    <ion-title>
-      Blank
-    </ion-title>
-  </ion-toolbar>
-</ion-header>
-
 <ion-content [fullscreen]="true">
-  <ion-header collapse="condense">
-    <ion-toolbar>
-      <ion-title size="large">Blank</ion-title>
-    </ion-toolbar>
-  </ion-header>
 
-  <div id="container">
-    <strong>Ready to create an app?</strong>
-    <p>Start with Ionic <a target="_blank" rel="noopener noreferrer" href="https://ionicframework.com/docs/components">UI Components</a></p>
-  </div>
+  <main class="landing">
+
+    <section class="hero">
+
+      <div class="hero-content">
+
+        <span class="badge">
+          Visualización interactiva
+        </span>
+
+        <h1>
+          Diseña y visualiza
+          <span>tu espacio en 3D</span>
+        </h1>
+
+        <p class="description">
+          Explora espacios tridimensionales de forma interactiva
+          y visualiza distintas posibilidades para su diseño.
+        </p>
+
+        <div class="actions">
+
+          <ion-button
+            routerLink="/viewer-3d"
+            size="large"
+            class="primary-button"
+          >
+            Abrir visualizador 3D
+          </ion-button>
+
+        </div>
+
+      </div>
+
+      <div class="hero-preview">
+
+        <div class="preview-card">
+
+          <div class="preview-grid"></div>
+
+          <div class="preview-content">
+            <span>VISOR 3D</span>
+
+            <h2>
+              Explora tu espacio
+            </h2>
+
+            <p>
+              Muévete libremente dentro del entorno tridimensional.
+            </p>
+          </div>
+
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
 </ion-content>

@@ -1,0 +1,31 @@
+<ion-content [fullscreen]="true" [scrollY]="false">
+  <div class="viewer-3d">
+    <div #canvasHost class="viewer-3d__canvas-host"></div>
+
+    @if (status() === 'loading') {
+      <div class="viewer-3d__overlay">
+        <ion-spinner name="crescent" color="light"></ion-spinner>
+        <p>Cargando escenario...</p>
+      </div>
+    }
+
+    @if (status() === 'error') {
+      <div class="viewer-3d__overlay">
+        <p class="viewer-3d__overlay-title">No se pudo cargar el visor 3D</p>
+        <p class="viewer-3d__overlay-detail">{{ errorMessage() }}</p>
+      </div>
+    }
+
+    @if (status() === 'ready' && !pointerLocked()) {
+      <button type="button" class="viewer-3d__overlay viewer-3d__overlay--interactive" (click)="onStartClick()">
+        <p class="viewer-3d__overlay-title">Haz clic para comenzar</p>
+        <ul class="viewer-3d__instructions">
+          <li>WASD para moverte</li>
+          <li>Mouse para mirar alrededor</li>
+          <li>Espacio para saltar</li>
+          <li>Escape para liberar el mouse</li>
+        </ul>
+      </button>
+    }
+  </div>
+</ion-content>
