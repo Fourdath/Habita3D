@@ -1,0 +1,64 @@
+<div
+  class="style-panel"
+  (keydown)="$event.stopPropagation()"
+  (keyup)="$event.stopPropagation()"
+  (click)="$event.stopPropagation()"
+>
+  <h2 class="style-panel__title">Diseño interior</h2>
+
+  <fieldset class="style-panel__options" [disabled]="loading()">
+    @for (style of styles; track style.id) {
+      <label class="style-panel__option">
+        <input
+          type="radio"
+          name="interior-style"
+          [value]="style.id"
+          [checked]="styleId() === style.id"
+          (change)="onSelectStyle(style.id)"
+        />
+        {{ style.name }}
+      </label>
+    }
+  </fieldset>
+
+  @if (loading()) {
+    <div class="style-panel__status">
+      <ion-spinner name="crescent"></ion-spinner>
+      <span>Aplicando estilo...</span>
+    </div>
+  }
+
+  @if (errorMessage()) {
+    <p class="style-panel__error">{{ errorMessage() }}</p>
+  }
+
+  @if (styleId() !== 'none' && !furnitureAvailable()) {
+    <p class="style-panel__hint">
+      Este plano no es el predeterminado: la distribución automática de muebles todavía no está disponible aquí, solo se
+      aplicaron los materiales.
+    </p>
+  }
+
+  @if (styleId() !== 'none') {
+    <button type="button" class="style-panel__budget-toggle" (click)="toggleBudget()">
+      {{ showBudget() ? 'Ocultar presupuesto' : 'Ver presupuesto' }}
+    </button>
+
+    @if (showBudget()) {
+      <div class="style-panel__budget">
+        <p class="style-panel__budget-label">Precios demostrativos</p>
+        <ul class="style-panel__budget-items">
+          @for (item of budget().items; track item.id) {
+            <li class="style-panel__budget-item">
+              <span class="style-panel__budget-item-name">{{ item.name }}</span>
+              <span class="style-panel__budget-item-detail">
+                {{ item.quantity }} {{ item.unit }} × {{ formatClp(item.unitPriceClp) }} = {{ formatClp(item.subtotalClp) }}
+              </span>
+            </li>
+          }
+        </ul>
+        <p class="style-panel__budget-total">Total: {{ formattedTotal() }}</p>
+      </div>
+    }
+  }
+</div>

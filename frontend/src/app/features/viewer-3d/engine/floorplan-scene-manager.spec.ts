@@ -24,45 +24,37 @@ function countOctreeTriangles(node: Octree): number {
 }
 
 describe('FloorplanSceneManager', () => {
-  it('loads a floor plan, adding its geometry to the scene and the world Octree', () => {
-    const scene = new THREE.Scene();
-    const octree = new Octree();
-    const manager = new FloorplanSceneManager(scene, octree);
+  it('loads a floor plan, adding its geometry under the given parent', () => {
+    const collidables = new THREE.Group();
+    const manager = new FloorplanSceneManager(collidables);
 
     manager.load(PLAN_A);
 
     expect(manager.currentGroup).not.toBeNull();
-    expect(scene.children).toContain(manager.currentGroup);
+    expect(collidables.children).toContain(manager.currentGroup);
     expect(manager.currentGroup!.children.length).toBeGreaterThan(0);
-    expect(countOctreeTriangles(octree)).toBeGreaterThan(0);
   });
 
-  it('replaces the previous scenario on a second load: disposes old meshes, swaps groups, rebuilds the Octree', () => {
-    const scene = new THREE.Scene();
-    const octree = new Octree();
-    const manager = new FloorplanSceneManager(scene, octree);
+  it('replaces the previous scenario on a second load: disposes old meshes, swaps groups', () => {
+    const collidables = new THREE.Group();
+    const manager = new FloorplanSceneManager(collidables);
 
     manager.load(PLAN_A);
     const firstGroup = manager.currentGroup!;
     const firstMesh = firstGroup.children[0] as THREE.Mesh;
     const disposeSpy = vi.spyOn(firstMesh.geometry, 'dispose');
-    const firstTriangleCount = countOctreeTriangles(octree);
 
     manager.load(PLAN_B);
 
     expect(disposeSpy).toHaveBeenCalled();
-    expect(scene.children).not.toContain(firstGroup);
-    expect(scene.children).toContain(manager.currentGroup);
+    expect(collidables.children).not.toContain(firstGroup);
+    expect(collidables.children).toContain(manager.currentGroup);
     expect(manager.currentGroup).not.toBe(firstGroup);
-    // A different plan should rebuild the octree rather than append to the old one.
-    expect(countOctreeTriangles(octree)).toBeGreaterThan(0);
-    expect(countOctreeTriangles(octree)).not.toBe(firstTriangleCount * 2);
   });
 
   it('throws and leaves the current scenario untouched when the SVG has no walls', () => {
-    const scene = new THREE.Scene();
-    const octree = new Octree();
-    const manager = new FloorplanSceneManager(scene, octree);
+    const collidables = new THREE.Group();
+    const manager = new FloorplanSceneManager(collidables);
 
     manager.load(PLAN_A);
     const firstGroup = manager.currentGroup;
@@ -70,13 +62,12 @@ describe('FloorplanSceneManager', () => {
     expect(() => manager.load('<svg xmlns="http://www.w3.org/2000/svg"></svg>')).toThrow();
 
     expect(manager.currentGroup).toBe(firstGroup);
-    expect(scene.children).toContain(firstGroup);
+    expect(collidables.children).toContain(firstGroup);
   });
 
   it('dispose() removes and frees the current group', () => {
-    const scene = new THREE.Scene();
-    const octree = new Octree();
-    const manager = new FloorplanSceneManager(scene, octree);
+    const collidables = new THREE.Group();
+    const manager = new FloorplanSceneManager(collidables);
 
     manager.load(PLAN_A);
     const group = manager.currentGroup!;
@@ -85,7 +76,24 @@ describe('FloorplanSceneManager', () => {
     manager.dispose();
 
     expect(disposeSpy).toHaveBeenCalled();
-    expect(scene.children).not.toContain(group);
+    expect(collidables.children).not.toContain(group);
     expect(manager.currentGroup).toBeNull();
+  });
+
+  it('composes with other collidable geometry (e.g. terrain) sharing the same parent for one combined Octree rebuild', () => {
+    // Viewer3DEngine feeds ONE shared "collidables" group to both FloorplanSceneManager
+    // and EnvironmentManager, then rebuilds the Octree once from that group — this is
+    // what makes house + terrain (and later furniture) collide correctly together.
+    const collidables = new THREE.Group();
+    const manager = new FloorplanSceneManager(collidables);
+    manager.load(PLAN_A);
+
+    const terrainMesh = new THREE.Mesh(new THREE.BoxGeometry(50, 0.3, 50), new THREE.MeshStandardMaterial());
+    collidables.add(terrainMesh);
+
+    const octree = new Octree();
+    octree.fromGraphNode(collidables);
+
+    expect(countOctreeTriangles(octree)).toBeGreaterThan(0);
   });
 });

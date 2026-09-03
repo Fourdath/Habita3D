@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { Octree } from 'three/addons/math/Octree.js';
 
 import { parseFloorplan } from '../../../core/floorplan/cubicasa-parser';
 import { FLOORPLAN_SCALE_METERS_PER_UNIT } from '../../../core/floorplan/floorplan.constants';
@@ -9,18 +8,20 @@ import { buildFloorplanGroup, createFloorplanMaterials } from './floorplan-geome
 import { disposeObject3D } from './three-object-disposal';
 
 /**
- * Owns the currently-loaded floor plan's Three.js geometry and its entry in the world
- * Octree. Pulled out of Viewer3DEngine so it can be reused for both the initial demo
- * plan and any later user-picked SVG, and so it's testable without a WebGLRenderer
- * (this class only touches THREE.Scene/Octree, neither of which needs a GPU context).
+ * Owns the currently-loaded floor plan's Three.js geometry. Pulled out of
+ * Viewer3DEngine so it can be reused for both the initial demo plan and any later
+ * user-picked SVG, and so it's testable without a WebGLRenderer (this class only
+ * touches plain THREE.Object3D graph operations, no GPU context needed).
+ *
+ * `parent` is whatever collidable container the engine wants this geometry added to
+ * (its Octree gets rebuilt from that same container after house/terrain/furniture are
+ * all in place — see Viewer3DEngine.rebuildCollisions()) — this class does not touch
+ * the Octree itself.
  */
 export class FloorplanSceneManager {
   private group: THREE.Group | null = null;
 
-  constructor(
-    private readonly scene: THREE.Scene,
-    private readonly worldOctree: Octree,
-  ) {}
+  constructor(private readonly parent: THREE.Object3D) {}
 
   get currentGroup(): THREE.Group | null {
     return this.group;
@@ -28,9 +29,9 @@ export class FloorplanSceneManager {
 
   /**
    * Parses `svgText` and builds its geometry first; only once that succeeds does it
-   * remove/dispose whatever floor plan was previously loaded and rebuild the Octree.
-   * This ordering is what keeps an invalid SVG from ever affecting the current scene:
-   * on failure, this throws and nothing here has changed yet.
+   * remove/dispose whatever floor plan was previously loaded. This ordering is what
+   * keeps an invalid SVG from ever affecting the current scene: on failure, this
+   * throws and nothing here has changed yet.
    */
   load(svgText: string): Floorplan {
     const floorplan = parseFloorplan(svgText, { scaleMetersPerUnit: FLOORPLAN_SCALE_METERS_PER_UNIT });
@@ -41,15 +42,12 @@ export class FloorplanSceneManager {
     const nextGroup = buildFloorplanGroup(floorplan, createFloorplanMaterials());
 
     if (this.group) {
-      this.scene.remove(this.group);
+      this.parent.remove(this.group);
       disposeObject3D(this.group);
     }
 
-    this.scene.add(nextGroup);
+    this.parent.add(nextGroup);
     this.group = nextGroup;
-
-    this.worldOctree.clear();
-    this.worldOctree.fromGraphNode(nextGroup);
 
     return floorplan;
   }
@@ -58,7 +56,7 @@ export class FloorplanSceneManager {
     if (!this.group) {
       return;
     }
-    this.scene.remove(this.group);
+    this.parent.remove(this.group);
     disposeObject3D(this.group);
     this.group = null;
   }

@@ -7,6 +7,7 @@ import type {
 } from '../../../core/floorplan/floorplan.types';
 
 import { FLOORPLAN_FLOOR_THICKNESS, FLOORPLAN_WALL_HEIGHT } from './viewer-3d.constants';
+import type { SemanticType } from './viewer-3d.types';
 
 /**
  * Floorplan → THREE.Group. Pure geometry generation, no Angular/scene/camera/player
@@ -101,7 +102,9 @@ function generateWalls(group: THREE.Group, floorplan: Floorplan, material: THREE
         addExtrudedPolygon(group, openingQuad, 0, opening.sillHeight, material, 'wall');
       }
       if (opening.lintelHeight < FLOORPLAN_WALL_HEIGHT - EPSILON) {
-        addExtrudedPolygon(group, openingQuad, opening.lintelHeight, FLOORPLAN_WALL_HEIGHT, material, 'lintel');
+        // Architecturally still a wall segment (the piece above a door/window opening),
+        // so it's tagged 'wall' too — the style engine applies the same wall material.
+        addExtrudedPolygon(group, openingQuad, opening.lintelHeight, FLOORPLAN_WALL_HEIGHT, material, 'wall');
       }
 
       cursor = opening.tEnd;
@@ -214,7 +217,7 @@ function addExtrudedPolygon(
   yBottom: number,
   yTop: number,
   material: THREE.Material,
-  type: 'wall' | 'lintel' | 'floor',
+  semanticType: SemanticType,
 ): void {
   const height = yTop - yBottom;
   if (points.length < 3 || height <= EPSILON) {
@@ -233,7 +236,7 @@ function addExtrudedPolygon(
 
   const mesh = new THREE.Mesh(geometry, material);
   mesh.position.y = yBottom;
-  mesh.userData = { type };
+  mesh.userData = { semanticType };
   mesh.castShadow = true;
   mesh.receiveShadow = true;
 

@@ -85,3 +85,19 @@
   text-align: right;
   background: rgba(160, 32, 32, 0.75);
 }
+
+.viewer-3d__style-panel {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 1;
+}
+
+@media (max-width: 600px) {
+  .viewer-3d__style-panel {
+    top: auto;
+    right: 16px;
+    bottom: 16px;
+    left: 16px;
+  }
+}

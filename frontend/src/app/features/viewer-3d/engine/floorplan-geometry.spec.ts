@@ -35,7 +35,7 @@ function straightWall(id: string, length: number, thickness = 0.2): FloorplanWal
 }
 
 function meshTypes(group: THREE.Group): string[] {
-  return group.children.map((child) => (child.userData as { type: string }).type);
+  return group.children.map((child) => (child.userData as { semanticType: string }).semanticType);
 }
 
 describe('buildFloorplanGroup', () => {
@@ -57,9 +57,9 @@ describe('buildFloorplanGroup', () => {
 
     const group = buildFloorplanGroup(floorplan, materials);
 
-    expect(meshTypes(group)).toEqual(['wall', 'lintel', 'wall']);
+    expect(meshTypes(group)).toEqual(['wall', 'wall', 'wall']);
 
-    // The opening segment (the lintel mesh) must not reach down to the floor.
+    // The opening segment (the lintel piece, still tagged 'wall') must not reach down to the floor.
     const lintel = group.children[1] as THREE.Mesh;
     const geometry = lintel.geometry;
     geometry.computeBoundingBox();
@@ -77,7 +77,7 @@ describe('buildFloorplanGroup', () => {
 
     const group = buildFloorplanGroup(floorplan, materials);
 
-    expect(meshTypes(group)).toEqual(['wall', 'wall', 'lintel', 'wall']);
+    expect(meshTypes(group)).toEqual(['wall', 'wall', 'wall', 'wall']);
   });
 
   it('generates a floor mesh from the outer perimeter, top surface at y=0', () => {

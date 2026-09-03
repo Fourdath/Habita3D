@@ -40,5 +40,18 @@
         }
       </div>
     }
+
+    @if (status() === 'ready') {
+      <div class="viewer-3d__style-panel">
+        <app-interior-style-panel
+          [styleId]="interiorStyleId()"
+          [loading]="interiorStyleLoading()"
+          [errorMessage]="interiorStyleError()"
+          [budget]="budget()"
+          [furnitureAvailable]="furnitureAvailable()"
+          (styleChange)="onInteriorStyleChange($event)"
+        />
+      </div>
+    }
   </div>
 </ion-content>

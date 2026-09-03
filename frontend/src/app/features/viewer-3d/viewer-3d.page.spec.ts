@@ -49,4 +49,17 @@ describe('Viewer3DPage', () => {
 
     expect(component.floorplanError()).toBeNull();
   });
+
+  it('updates the selected interior style and clears the loading flag (Angular <-> engine integration point)', async () => {
+    expect(component.interiorStyleId()).toBe('none');
+
+    await component.onInteriorStyleChange('nordic');
+
+    expect(component.interiorStyleId()).toBe('nordic');
+    expect(component.interiorStyleLoading()).toBe(false);
+  });
+
+  it('tears down cleanly on destroy without throwing', () => {
+    expect(() => fixture.destroy()).not.toThrow();
+  });
 });

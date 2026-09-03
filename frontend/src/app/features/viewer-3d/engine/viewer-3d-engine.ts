@@ -1,9 +1,15 @@
 import * as THREE from 'three';
+import { ColorEnvironment } from 'three/addons/environments/ColorEnvironment.js';
 import { Octree } from 'three/addons/math/Octree.js';
 
+import { computeFloorAreaM2, type BudgetSummary } from '../../../core/interior-style/budget-calculator';
+import type { InteriorStyleId } from '../../../core/interior-style/interior-style.types';
 import { FLOORPLAN_URL } from '../../../core/floorplan/floorplan.constants';
+import type { Floorplan } from '../../../core/floorplan/floorplan.types';
 
+import { EnvironmentManager } from './environment/environment-manager';
 import { FloorplanSceneManager } from './floorplan-scene-manager';
+import { InteriorStyleManager } from './interior-style/interior-style-manager';
 import { KeyboardMovementInput } from './movement-input';
 import { PlayerController } from './player-controller';
 import { PointerLockLookInput } from './pointer-lock-look-input';
@@ -12,12 +18,17 @@ import { CAMERA_FAR, CAMERA_FOV, CAMERA_NEAR, MAX_DELTA_TIME, STEPS_PER_FRAME } 
 import type { MovementInputSource, Viewer3DEngineCallbacks } from './viewer-3d.types';
 
 /**
- * Three.js engine for the first-person walkthrough. Loads a CubiCasa floor plan,
- * turns it into real geometry (walls with door/window openings, floor), and feeds
- * that geometry into the same Octree + PlayerController collision pipeline used by
- * the viewer since its first technical test. Floor-plan lifecycle (load/replace/
- * dispose) lives in FloorplanSceneManager so a new plan — the default one on start,
- * or a user-picked SVG later — is loaded the same way either time.
+ * Three.js engine for the first-person walkthrough. Loads a CubiCasa floor plan, turns
+ * it into real geometry, surrounds it with an exterior environment (terrain/sky/
+ * vegetation), lets an interior style retexture it and furnish it, and feeds every
+ * collidable piece into one Octree + PlayerController pipeline.
+ *
+ * Groups stay separate and independently disposable, matching the scene's conceptual
+ * layout: `houseGroup` (FloorplanSceneManager), terrain/vegetation (EnvironmentManager),
+ * and `furniture` (InteriorStyleManager). House, terrain, and furniture are all
+ * children of `collidables`, the single container rebuildCollisions() rebuilds the
+ * Octree from; sky/lights/vegetation are decorative and live directly under `scene`,
+ * never considered for collision.
  */
 export class Viewer3DEngine {
   private readonly scene = new THREE.Scene();
@@ -25,13 +36,18 @@ export class Viewer3DEngine {
   private readonly renderer: THREE.WebGLRenderer;
   private readonly clock = new THREE.Clock();
   private readonly worldOctree = new Octree();
+  private readonly collidables = new THREE.Group();
   private readonly floorplanScene: FloorplanSceneManager;
+  private readonly environment: EnvironmentManager;
+  private readonly interiorStyle: InteriorStyleManager;
   private readonly resizeObserver: ResizeObserver;
 
   private readonly movementInput: MovementInputSource;
   private readonly lookInput: PointerLockLookInput;
   private readonly player: PlayerController;
 
+  private currentFloorplan: Floorplan | null = null;
+  private isDefaultFloorplan = false;
   private disposed = false;
 
   constructor(
@@ -53,8 +69,23 @@ export class Viewer3DEngine {
     this.renderer.domElement.style.height = '100%';
     this.container.appendChild(this.renderer.domElement);
 
-    this.setupScene();
-    this.floorplanScene = new FloorplanSceneManager(this.scene, this.worldOctree);
+    // Some furniture GLBs use near-metallic PBR materials. Without any environment to
+    // reflect, a metal has essentially nothing to show (real metals have ~zero diffuse
+    // albedo) and renders solid black — confirmed visually. A uniform-color PMREM
+    // environment (procedural, no HDRI file, tiny sphere) gives PBR materials
+    // something plausible to reflect, at negligible cost.
+    const pmremGenerator = new THREE.PMREMGenerator(this.renderer);
+    const colorEnvironment = new ColorEnvironment(0x9fb8c8);
+    this.scene.environment = pmremGenerator.fromScene(colorEnvironment, 0.04).texture;
+    colorEnvironment.dispose();
+    pmremGenerator.dispose();
+
+    this.collidables.name = 'collidables';
+    this.scene.add(this.collidables);
+
+    this.floorplanScene = new FloorplanSceneManager(this.collidables);
+    this.environment = new EnvironmentManager(this.scene, this.collidables);
+    this.interiorStyle = new InteriorStyleManager(this.collidables);
 
     this.movementInput = new KeyboardMovementInput();
     this.lookInput = new PointerLockLookInput(this.renderer.domElement, this.camera, (locked) =>
@@ -76,14 +107,63 @@ export class Viewer3DEngine {
   }
 
   /**
-   * Loads a floor plan from raw SVG text — e.g. a user-picked file, already
-   * validated by core/floorplan/floorplan-file.ts — replacing whatever is currently
-   * shown. Throws (leaving the current scenario fully intact, see
-   * FloorplanSceneManager.load) if the SVG doesn't parse into a usable plan.
+   * Loads a floor plan from raw SVG text — e.g. a user-picked file, already validated
+   * by core/floorplan/floorplan-file.ts — replacing whatever is currently shown: house
+   * geometry, exterior terrain/vegetation, the currently-selected interior style's
+   * materials (re-applied to the new house — furniture is not, see
+   * InteriorStyleManager.applyStyle's isDefaultFloorplan param), collisions, and the
+   * player's position all get recomputed for the new plan. Throws (leaving the current
+   * scenario fully intact — see FloorplanSceneManager.load) if the SVG doesn't parse
+   * into a usable plan.
    */
-  loadFloorplanFromSvgText(svgText: string): void {
-    this.floorplanScene.load(svgText);
+  async loadFloorplanFromSvgText(svgText: string, options: { isDefault?: boolean } = {}): Promise<void> {
+    const floorplan = this.floorplanScene.load(svgText);
+    this.currentFloorplan = floorplan;
+    this.isDefaultFloorplan = options.isDefault ?? false;
+
+    const maxAnisotropy = this.renderer.capabilities.getMaxAnisotropy();
+    await this.environment.rebuild(floorplan, maxAnisotropy);
+    await this.interiorStyle.applyStyle(
+      this.interiorStyle.currentStyle,
+      this.floorplanScene.currentGroup,
+      this.isDefaultFloorplan,
+      maxAnisotropy,
+    );
+
+    this.rebuildCollisions();
     this.player.respawn();
+  }
+
+  /**
+   * Retextures the house (wall/floor materials) and, only for the bundled default
+   * plan, rebuilds the furniture layout for `styleId`. Never touches house geometry
+   * or the player's position — only materials/furniture and, consequently, collisions.
+   */
+  async applyInteriorStyle(styleId: InteriorStyleId): Promise<void> {
+    await this.interiorStyle.applyStyle(
+      styleId,
+      this.floorplanScene.currentGroup,
+      this.isDefaultFloorplan,
+      this.renderer.capabilities.getMaxAnisotropy(),
+    );
+    this.rebuildCollisions();
+  }
+
+  get currentInteriorStyle(): InteriorStyleId {
+    return this.interiorStyle.currentStyle;
+  }
+
+  get isCurrentFloorplanDefault(): boolean {
+    return this.isDefaultFloorplan;
+  }
+
+  get hasFurnitureLayout(): boolean {
+    return this.interiorStyle.hasFurniture;
+  }
+
+  getBudget(): BudgetSummary {
+    const floorAreaM2 = this.currentFloorplan ? computeFloorAreaM2(this.currentFloorplan.rooms.map((room) => room.polygon)) : undefined;
+    return this.interiorStyle.getBudget(floorAreaM2);
   }
 
   dispose(): void {
@@ -96,34 +176,20 @@ export class Viewer3DEngine {
     this.resizeObserver.disconnect();
     this.movementInput.dispose();
     this.lookInput.dispose();
+    this.interiorStyle.dispose();
+    this.environment.dispose();
 
     disposeObject3D(this.scene);
+    this.scene.environment?.dispose();
 
     this.renderer.dispose();
     this.renderer.domElement.remove();
   }
 
-  private setupScene(): void {
-    this.scene.background = new THREE.Color(0x88ccee);
-    this.scene.fog = new THREE.Fog(0x88ccee, 0, 50);
-
-    const hemisphereLight = new THREE.HemisphereLight(0x8dc1de, 0x00668d, 1.5);
-    hemisphereLight.position.set(2, 1, 1);
-    this.scene.add(hemisphereLight);
-
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 2.5);
-    directionalLight.position.set(-5, 25, -1);
-    directionalLight.castShadow = true;
-    directionalLight.shadow.camera.near = 0.01;
-    directionalLight.shadow.camera.far = 500;
-    directionalLight.shadow.camera.right = 30;
-    directionalLight.shadow.camera.left = -30;
-    directionalLight.shadow.camera.top = 30;
-    directionalLight.shadow.camera.bottom = -30;
-    directionalLight.shadow.mapSize.set(1024, 1024);
-    directionalLight.shadow.radius = 4;
-    directionalLight.shadow.bias = -0.00006;
-    this.scene.add(directionalLight);
+  /** Rebuilds the world Octree from every currently-collidable object (house + terrain + furniture). */
+  private rebuildCollisions(): void {
+    this.worldOctree.clear();
+    this.worldOctree.fromGraphNode(this.collidables);
   }
 
   private async loadDefaultFloorplan(): Promise<void> {
@@ -134,7 +200,7 @@ export class Viewer3DEngine {
       }
 
       const svgText = await response.text();
-      this.loadFloorplanFromSvgText(svgText);
+      await this.loadFloorplanFromSvgText(svgText, { isDefault: true });
 
       this.callbacks.onReady?.();
     } catch (error) {

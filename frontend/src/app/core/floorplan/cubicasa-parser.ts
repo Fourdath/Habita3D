@@ -1,9 +1,14 @@
 import {
   DEFAULT_DOOR_HEIGHT,
+  DEFAULT_EXTERIOR_WALL_THICKNESS_M,
+  DEFAULT_INTERIOR_WALL_THICKNESS_M,
+  DEFAULT_UNCLASSIFIED_WALL_THICKNESS_M,
   DEFAULT_WINDOW_HEIGHT,
   DEFAULT_WINDOW_SILL_HEIGHT,
   MIN_DOOR_WIDTH,
   MIN_WINDOW_WIDTH,
+  WALL_THICKNESS_SANITY_MAX_M,
+  WALL_THICKNESS_SANITY_MIN_M,
 } from './floorplan.constants';
 import { detectOuterPerimeter } from './floorplan-perimeter';
 import type {
@@ -115,9 +120,6 @@ export interface ParseFloorplanOptions {
 }
 
 const ROOM_TYPE_EXCLUDE = new Set(['Outdoor', 'Outdoor Balcony']);
-
-/** Fallback thickness (meters) for a degenerate wall polygon with fewer than 4 points. */
-const FALLBACK_WALL_THICKNESS = 0.15;
 
 export function parseFloorplan(svgText: string, options: ParseFloorplanOptions): Floorplan {
   const scale = options.scaleMetersPerUnit;
@@ -248,7 +250,7 @@ function parseWallElement(
     polygon: rawPoints.map(([x, y]): Point2 => [x * scale, y * scale]),
     start,
     end,
-    thickness: Math.max(centerline.thickness * scale, 0.08),
+    thickness: resolveWallThickness(centerline.thickness * scale, isExterior ? 'exterior' : 'interior'),
     isExterior,
   };
 
@@ -304,7 +306,7 @@ function parseRailingElement(railingElement: Element, scale: number, wallId: str
     polygon: points.map(([x, y]): Point2 => [x * scale, y * scale]),
     start: [centerline.start[0] * scale, centerline.start[1] * scale],
     end: [centerline.end[0] * scale, centerline.end[1] * scale],
-    thickness: Math.max(centerline.thickness * scale, 0.05),
+    thickness: resolveWallThickness(centerline.thickness * scale, 'unclassified'),
     isExterior: false,
   };
 }
@@ -342,13 +344,15 @@ function parseOpeningPolygon(
 
 /**
  * A wall's SVG polygon is a quad: two long parallel edges (the wall faces) and two
- * short edges at the ends, mitered against whichever wall it joins. This returns the
- * midpoint of each short edge as the centerline start/end, and their average length
- * as the wall thickness — working for any wall angle.
+ * end edges connecting them, mitered against whichever wall it joins. The end edges'
+ * midpoints give the centerline start/end for any wall angle. Thickness is the
+ * perpendicular distance between the two long faces — NOT the end edges' length (see
+ * perpendicularDistance() for why that distinction matters).
  */
 function wallCenterline(points: Point2[]): { start: Point2; end: Point2; thickness: number } {
   if (points.length < 4) {
-    return { start: points[0], end: points[1] ?? points[0], thickness: FALLBACK_WALL_THICKNESS };
+    // No reliable quad to measure — resolveWallThickness() falls back for non-finite input.
+    return { start: points[0], end: points[1] ?? points[0], thickness: NaN };
   }
 
   const edges: { length: number; a: Point2; b: Point2 }[] = [];
@@ -360,13 +364,68 @@ function wallCenterline(points: Point2[]): { start: Point2; end: Point2; thickne
 
   const facingPairLength = edges[0].length + edges[2].length;
   const endPairLength = edges[1].length + edges[3].length;
-  const [endA, endB] = facingPairLength >= endPairLength ? [edges[1], edges[3]] : [edges[0], edges[2]];
+  const [longA, longB, endA, endB] =
+    facingPairLength >= endPairLength
+      ? [edges[0], edges[2], edges[1], edges[3]]
+      : [edges[1], edges[3], edges[0], edges[2]];
 
   return {
     start: [(endA.a[0] + endA.b[0]) / 2, (endA.a[1] + endA.b[1]) / 2],
     end: [(endB.a[0] + endB.b[0]) / 2, (endB.a[1] + endB.b[1]) / 2],
-    thickness: (endA.length + endB.length) / 2,
+    thickness: perpendicularDistance(longA, longB),
   };
+}
+
+/**
+ * True wall thickness is the perpendicular distance between the wall's two long
+ * faces (longA/longB) — not the length of the edges connecting them, which are
+ * mitered at whatever angle the adjoining wall meets this one (commonly 45° for a
+ * square corner). A 45°-mitered end edge's length overstates thickness by a factor of
+ * √2 (~41%) relative to the true perpendicular thickness; this was the cause of the
+ * "walls look too thick" reports — about a third of the default plan's walls have a
+ * mitered end and were rendering ~1.4× too thick before this fix.
+ */
+function perpendicularDistance(longA: { a: Point2; b: Point2 }, longB: { a: Point2; b: Point2 }): number {
+  const dx = longA.b[0] - longA.a[0];
+  const dy = longA.b[1] - longA.a[1];
+  const length = Math.hypot(dx, dy);
+  if (length < 1e-8) {
+    return NaN;
+  }
+
+  const nx = -dy / length;
+  const ny = dx / length;
+  const relX = longB.a[0] - longA.a[0];
+  const relY = longB.a[1] - longA.a[1];
+  return Math.abs(relX * nx + relY * ny);
+}
+
+type WallThicknessClassification = 'interior' | 'exterior' | 'unclassified';
+
+/**
+ * Keeps a wall's own SVG-derived thickness when it's finite and within a sane range
+ * for a real wall; otherwise falls back to a classification-based default. `Wall`
+ * elements are reliably classified interior/exterior from CubiCasa's own "External"
+ * class (not a heuristic we invented); `Railing` elements have no such concept, so
+ * they use the unclassified default.
+ */
+function resolveWallThickness(rawThicknessMeters: number, classification: WallThicknessClassification): number {
+  if (
+    Number.isFinite(rawThicknessMeters) &&
+    rawThicknessMeters >= WALL_THICKNESS_SANITY_MIN_M &&
+    rawThicknessMeters <= WALL_THICKNESS_SANITY_MAX_M
+  ) {
+    return rawThicknessMeters;
+  }
+
+  switch (classification) {
+    case 'exterior':
+      return DEFAULT_EXTERIOR_WALL_THICKNESS_M;
+    case 'interior':
+      return DEFAULT_INTERIOR_WALL_THICKNESS_M;
+    default:
+      return DEFAULT_UNCLASSIFIED_WALL_THICKNESS_M;
+  }
 }
 
 function projectOntoSegment(point: Point2, segStart: Point2, segEnd: Point2): number {
