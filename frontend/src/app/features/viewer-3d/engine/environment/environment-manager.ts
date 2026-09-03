@@ -5,6 +5,8 @@ import { disposeObject3D } from '../three-object-disposal';
 import { loadPbrTextureSet } from '../texture-cache';
 
 import {
+  AMBIENT_LIGHT_COLOR,
+  AMBIENT_LIGHT_INTENSITY,
   FOG_COLOR,
   FOG_FAR_M,
   FOG_NEAR_M,
@@ -12,6 +14,7 @@ import {
   HEMISPHERE_INTENSITY,
   HEMISPHERE_SKY_COLOR,
   SUN_LIGHT_INTENSITY,
+  SUN_LIGHT_COLOR,
   TERRAIN_ANISOTROPY,
   TERRAIN_TEXTURE_PATH,
   TERRAIN_TEXTURE_TILE_METERS,
@@ -22,8 +25,8 @@ import { buildVegetation, seedFromBounds } from './vegetation';
 
 /**
  * The exterior environment: sky, fog, lighting, terrain, and vegetation — kept as one
- * cohesive subsystem, separate from the house (FloorplanSceneManager) and furniture
- * groups. Sky/fog/lighting are set up once and don't change between floor plans;
+ * cohesive subsystem, separate from the house (FloorplanSceneManager). Sky/fog and
+ * lighting are set up once and don't change between floor plans;
  * terrain/vegetation depend on the current plan's footprint and are rebuilt whenever
  * a plan is (re)loaded via rebuild().
  *
@@ -34,6 +37,7 @@ import { buildVegetation, seedFromBounds } from './vegetation';
 export class EnvironmentManager {
   private readonly sky: THREE.Object3D;
   private readonly hemisphereLight: THREE.HemisphereLight;
+  private readonly ambientLight: THREE.AmbientLight;
   private readonly directionalLight: THREE.DirectionalLight;
 
   private terrainMesh: THREE.Mesh | null = null;
@@ -53,11 +57,14 @@ export class EnvironmentManager {
     this.hemisphereLight = new THREE.HemisphereLight(HEMISPHERE_SKY_COLOR, HEMISPHERE_GROUND_COLOR, HEMISPHERE_INTENSITY);
     this.scene.add(this.hemisphereLight);
 
-    this.directionalLight = new THREE.DirectionalLight(0xffffff, SUN_LIGHT_INTENSITY);
+    this.ambientLight = new THREE.AmbientLight(AMBIENT_LIGHT_COLOR, AMBIENT_LIGHT_INTENSITY);
+    this.scene.add(this.ambientLight);
+
+    this.directionalLight = new THREE.DirectionalLight(SUN_LIGHT_COLOR, SUN_LIGHT_INTENSITY);
     this.directionalLight.position.copy(sun.clone().multiplyScalar(50));
     this.directionalLight.castShadow = true;
     this.directionalLight.shadow.camera.near = 0.01;
-    this.directionalLight.shadow.camera.far = 500;
+    this.directionalLight.shadow.camera.far = 120;
     this.directionalLight.shadow.camera.right = 30;
     this.directionalLight.shadow.camera.left = -30;
     this.directionalLight.shadow.camera.top = 30;
@@ -65,7 +72,7 @@ export class EnvironmentManager {
     this.directionalLight.shadow.mapSize.set(1024, 1024);
     this.directionalLight.shadow.radius = 4;
     this.directionalLight.shadow.bias = -0.00006;
-    this.scene.add(this.directionalLight);
+    this.scene.add(this.directionalLight, this.directionalLight.target);
   }
 
   /**
@@ -77,6 +84,12 @@ export class EnvironmentManager {
   async rebuild(floorplan: Floorplan, rendererMaxAnisotropy: number): Promise<EnvironmentBounds> {
     const bounds = computeEnvironmentBounds(floorplan);
     const material = await this.buildTerrainMaterial(bounds, rendererMaxAnisotropy);
+
+    this.directionalLight.position
+      .set(bounds.centerX, 0, bounds.centerZ)
+      .add(sunDirection().multiplyScalar(50));
+    this.directionalLight.target.position.set(bounds.centerX, 0, bounds.centerZ);
+    this.directionalLight.target.updateMatrixWorld();
 
     this.disposeGround();
 
@@ -121,7 +134,9 @@ export class EnvironmentManager {
     disposeObject3D(this.sky);
 
     this.scene.remove(this.hemisphereLight);
+    this.scene.remove(this.ambientLight);
     this.scene.remove(this.directionalLight);
+    this.scene.remove(this.directionalLight.target);
     this.scene.fog = null;
   }
 

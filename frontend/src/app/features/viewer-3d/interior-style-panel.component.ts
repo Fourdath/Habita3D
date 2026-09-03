@@ -28,8 +28,6 @@ export class InteriorStylePanelComponent {
   readonly loading = input(false);
   readonly errorMessage = input<string | null>(null);
   readonly budget = input.required<BudgetSummary>();
-  readonly furnitureAvailable = input(true);
-
   readonly styleChange = output<InteriorStyleId>();
 
   readonly styles = listInteriorStyles();

@@ -1,128 +1,121 @@
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 import { InteriorStyleManager } from './interior-style-manager';
 
+const MESH_TYPES = [
+  'wall',
+  'exteriorWall',
+  'floor',
+  'ceiling',
+  'baseboard',
+  'doorFrame',
+  'window',
+  'windowFrame',
+  'lightFixture',
+] as const;
+
 function buildHouseGroup(): THREE.Group {
   const group = new THREE.Group();
-  const wall = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial());
-  wall.userData = { semanticType: 'wall' };
-  const floor = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial());
-  floor.userData = { semanticType: 'floor' };
-  group.add(wall, floor);
+  for (const semanticType of MESH_TYPES) {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial());
+    mesh.name = semanticType;
+    mesh.userData = { semanticType };
+    group.add(mesh);
+  }
+  const light = new THREE.PointLight(0xffffff, 0);
+  light.name = 'roomLight';
+  light.userData = { semanticType: 'roomLight', intensityScale: 0.8 };
+  group.add(light);
   return group;
 }
 
 describe('InteriorStyleManager', () => {
-  // jsdom has neither a real image decoder nor a real GLTF/WASM pipeline, so both
-  // texture and GLB loads would otherwise hang forever (no load/error event ever
-  // fires) instead of failing fast — mock both to fail immediately. This also
-  // exercises "a failed texture/GLB load must not break the scene": applyStyle()
-  // must still resolve and still swap in a (fallback) material / skip the model.
   beforeEach(() => {
     vi.spyOn(THREE.Loader.prototype, 'loadAsync').mockRejectedValue(new Error('no network in test environment'));
-    vi.spyOn(GLTFLoader.prototype, 'loadAsync').mockRejectedValue(new Error('no network in test environment'));
   });
 
-  afterEach(() => {
-    vi.restoreAllMocks();
+  afterEach(() => vi.restoreAllMocks());
+
+  it('starts on the neutral style', () => {
+    expect(new InteriorStyleManager().currentStyle).toBe('none');
   });
 
-  it('starts on "none" and leaves wall/floor meshes with their original materials', () => {
-    const collidables = new THREE.Group();
-    const manager = new InteriorStyleManager(collidables);
-    expect(manager.currentStyle).toBe('none');
-  });
-
-  it('applying "nordic" retags wall/floor meshes by userData.semanticType, not by children[] order', async () => {
-    const collidables = new THREE.Group();
-    const manager = new InteriorStyleManager(collidables);
+  it('applies separate materials to every semantic architectural finish', async () => {
+    const manager = new InteriorStyleManager();
     const house = buildHouseGroup();
-    const [originalWallMaterial, originalFloorMaterial] = house.children.map((c) => (c as THREE.Mesh).material);
+    const original = new Map(
+      house.children
+        .filter((child): child is THREE.Mesh => child instanceof THREE.Mesh)
+        .map((mesh) => [mesh.name, mesh.material]),
+    );
 
-    await manager.applyStyle('nordic', house, false, 1);
+    await manager.applyStyle('nordic', house, 1);
 
-    const [wallMesh, floorMesh] = house.children as THREE.Mesh[];
-    expect(wallMesh.material).not.toBe(originalWallMaterial);
-    expect(floorMesh.material).not.toBe(originalFloorMaterial);
-    expect(wallMesh.material).not.toBe(floorMesh.material);
+    for (const semanticType of MESH_TYPES) {
+      expect((house.getObjectByName(semanticType) as THREE.Mesh).material).not.toBe(original.get(semanticType));
+    }
+    expect((house.getObjectByName('wall') as THREE.Mesh).material).not.toBe(
+      (house.getObjectByName('exteriorWall') as THREE.Mesh).material,
+    );
     expect(manager.currentStyle).toBe('nordic');
   });
 
-  it('walks none -> nordic -> industrial, applying a different material each time', async () => {
-    const collidables = new THREE.Group();
-    const manager = new InteriorStyleManager(collidables);
+  it('updates room lights using the selected style palette', async () => {
+    const manager = new InteriorStyleManager();
+    const house = buildHouseGroup();
+    const light = house.getObjectByName('roomLight') as THREE.PointLight;
+
+    await manager.applyStyle('industrial', house, 1);
+
+    expect(light.intensity).toBeGreaterThan(0);
+    expect(light.color.getHex()).not.toBe(0xffffff);
+  });
+
+  it('walks none -> nordic -> industrial with fresh finish materials', async () => {
+    const manager = new InteriorStyleManager();
     const house = buildHouseGroup();
 
-    await manager.applyStyle('none', house, false, 1);
-    const noneWallMaterial = (house.children[0] as THREE.Mesh).material;
+    await manager.applyStyle('none', house, 1);
+    const noneWall = (house.getObjectByName('wall') as THREE.Mesh).material;
+    await manager.applyStyle('nordic', house, 1);
+    const nordicWall = (house.getObjectByName('wall') as THREE.Mesh).material;
+    await manager.applyStyle('industrial', house, 1);
+    const industrialWall = (house.getObjectByName('wall') as THREE.Mesh).material;
 
-    await manager.applyStyle('nordic', house, false, 1);
-    const nordicWallMaterial = (house.children[0] as THREE.Mesh).material;
-
-    await manager.applyStyle('industrial', house, false, 1);
-    const industrialWallMaterial = (house.children[0] as THREE.Mesh).material;
-
-    expect(noneWallMaterial).not.toBe(nordicWallMaterial);
-    expect(nordicWallMaterial).not.toBe(industrialWallMaterial);
+    expect(noneWall).not.toBe(nordicWall);
+    expect(nordicWall).not.toBe(industrialWall);
     expect(manager.currentStyle).toBe('industrial');
   });
 
-  it('builds no furniture for a non-default floor plan, and reports hasFurniture accordingly', async () => {
-    const collidables = new THREE.Group();
-    const manager = new InteriorStyleManager(collidables);
-
-    await manager.applyStyle('nordic', buildHouseGroup(), false, 1);
-
-    expect(manager.hasFurniture).toBe(false);
-    expect(collidables.children.some((child) => child.name === 'furniture')).toBe(false);
-  });
-
-  it('builds a furniture group for the default floor plan (even though every GLB load fails in this test env, none throws)', async () => {
-    const collidables = new THREE.Group();
-    const manager = new InteriorStyleManager(collidables);
-
-    await expect(manager.applyStyle('nordic', buildHouseGroup(), true, 1)).resolves.toBeUndefined();
-
-    // The group itself is still added (each failed item is just skipped) — this is
-    // also the "keeps the scene even when a GLB fails to load" guarantee in practice.
-    expect(collidables.children.some((child) => child.name === 'furniture')).toBe(true);
-  });
-
-  it('does not duplicate furniture across rapid repeated style switches', async () => {
-    const collidables = new THREE.Group();
-    const manager = new InteriorStyleManager(collidables);
+  it('does not create furniture for any floor plan', async () => {
+    const manager = new InteriorStyleManager();
     const house = buildHouseGroup();
+    await manager.applyStyle('nordic', house, 1);
+    expect(house.getObjectByName('furniture')).toBeUndefined();
+  });
 
+  it('keeps only the result of the latest rapid style request', async () => {
+    const manager = new InteriorStyleManager();
+    const house = buildHouseGroup();
     await Promise.all([
-      manager.applyStyle('nordic', house, true, 1),
-      manager.applyStyle('industrial', house, true, 1),
-      manager.applyStyle('nordic', house, true, 1),
+      manager.applyStyle('nordic', house, 1),
+      manager.applyStyle('industrial', house, 1),
+      manager.applyStyle('nordic', house, 1),
     ]);
-
-    const furnitureGroups = collidables.children.filter((child) => child.name === 'furniture');
-    expect(furnitureGroups.length).toBeLessThanOrEqual(1);
     expect(manager.currentStyle).toBe('nordic');
   });
 
-  it('computes a budget for the currently applied style', async () => {
-    const collidables = new THREE.Group();
-    const manager = new InteriorStyleManager(collidables);
-
-    expect(manager.getBudget().totalClp).toBe(0); // 'none'
-
-    await manager.applyStyle('industrial', buildHouseGroup(), false, 1);
+  it('computes the budget for the selected style', async () => {
+    const manager = new InteriorStyleManager();
+    expect(manager.getBudget().totalClp).toBe(0);
+    await manager.applyStyle('industrial', buildHouseGroup(), 1);
     expect(manager.getBudget().totalClp).toBeGreaterThan(0);
     expect(manager.getBudget().styleId).toBe('industrial');
   });
 
-  it('dispose() removes the furniture group and stops any further style application', async () => {
-    const collidables = new THREE.Group();
-    const manager = new InteriorStyleManager(collidables);
-    await manager.applyStyle('nordic', buildHouseGroup(), true, 1);
-
-    manager.dispose();
-
-    expect(collidables.children.some((child) => child.name === 'furniture')).toBe(false);
+  it('can be disposed after style application', async () => {
+    const manager = new InteriorStyleManager();
+    await manager.applyStyle('nordic', buildHouseGroup(), 1);
+    expect(() => manager.dispose()).not.toThrow();
   });
 });

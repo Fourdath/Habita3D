@@ -29,7 +29,6 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
   readonly interiorStyleId = signal<InteriorStyleId>('none');
   readonly interiorStyleLoading = signal(false);
   readonly interiorStyleError = signal<string | null>(null);
-  readonly furnitureAvailable = signal(true);
   readonly budget = signal<BudgetSummary>(computeBudget('none'));
 
   private engine: Viewer3DEngine | null = null;
@@ -103,7 +102,6 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
     if (!this.engine) {
       return;
     }
-    this.furnitureAvailable.set(this.engine.isCurrentFloorplanDefault);
     this.budget.set(this.engine.getBudget());
   }
 

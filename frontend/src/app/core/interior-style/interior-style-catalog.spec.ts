@@ -7,10 +7,12 @@ describe('interior style catalog', () => {
     expect(styles.map((s) => s.id)).toEqual(['none', 'nordic', 'industrial']);
   });
 
-  it('gives "none" no wall/floor material override and no budget items', () => {
+  it('gives "none" no architectural material override and no budget items', () => {
     const none = getInteriorStyle('none');
-    expect(none.wallMaterial).toBeNull();
+    expect(none.interiorWallMaterial).toBeNull();
+    expect(none.exteriorWallMaterial).toBeNull();
     expect(none.floorMaterial).toBeNull();
+    expect(none.ceilingMaterial).toBeNull();
     expect(none.budgetItems).toHaveLength(0);
   });
 
@@ -18,11 +20,14 @@ describe('interior style catalog', () => {
     const nordic = getInteriorStyle('nordic');
     const industrial = getInteriorStyle('industrial');
 
-    expect(nordic.wallMaterial).not.toBeNull();
+    expect(nordic.interiorWallMaterial).not.toBeNull();
+    expect(nordic.exteriorWallMaterial).not.toBeNull();
     expect(nordic.floorMaterial).not.toBeNull();
-    expect(industrial.wallMaterial).not.toBeNull();
+    expect(industrial.interiorWallMaterial).not.toBeNull();
+    expect(industrial.exteriorWallMaterial).not.toBeNull();
     expect(industrial.floorMaterial).not.toBeNull();
-    expect(nordic.wallMaterial!.texturePath).not.toBe(industrial.wallMaterial!.texturePath);
+    expect(nordic.interiorWallMaterial!.texturePath).not.toBe(industrial.interiorWallMaterial!.texturePath);
+    expect(nordic.exteriorWallMaterial!.texturePath).not.toBe(industrial.exteriorWallMaterial!.texturePath);
     expect(nordic.floorMaterial!.texturePath).not.toBe(industrial.floorMaterial!.texturePath);
     expect(nordic.budgetItems.length).toBeGreaterThan(0);
     expect(industrial.budgetItems.length).toBeGreaterThan(0);

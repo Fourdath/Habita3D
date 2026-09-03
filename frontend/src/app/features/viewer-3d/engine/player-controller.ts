@@ -7,6 +7,7 @@ import {
   JUMP_VELOCITY,
   OUT_OF_BOUNDS_Y,
   PLAYER_CAPSULE_RADIUS,
+  PLAYER_EYE_HEIGHT,
   PLAYER_SPEED_AIR,
   PLAYER_SPEED_GROUND,
 } from './viewer-3d.constants';
@@ -27,7 +28,7 @@ export class PlayerController {
   ) {
     this.collider = new Capsule(
       new THREE.Vector3(0, PLAYER_CAPSULE_RADIUS, 0),
-      new THREE.Vector3(0, 1, 0),
+      new THREE.Vector3(0, PLAYER_EYE_HEIGHT, 0),
       PLAYER_CAPSULE_RADIUS,
     );
     this.camera.position.copy(this.collider.end);
@@ -98,7 +99,7 @@ export class PlayerController {
    */
   respawn(): void {
     this.collider.start.set(0, PLAYER_CAPSULE_RADIUS, 0);
-    this.collider.end.set(0, 1, 0);
+    this.collider.end.set(0, PLAYER_EYE_HEIGHT, 0);
     this.velocity.set(0, 0, 0);
     this.camera.position.copy(this.collider.end);
     this.camera.rotation.set(0, 0, 0);

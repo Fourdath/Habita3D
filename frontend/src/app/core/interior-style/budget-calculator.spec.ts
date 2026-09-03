@@ -1,4 +1,10 @@
-import { computeBudget, computeFloorAreaM2, formatClp } from './budget-calculator';
+import {
+  computeBudget,
+  computeFloorAreaM2,
+  computeFloorplanMeasurements,
+  formatClp,
+  type FloorplanMeasurements,
+} from './budget-calculator';
 import { getInteriorStyle } from './interior-style-catalog';
 
 describe('computeBudget', () => {
@@ -26,30 +32,69 @@ describe('computeBudget', () => {
     expect(computeBudget('nordic').totalClp).not.toBe(computeBudget('industrial').totalClp);
   });
 
-  it('uses floorAreaM2 * 1.1 for m2-priced items when a reliable area is given', () => {
-    const withoutArea = computeBudget('nordic');
-    const floorItemWithoutArea = withoutArea.items.find((item) => item.unit === 'm2')!;
+  const measurements: FloorplanMeasurements = {
+    floorAreaM2: 50,
+    interiorWallAreaM2: 90,
+    exteriorWallAreaM2: 70,
+    ceilingAreaM2: 50,
+    baseboardLengthM: 42,
+    doorCount: 4,
+    windowCount: 6,
+    lightCount: 5,
+  };
 
-    const withArea = computeBudget('nordic', 50);
-    const floorItemWithArea = withArea.items.find((item) => item.unit === 'm2')!;
+  it('uses measured quantities and each finish waste factor', () => {
+    const withoutArea = computeBudget('nordic');
+    const floorItemWithoutArea = withoutArea.items.find((item) => item.quantitySource === 'floorAreaM2')!;
+
+    const withArea = computeBudget('nordic', measurements);
+    const floorItemWithArea = withArea.items.find((item) => item.quantitySource === 'floorAreaM2')!;
 
     expect(floorItemWithoutArea.quantity).not.toBe(55);
-    expect(floorItemWithArea.quantity).toBeCloseTo(55, 5); // 50 * 1.1
+    expect(floorItemWithArea.quantity).toBeCloseTo(55, 5);
     expect(floorItemWithArea.subtotalClp).toBe(Math.round(55 * floorItemWithArea.unitPriceClp));
+    expect(withArea.items.find((item) => item.quantitySource === 'windowCount')?.quantity).toBe(6);
   });
 
-  it('falls back to the fixed placeholder quantity when no reliable area is given', () => {
+  it('falls back to catalog placeholder quantities when measurements are absent', () => {
     const noArea = computeBudget('nordic');
-    const zeroArea = computeBudget('nordic', 0);
-    const negativeArea = computeBudget('nordic', -5);
-
     const style = getInteriorStyle('nordic');
-    const catalogFloorItem = style.budgetItems.find((item) => item.unit === 'm2')!;
+    const catalogFloorItem = style.budgetItems.find((item) => item.quantitySource === 'floorAreaM2')!;
+    const floorItem = noArea.items.find((item) => item.quantitySource === 'floorAreaM2')!;
+    expect(floorItem.quantity).toBeCloseTo(catalogFloorItem.quantity * (catalogFloorItem.wasteFactor ?? 1), 5);
+  });
+});
 
-    for (const budget of [noArea, zeroArea, negativeArea]) {
-      const floorItem = budget.items.find((item) => item.unit === 'm2')!;
-      expect(floorItem.quantity).toBe(catalogFloorItem.quantity);
-    }
+describe('computeFloorplanMeasurements', () => {
+  it('measures surfaces, openings, trim and fixture counts from the parsed plan', () => {
+    const measurements = computeFloorplanMeasurements(
+      {
+        scaleMetersPerUnit: 1,
+        walls: [
+          {
+            id: 'wall-1',
+            start: [0, 0],
+            end: [4, 0],
+            thickness: 0.15,
+            isExterior: true,
+            polygon: [[0, 0], [4, 0], [4, 0.15], [0, 0.15]],
+          },
+        ],
+        doors: [{ id: 'door-1', wallId: 'wall-1', position: 0.5, width: 1, height: 2 }],
+        windows: [{ id: 'window-1', wallId: 'wall-1', position: 0.8, width: 1, height: 1, sillHeight: 0.9 }],
+        rooms: [{ id: 'room-1', name: 'Sala', type: 'LivingRoom', polygon: [[0, 0], [4, 0], [4, 3], [0, 3]] }],
+        outerPerimeter: [[0, 0], [4, 0], [4, 3], [0, 3]],
+      },
+      2.4,
+    );
+
+    expect(measurements.floorAreaM2).toBe(12);
+    expect(measurements.interiorWallAreaM2).toBeCloseTo(6.6, 5);
+    expect(measurements.exteriorWallAreaM2).toBeCloseTo(6.6, 5);
+    expect(measurements.baseboardLengthM).toBe(3);
+    expect(measurements.doorCount).toBe(1);
+    expect(measurements.windowCount).toBe(1);
+    expect(measurements.lightCount).toBe(1);
   });
 });
 

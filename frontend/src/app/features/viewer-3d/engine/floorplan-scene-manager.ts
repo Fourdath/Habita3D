@@ -14,8 +14,8 @@ import { disposeObject3D } from './three-object-disposal';
  * touches plain THREE.Object3D graph operations, no GPU context needed).
  *
  * `parent` is whatever collidable container the engine wants this geometry added to
- * (its Octree gets rebuilt from that same container after house/terrain/furniture are
- * all in place — see Viewer3DEngine.rebuildCollisions()) — this class does not touch
+ * (its Octree gets rebuilt from that same container after house and terrain are in
+ * place — see Viewer3DEngine.rebuildCollisions()) — this class does not touch
  * the Octree itself.
  */
 export class FloorplanSceneManager {
@@ -43,7 +43,8 @@ export class FloorplanSceneManager {
 
     if (this.group) {
       this.parent.remove(this.group);
-      disposeObject3D(this.group);
+      // Style textures belong to texture-cache.ts and must survive a plan reload.
+      disposeObject3D(this.group, { keepTextures: true });
     }
 
     this.parent.add(nextGroup);
@@ -57,7 +58,7 @@ export class FloorplanSceneManager {
       return;
     }
     this.parent.remove(this.group);
-    disposeObject3D(this.group);
+    disposeObject3D(this.group, { keepTextures: true });
     this.group = null;
   }
 }

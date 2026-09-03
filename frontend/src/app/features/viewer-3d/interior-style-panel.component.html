@@ -32,11 +32,8 @@
     <p class="style-panel__error">{{ errorMessage() }}</p>
   }
 
-  @if (styleId() !== 'none' && !furnitureAvailable()) {
-    <p class="style-panel__hint">
-      Este plano no es el predeterminado: la distribución automática de muebles todavía no está disponible aquí, solo se
-      aplicaron los materiales.
-    </p>
+  @if (styleId() !== 'none') {
+    <p class="style-panel__hint">Estilo aplicado a superficies, terminaciones, ventanas e iluminación.</p>
   }
 
   @if (styleId() !== 'none') {

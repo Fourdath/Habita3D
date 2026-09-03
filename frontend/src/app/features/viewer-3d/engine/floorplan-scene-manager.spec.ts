@@ -83,7 +83,7 @@ describe('FloorplanSceneManager', () => {
   it('composes with other collidable geometry (e.g. terrain) sharing the same parent for one combined Octree rebuild', () => {
     // Viewer3DEngine feeds ONE shared "collidables" group to both FloorplanSceneManager
     // and EnvironmentManager, then rebuilds the Octree once from that group — this is
-    // what makes house + terrain (and later furniture) collide correctly together.
+    // what makes house + terrain collide correctly together.
     const collidables = new THREE.Group();
     const manager = new FloorplanSceneManager(collidables);
     manager.load(PLAN_A);

@@ -13,6 +13,7 @@ export const STEPS_PER_FRAME = 5;
 export const MAX_DELTA_TIME = 0.05;
 
 export const PLAYER_CAPSULE_RADIUS = 0.35;
+export const PLAYER_EYE_HEIGHT = 1.6;
 export const PLAYER_SPEED_GROUND = 25;
 export const PLAYER_SPEED_AIR = 8;
 export const JUMP_VELOCITY = 15;
@@ -20,5 +21,5 @@ export const OUT_OF_BOUNDS_Y = -25;
 
 export const MOUSE_LOOK_SENSITIVITY = 500;
 
-export const FLOORPLAN_WALL_HEIGHT = 2.2;
+export const FLOORPLAN_WALL_HEIGHT = 2.4;
 export const FLOORPLAN_FLOOR_THICKNESS = 0.05;

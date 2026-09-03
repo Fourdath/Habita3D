@@ -16,20 +16,39 @@ export interface MaterialSpec {
   tileMeters: number;
   /** Shown immediately (and kept if the texture fails to load) so nothing renders untextured/black. */
   fallbackColor: number;
+  /** Material tuning kept in catalog data so each finish reacts differently to light. */
+  roughness?: number;
+  normalScale?: number;
+  clearcoat?: number;
+  clearcoatRoughness?: number;
 }
 
 export interface InteriorLightingConfig {
-  lightColor: number;
-  hemisphereIntensity: number;
-  directionalIntensity: number;
+  roomLightColor: number;
+  roomLightIntensity: number;
+  fixtureColor: number;
+  fixtureEmissiveIntensity: number;
 }
+
+export type BudgetQuantitySource =
+  | 'fixed'
+  | 'floorAreaM2'
+  | 'interiorWallAreaM2'
+  | 'exteriorWallAreaM2'
+  | 'ceilingAreaM2'
+  | 'baseboardLengthM'
+  | 'doorCount'
+  | 'windowCount'
+  | 'lightCount';
 
 export interface BudgetItem {
   id: string;
   name: string;
   category: string;
-  unit: 'unidad' | 'm2' | 'galon';
+  unit: 'unidad' | 'm2' | 'metro';
+  quantitySource: BudgetQuantitySource;
   quantity: number;
+  wasteFactor?: number;
   unitPriceClp: number;
 }
 
@@ -37,9 +56,13 @@ export interface InteriorStyle {
   id: InteriorStyleId;
   name: string;
   palette: { primary: number; secondary: number; accent: number };
-  /** null for 'none' — keeps the plain default wall/floor material from floorplan-geometry.ts. */
-  wallMaterial: MaterialSpec | null;
+  /** null for 'none' — keeps the neutral materials from floorplan-geometry.ts. */
+  interiorWallMaterial: MaterialSpec | null;
+  exteriorWallMaterial: MaterialSpec | null;
   floorMaterial: MaterialSpec | null;
+  ceilingMaterial: MaterialSpec | null;
+  trimColor: number;
+  windowFrameColor: number;
   lighting: InteriorLightingConfig | null;
   /** Demonstrative pricing only — see BudgetItem and budget-calculator.ts. Empty for 'none'. */
   budgetItems: BudgetItem[];

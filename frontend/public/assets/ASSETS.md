@@ -9,6 +9,9 @@ Each texture set has `diffuse.jpg` (Base Color, sRGB), `normal.png` (OpenGL norm
 `nor_gl`, linear), and `roughness.jpg` (linear). Downloaded via Poly Haven's public
 `https://api.polyhaven.com/files/<slug>` API.
 
+Normal maps are stored as 8-bit RGB PNG at the original 1024×1024 resolution. This is
+adequate for the web prototype and cuts their transfer/storage cost roughly in half.
+
 | Directory | Source | Used for |
 | --- | --- | --- |
 | `textures/leafy_grass/` | https://polyhaven.com/a/leafy_grass | Exterior terrain |
@@ -16,9 +19,13 @@ Each texture set has `diffuse.jpg` (Base Color, sRGB), `normal.png` (OpenGL norm
 | `textures/white_stucco/` | https://polyhaven.com/a/white_stucco | Nordic style wall |
 | `textures/rough_concrete/` | https://polyhaven.com/a/rough_concrete | Industrial style wall (general) |
 | `textures/laminate_floor_02/` | https://polyhaven.com/a/laminate_floor_02 | Industrial style floor |
-| `textures/brick_wall_003/` | https://polyhaven.com/a/brick_wall_003 | Industrial accent wall (prepared, not yet applied per-wall — see MaterialLibrary) |
+| `textures/brick_wall_003/` | https://polyhaven.com/a/brick_wall_003 | Industrial exterior facade |
 
 ## Furniture GLB — poly.pizza (CC0)
+
+These assets remain available for a future user-controlled furniture editor. The
+current prototype deliberately does not place them automatically because one manual
+layout cannot adapt safely to arbitrary uploaded floor plans.
 
 Individual models only — no ZIP bundle is committed. Fetched from the direct
 `https://static.poly.pizza/<uuid>.glb` CDN link exposed on each model's poly.pizza page.

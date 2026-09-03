@@ -8,13 +8,38 @@ import * as THREE from 'three';
  */
 
 const textureLoader = new THREE.TextureLoader();
-const textureCache = new Map<string, Promise<THREE.Texture>>();
+const sourceTextureCache = new Map<string, Promise<THREE.Texture>>();
+const configuredTextureCache = new Map<string, Promise<THREE.Texture>>();
 
 function loadCachedTexture(url: string): Promise<THREE.Texture> {
-  let pending = textureCache.get(url);
+  let pending = sourceTextureCache.get(url);
   if (!pending) {
     pending = textureLoader.loadAsync(url);
-    textureCache.set(url, pending);
+    sourceTextureCache.set(url, pending);
+  }
+  return pending;
+}
+
+function loadConfiguredTexture(
+  url: string,
+  repeat: [number, number],
+  anisotropy: number,
+  colorSpace: THREE.ColorSpace,
+): Promise<THREE.Texture> {
+  const key = `${url}|${repeat[0]}:${repeat[1]}|${anisotropy}|${colorSpace}`;
+  let pending = configuredTextureCache.get(key);
+  if (!pending) {
+    pending = loadCachedTexture(url).then((source) => {
+      const texture = source.clone();
+      texture.colorSpace = colorSpace;
+      texture.wrapS = THREE.RepeatWrapping;
+      texture.wrapT = THREE.RepeatWrapping;
+      texture.repeat.set(repeat[0], repeat[1]);
+      texture.anisotropy = anisotropy;
+      texture.needsUpdate = true;
+      return texture;
+    });
+    configuredTextureCache.set(key, pending);
   }
   return pending;
 }
@@ -46,25 +71,13 @@ export async function loadPbrTextureSet(options: LoadPbrTextureSetOptions): Prom
   const diffuseFile = options.diffuseFile ?? 'diffuse.jpg';
   const normalFile = options.normalFile ?? 'normal.png';
   const roughnessFile = options.roughnessFile ?? 'roughness.jpg';
+  const anisotropy = options.anisotropy ?? 1;
 
   const [diffuse, normal, roughness] = await Promise.all([
-    loadCachedTexture(`${options.basePath}/${diffuseFile}`),
-    loadCachedTexture(`${options.basePath}/${normalFile}`),
-    loadCachedTexture(`${options.basePath}/${roughnessFile}`),
+    loadConfiguredTexture(`${options.basePath}/${diffuseFile}`, options.repeat, anisotropy, THREE.SRGBColorSpace),
+    loadConfiguredTexture(`${options.basePath}/${normalFile}`, options.repeat, anisotropy, THREE.NoColorSpace),
+    loadConfiguredTexture(`${options.basePath}/${roughnessFile}`, options.repeat, anisotropy, THREE.NoColorSpace),
   ]);
-
-  diffuse.colorSpace = THREE.SRGBColorSpace;
-  // Normal/roughness are data maps, not colors — left in linear space (THREE's default).
-
-  for (const texture of [diffuse, normal, roughness]) {
-    texture.wrapS = THREE.RepeatWrapping;
-    texture.wrapT = THREE.RepeatWrapping;
-    texture.repeat.set(options.repeat[0], options.repeat[1]);
-    if (options.anisotropy) {
-      texture.anisotropy = options.anisotropy;
-    }
-    texture.needsUpdate = true;
-  }
 
   return { diffuse, normal, roughness };
 }

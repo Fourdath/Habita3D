@@ -1,128 +1,122 @@
 import * as THREE from 'three';
 
-import { computeBudget, type BudgetSummary } from '../../../../core/interior-style/budget-calculator';
-import { DEFAULT_FURNITURE_LAYOUT } from '../../../../core/interior-style/furniture-layout';
+import {
+  computeBudget,
+  type BudgetSummary,
+  type FloorplanMeasurements,
+} from '../../../../core/interior-style/budget-calculator';
 import { getInteriorStyle } from '../../../../core/interior-style/interior-style-catalog';
 import type { InteriorStyleId } from '../../../../core/interior-style/interior-style.types';
 import { disposeMaterial } from '../three-object-disposal';
 import type { SemanticType } from '../viewer-3d.types';
 
-import { buildFurnitureLayout, disposeFurnitureGroup } from './furniture-layout-builder';
 import { buildHouseMaterials, createDefaultHouseMaterials, type HouseMaterials } from './material-library';
 
-/**
- * Interior-style engine: independent of the CubiCasa parser, the structural geometry
- * generator, the player controller, Angular, and the budget UI — it only touches
- * plain THREE objects it's handed (a house group to retexture, a collidables group to
- * add/remove furniture from) and the interior-style domain model in core/interior-style/.
- *
- * Style application never rebuilds house geometry — it only swaps each wall/floor
- * mesh's `.material` (found via the stable `userData.semanticType` tag, never
- * children[] order) and swaps the furniture group. Rapid repeated applyStyle() calls
- * are race-safe via a monotonically increasing request token: a call whose result
- * arrives after a newer call has already started discards its own work instead of
- * clobbering the newer one.
- */
+/** Applies a finish palette to semantic house meshes without changing geometry. */
 export class InteriorStyleManager {
   private currentStyleId: InteriorStyleId = 'none';
   private currentMaterials: HouseMaterials | null = null;
-  private furnitureGroup: THREE.Group | null = null;
   private requestToken = 0;
-
-  constructor(private readonly collidables: THREE.Group) {}
 
   get currentStyle(): InteriorStyleId {
     return this.currentStyleId;
   }
 
-  get hasFurniture(): boolean {
-    return this.furnitureGroup !== null;
+  getBudget(measurements?: FloorplanMeasurements): BudgetSummary {
+    return computeBudget(this.currentStyleId, measurements);
   }
 
-  getBudget(floorAreaM2?: number): BudgetSummary {
-    return computeBudget(this.currentStyleId, floorAreaM2);
-  }
-
-  /**
-   * Applies `styleId`'s materials to `houseGroup`'s wall/floor meshes and rebuilds the
-   * furniture group. Furniture is only populated when `isDefaultFloorplan` is true —
-   * placement is manual and only tuned for the bundled demo plan (see
-   * furniture-layout.ts); for any other loaded SVG, the furniture group stays empty
-   * (see `hasFurniture`, used by the page to show "distribución automática no
-   * disponible" for a non-default plan instead of silently showing nothing).
-   */
   async applyStyle(
     styleId: InteriorStyleId,
     houseGroup: THREE.Group | null,
-    isDefaultFloorplan: boolean,
     rendererMaxAnisotropy: number,
   ): Promise<void> {
     const token = ++this.requestToken;
     const style = getInteriorStyle(styleId);
-
-    const materials = styleId === 'none' ? createDefaultHouseMaterials() : await buildHouseMaterials(style, rendererMaxAnisotropy);
-
-    const furnitureGroup =
-      isDefaultFloorplan && styleId !== 'none' ? await buildFurnitureLayout(styleId, DEFAULT_FURNITURE_LAYOUT) : null;
+    const materials =
+      styleId === 'none'
+        ? createDefaultHouseMaterials()
+        : await buildHouseMaterials(style, rendererMaxAnisotropy);
 
     if (token !== this.requestToken) {
-      // A newer applyStyle() call started while this one was still loading — the
-      // newer call owns the current state now, so discard what was just built here.
-      disposeMaterial(materials.wall, true);
-      disposeMaterial(materials.floor, true);
-      if (furnitureGroup) {
-        disposeFurnitureGroup(furnitureGroup);
-      }
+      disposeHouseMaterials(materials);
       return;
     }
 
-    this.applyHouseMaterials(houseGroup, materials);
-    this.swapFurniture(furnitureGroup);
+    this.applyHouseMaterials(houseGroup, materials, styleId);
     this.currentStyleId = styleId;
   }
 
   dispose(): void {
-    ++this.requestToken; // invalidate any in-flight applyStyle() so it won't touch state after this
+    ++this.requestToken;
     if (this.currentMaterials) {
-      disposeMaterial(this.currentMaterials.wall, true);
-      disposeMaterial(this.currentMaterials.floor, true);
+      disposeHouseMaterials(this.currentMaterials);
       this.currentMaterials = null;
     }
-    this.swapFurniture(null);
   }
 
-  private applyHouseMaterials(houseGroup: THREE.Group | null, materials: HouseMaterials): void {
+  private applyHouseMaterials(
+    houseGroup: THREE.Group | null,
+    materials: HouseMaterials,
+    styleId: InteriorStyleId,
+  ): void {
     if (this.currentMaterials) {
-      disposeMaterial(this.currentMaterials.wall, true);
-      disposeMaterial(this.currentMaterials.floor, true);
+      disposeHouseMaterials(this.currentMaterials);
     }
     this.currentMaterials = materials;
 
-    if (!houseGroup) {
-      return;
-    }
-    houseGroup.traverse((object) => {
-      if (!(object instanceof THREE.Mesh)) {
+    const lighting = getInteriorStyle(styleId).lighting;
+    const lightColor = lighting?.roomLightColor ?? 0xffd6a3;
+    const baseIntensity = lighting?.roomLightIntensity ?? 0.65;
+
+    houseGroup?.traverse((object) => {
+      const semanticType = (object.userData as { semanticType?: SemanticType }).semanticType;
+      if (object instanceof THREE.PointLight && semanticType === 'roomLight') {
+        const intensityScale = Number(object.userData['intensityScale'] ?? 1);
+        object.color.setHex(lightColor);
+        object.intensity = baseIntensity * intensityScale;
         return;
       }
-      const semanticType = (object.userData as { semanticType?: SemanticType }).semanticType;
-      if (semanticType === 'wall') {
-        object.material = materials.wall;
-      } else if (semanticType === 'floor') {
-        object.material = materials.floor;
-      }
+      if (!(object instanceof THREE.Mesh)) return;
+
+      const material = materialForSemanticType(semanticType, materials);
+      if (material) object.material = material;
     });
   }
+}
 
-  private swapFurniture(nextGroup: THREE.Group | null): void {
-    if (this.furnitureGroup) {
-      this.collidables.remove(this.furnitureGroup);
-      disposeFurnitureGroup(this.furnitureGroup);
-      this.furnitureGroup = null;
-    }
-    if (nextGroup) {
-      this.collidables.add(nextGroup);
-      this.furnitureGroup = nextGroup;
-    }
+function materialForSemanticType(
+  semanticType: SemanticType | undefined,
+  materials: HouseMaterials,
+): THREE.Material | null {
+  switch (semanticType) {
+    case 'wall':
+      return materials.interiorWall;
+    case 'exteriorWall':
+      return materials.exteriorWall;
+    case 'floor':
+      return materials.floor;
+    case 'ceiling':
+      return materials.ceiling;
+    case 'baseboard':
+    case 'doorFrame':
+      return materials.trim;
+    case 'windowFrame':
+      return materials.windowFrame;
+    case 'window':
+      return materials.glass;
+    case 'lightFixture':
+      return materials.fixture;
+    default:
+      return null;
+  }
+}
+
+function disposeHouseMaterials(materials: HouseMaterials): void {
+  const uniqueMaterials = new Set<THREE.Material>(Object.values(materials));
+  for (const material of uniqueMaterials) {
+    // Texture objects live in texture-cache.ts and are deliberately retained between
+    // style switches. Only the inexpensive material wrappers are style-owned.
+    disposeMaterial(material, true);
   }
 }

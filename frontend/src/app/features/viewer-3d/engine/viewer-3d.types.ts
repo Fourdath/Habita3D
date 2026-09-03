@@ -26,8 +26,18 @@ export interface MovementInputSource {
 
 /**
  * Stable identifier stamped on every generated house mesh's `userData.semanticType`,
- * so later systems (the interior style engine's material application, furniture
- * placement validation) can find "the walls" or "the floor" without depending on
+ * so later systems (especially the interior-style material application) can find
+ * "the walls", "the floor" or another finish without depending on
  * traversal/children[] order.
  */
-export type SemanticType = 'wall' | 'floor' | 'door' | 'window';
+export type SemanticType =
+  | 'wall'
+  | 'exteriorWall'
+  | 'floor'
+  | 'ceiling'
+  | 'baseboard'
+  | 'doorFrame'
+  | 'window'
+  | 'windowFrame'
+  | 'lightFixture'
+  | 'roomLight';
