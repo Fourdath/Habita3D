@@ -1,7 +1,9 @@
 import type { FurnitureCatalogEntry, FurnitureCategory, InteriorStyleId } from './interior-style.types';
 
 /**
- * Ten curated CC0 low-poly models — one per (category, style) pair — downloaded once
+ * @deprecated Demo-only decorative catalog. It is not used by generic imported plans
+ * or by the construction budget. Ten curated CC0 low-poly models — one per
+ * (category, style) pair — downloaded once
  * from poly.pizza and committed under public/assets/furniture/. See
  * public/assets/ASSETS.md for exact source URLs/licenses. Both packs (Quaternius'
  * "Ultimate House Interior Pack" for nordic, Kenney's "Furniture Kit" for industrial)

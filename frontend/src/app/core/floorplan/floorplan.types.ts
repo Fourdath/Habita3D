@@ -5,6 +5,10 @@
  */
 export type Point2 = [number, number];
 
+import type { WallConstruction } from '../construction/wall-assembly.types';
+import type { FloorplanFixture, KitchenRun } from './fixture.types';
+import type { RoomSemantic } from './room-semantic.types';
+
 export interface FloorplanWall {
   id: string;
   /** Raw 4-point footprint in meters, corners preserved as mitered in the SVG. */
@@ -42,6 +46,8 @@ export interface FloorplanRoom {
   type: string;
   /** Polygon in meters. */
   polygon: Point2[];
+  /** Deterministic semantic classification, refined with fixtures after parsing. */
+  semantic: RoomSemantic;
 }
 
 export interface Floorplan {
@@ -50,6 +56,11 @@ export interface Floorplan {
   doors: FloorplanDoor[];
   windows: FloorplanWindow[];
   rooms: FloorplanRoom[];
+  fixtures: FloorplanFixture[];
+  /** Resolved construction model; optional on hand-authored test plans for compatibility. */
+  wallConstructions?: WallConstruction[];
+  /** Parsed-fixture kitchen groupings used by backsplash/render/budget. */
+  kitchenRuns?: KitchenRun[];
   /** Building outline in meters, used to generate the floor slab. */
   outerPerimeter: Point2[];
 }

@@ -11,6 +11,13 @@ import {
   WALL_THICKNESS_SANITY_MIN_M,
 } from './floorplan.constants';
 import { detectOuterPerimeter } from './floorplan-perimeter';
+import { parseCubiCasaFixtures, recenterFixtures } from './cubicasa-fixture-parser';
+import { assignFixturesToRooms, resolveAmbiguousSinks } from './fixture-room-resolver';
+import { resolveAllRoomSemantics } from './room-semantic-resolver';
+import { classifyCubiCasaRoomType } from './room-type-classification';
+import { resolveAllWallConstructions } from '../construction/wall-construction-resolver';
+import { resolveKitchenRuns } from './kitchen-run-resolver';
+import type { FloorplanFixture } from './fixture.types';
 import type {
   Floorplan,
   FloorplanDoor,
@@ -126,6 +133,7 @@ export function parseFloorplan(svgText: string, options: ParseFloorplanOptions):
   const doc = new DOMParser().parseFromString(svgText, 'image/svg+xml');
 
   const rooms = parseRooms(doc, scale);
+  const fixtures = parseCubiCasaFixtures(doc, scale);
 
   const walls: FloorplanWall[] = [];
   const doors: FloorplanDoor[] = [];
@@ -173,16 +181,23 @@ export function parseFloorplan(svgText: string, options: ParseFloorplanOptions):
   // The player always spawns at world origin (PlayerController), so recenter the whole
   // plan on the outer perimeter's bounding-box center rather than leaving it at its raw,
   // arbitrarily-offset SVG coordinates.
-  recenterFloorplan(walls, rooms, outerPerimeter);
+  recenterFloorplan(walls, rooms, fixtures, outerPerimeter);
+  assignFixturesToRooms(fixtures, rooms);
+  resolveAllRoomSemantics(rooms, fixtures);
+  resolveAmbiguousSinks(fixtures, rooms);
 
-  return {
+  const floorplan: Floorplan = {
     scaleMetersPerUnit: scale,
     walls,
     doors,
     windows,
     rooms,
+    fixtures,
     outerPerimeter,
   };
+  floorplan.wallConstructions = resolveAllWallConstructions(floorplan);
+  floorplan.kitchenRuns = resolveKitchenRuns(floorplan);
+  return floorplan;
 }
 
 function parseRooms(doc: Document, scale: number): FloorplanRoom[] {
@@ -216,6 +231,7 @@ function parseRooms(doc: Document, scale: number): FloorplanRoom[] {
       name: type || 'Room',
       type,
       polygon: points.map(([x, y]): Point2 => [x * scale, y * scale]),
+      semantic: classifyCubiCasaRoomType(type),
     });
     roomIndex++;
   });
@@ -494,13 +510,19 @@ function subtractPoint(point: Point2, offset: Point2): Point2 {
   return [point[0] - offset[0], point[1] - offset[1]];
 }
 
-function recenterFloorplan(walls: FloorplanWall[], rooms: FloorplanRoom[], outerPerimeter: Point2[]): void {
+function recenterFloorplan(
+  walls: FloorplanWall[],
+  rooms: FloorplanRoom[],
+  fixtures: FloorplanFixture[],
+  outerPerimeter: Point2[],
+): void {
   const referencePoints = outerPerimeter.length >= 3 ? outerPerimeter : walls.flatMap((wall) => wall.polygon);
   if (referencePoints.length === 0) {
     return;
   }
 
   const offset = boundingBoxCenter(referencePoints);
+  recenterFixtures(fixtures, offset);
 
   for (const wall of walls) {
     wall.polygon = wall.polygon.map((point) => subtractPoint(point, offset));

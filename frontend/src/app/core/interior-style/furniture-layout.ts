@@ -1,7 +1,8 @@
 import type { FurniturePlacement } from './interior-style.types';
 
 /**
- * Manual furniture layout for the default plan only (public/assets/floorplans/model.svg,
+ * @deprecated Demo-only compatibility layout; the semantic fixture pipeline never
+ * applies it to generic imported plans. Manual layout for the default plan only (public/assets/floorplans/model.svg,
  * CubiCasa "high_quality_17") — positions were picked from that plan's actual parsed
  * room coordinates (world X = plan X, world Z = -plan Y), not guessed blindly:
  *
