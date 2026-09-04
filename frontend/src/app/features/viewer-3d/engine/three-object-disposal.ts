@@ -3,12 +3,14 @@ import * as THREE from 'three';
 export interface DisposeObject3DOptions {
   /**
    * Skip disposing textures referenced by materials under `root`. Needed for anything
-   * using texture-cache.ts's shared/cached textures (terrain, style materials): those
+   * using shared/cached textures (terrain, style materials): those
    * textures are reused across floor-plan reloads and style switches, so disposing
    * them here would corrupt a texture another live material still points at. Geometry
    * and the material itself are still disposed either way.
    */
   keepTextures?: boolean;
+  /** Registry-owned material wrappers must outlive individual meshes/scene rebuilds. */
+  keepMaterials?: boolean;
 }
 
 /**
@@ -19,10 +21,11 @@ export interface DisposeObject3DOptions {
  */
 export function disposeObject3D(root: THREE.Object3D, options: DisposeObject3DOptions = {}): void {
   const keepTextures = options.keepTextures ?? false;
+  const keepMaterials = options.keepMaterials ?? false;
   root.traverse((object) => {
     if (object instanceof THREE.Mesh) {
       object.geometry.dispose();
-      disposeMaterial(object.material, keepTextures);
+      if (!keepMaterials) disposeMaterial(object.material, keepTextures);
     }
   });
 }

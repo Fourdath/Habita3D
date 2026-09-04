@@ -47,10 +47,15 @@
         <ul class="style-panel__budget-items">
           @for (item of budget().items; track item.id) {
             <li class="style-panel__budget-item">
-              <span class="style-panel__budget-item-name">{{ item.name }}</span>
+              <span class="style-panel__budget-item-name">{{ item.description }}</span>
               <span class="style-panel__budget-item-detail">
-                {{ item.quantity }} {{ item.unit }} × {{ formatClp(item.unitPriceClp) }} = {{ formatClp(item.subtotalClp) }}
+                {{ item.purchaseQuantity }} {{ item.unit }} × {{ formatClp(item.unitPriceClp) }} = {{ formatClp(item.subtotalClp) }}
               </span>
+              @if (item.waste) {
+                <span class="style-panel__budget-item-detail">
+                  Desperdicio: {{ item.waste.waste.toFixed(2) }} {{ item.waste.unit }} · uso {{ item.waste.utilizationPercent.toFixed(1) }}%
+                </span>
+              }
             </li>
           }
         </ul>

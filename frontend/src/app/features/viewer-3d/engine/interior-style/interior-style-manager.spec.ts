@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 
 import { InteriorStyleManager } from './interior-style-manager';
+import type { Floorplan } from '../../../../core/floorplan/floorplan.types';
 
 const MESH_TYPES = [
   'wall',
@@ -28,6 +29,16 @@ function buildHouseGroup(): THREE.Group {
   group.add(light);
   return group;
 }
+
+const BUDGET_PLAN: Floorplan = {
+  scaleMetersPerUnit: 1,
+  walls: [{ id: 'w', start: [0, 0], end: [3, 0], thickness: 0.1, isExterior: false, polygon: [[0, -0.05], [3, -0.05], [3, 0.05], [0, 0.05]] }],
+  rooms: [{ id: 'r', name: 'Bedroom', type: 'Bedroom', polygon: [[0, 0], [3, 0], [3, 2], [0, 2]], semantic: { type: 'DRY', confidence: 1, inferenceSource: 'CUBICASA_ROOM_TYPE' } }],
+  doors: [],
+  windows: [],
+  fixtures: [],
+  outerPerimeter: [[0, 0], [3, 0], [3, 2], [0, 2]],
+};
 
 describe('InteriorStyleManager', () => {
   beforeEach(() => {
@@ -71,6 +82,26 @@ describe('InteriorStyleManager', () => {
     expect(light.color.getHex()).not.toBe(0xffffff);
   });
 
+  it('resolves room surfaces and keeps industrial accents opt-in per wall side', async () => {
+    const manager = new InteriorStyleManager();
+    const house = new THREE.Group();
+    const wallA = new THREE.Mesh(new THREE.PlaneGeometry(), new THREE.MeshStandardMaterial());
+    wallA.userData = { semanticType: 'wall-finish', wallId: 'w', wallSide: 'A', environment: 'INTERIOR', roomSemantic: 'DRY' };
+    const wallB = wallA.clone();
+    wallB.material = new THREE.MeshStandardMaterial();
+    wallB.userData = { ...wallA.userData, wallSide: 'B' };
+    const bathFloor = new THREE.Mesh(new THREE.PlaneGeometry(), new THREE.MeshStandardMaterial());
+    bathFloor.userData = { semanticType: 'room-floor', roomSemantic: 'BATHROOM' };
+    house.add(wallA, wallB, bathFloor);
+    manager.setWallSurfaceOverrides([{ wallId: 'w', side: 'A', materialId: 'INDUSTRIAL_WALL_BRICK_EXPOSED' }]);
+
+    await manager.applyStyle('industrial', house, 1);
+
+    expect(wallA.material.name).toBe('INDUSTRIAL_WALL_BRICK_EXPOSED');
+    expect(wallB.material.name).toBe('INDUSTRIAL_WALL_CREAM');
+    expect(bathFloor.material.name).toBe('INDUSTRIAL_BATH_FLOOR_TILE_GRAY');
+  });
+
   it('walks none -> nordic -> industrial with fresh finish materials', async () => {
     const manager = new InteriorStyleManager();
     const house = buildHouseGroup();
@@ -109,8 +140,8 @@ describe('InteriorStyleManager', () => {
     const manager = new InteriorStyleManager();
     expect(manager.getBudget().totalClp).toBe(0);
     await manager.applyStyle('industrial', buildHouseGroup(), 1);
-    expect(manager.getBudget().totalClp).toBeGreaterThan(0);
-    expect(manager.getBudget().styleId).toBe('industrial');
+    expect(manager.getBudget(BUDGET_PLAN).totalClp).toBeGreaterThan(0);
+    expect(manager.getBudget(BUDGET_PLAN).styleId).toBe('industrial');
   });
 
   it('can be disposed after style application', async () => {

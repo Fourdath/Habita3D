@@ -10,6 +10,7 @@ function floorplanWithOuterPerimeter(points: [number, number][]): Floorplan {
     doors: [],
     windows: [],
     rooms: [],
+    fixtures: [],
     outerPerimeter: points,
   };
 }

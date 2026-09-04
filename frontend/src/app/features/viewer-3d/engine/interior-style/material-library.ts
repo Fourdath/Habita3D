@@ -4,6 +4,8 @@ import type { InteriorStyle, MaterialSpec } from '../../../../core/interior-styl
 import { loadPbrTextureSet } from '../texture-cache';
 
 /**
+ * @deprecated Compatibility-only adapter. InteriorStyleManager now resolves the
+ * closed MaterialId catalog through MaterialRegistry.
  * Turns an InteriorStyle's MaterialSpec (plain data) into real THREE materials for the
  * house's wall/floor meshes. Reuses texture-cache.ts, so switching between styles never
  * re-downloads/re-decodes a texture already used once. A fresh Material *wrapper* is

@@ -31,13 +31,24 @@ export interface MovementInputSource {
  * traversal/children[] order.
  */
 export type SemanticType =
+  | 'wall-structure'
+  | 'wall-finish'
+  | 'exterior-finish'
+  | 'floor-structure'
+  | 'ceiling-structure'
+  | 'room-floor'
+  | 'room-ceiling'
   | 'wall'
   | 'exteriorWall'
   | 'floor'
   | 'ceiling'
   | 'baseboard'
+  | 'door'
   | 'doorFrame'
   | 'window'
   | 'windowFrame'
+  | 'fixture'
+  | 'kitchen-backsplash'
   | 'lightFixture'
-  | 'roomLight';
+  | 'roomLight'
+  | 'terrain';

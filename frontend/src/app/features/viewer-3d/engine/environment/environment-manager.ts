@@ -2,7 +2,7 @@ import * as THREE from 'three';
 
 import type { Floorplan } from '../../../../core/floorplan/floorplan.types';
 import { disposeObject3D } from '../three-object-disposal';
-import { loadPbrTextureSet } from '../texture-cache';
+import { MaterialRegistry } from '../materials/material-registry';
 
 import {
   AMBIENT_LIGHT_COLOR,
@@ -15,9 +15,6 @@ import {
   HEMISPHERE_SKY_COLOR,
   SUN_LIGHT_INTENSITY,
   SUN_LIGHT_COLOR,
-  TERRAIN_ANISOTROPY,
-  TERRAIN_TEXTURE_PATH,
-  TERRAIN_TEXTURE_TILE_METERS,
 } from './environment.constants';
 import { createSky, sunDirection } from './sky';
 import { buildTerrainMesh, computeEnvironmentBounds, type EnvironmentBounds } from './terrain';
@@ -42,11 +39,16 @@ export class EnvironmentManager {
 
   private terrainMesh: THREE.Mesh | null = null;
   private vegetationGroup: THREE.Group | null = null;
+  private readonly registry: MaterialRegistry;
+  private readonly ownsRegistry: boolean;
 
   constructor(
     private readonly scene: THREE.Scene,
     private readonly collidables: THREE.Group,
+    registry?: MaterialRegistry,
   ) {
+    this.registry = registry ?? new MaterialRegistry();
+    this.ownsRegistry = !registry;
     this.scene.fog = new THREE.Fog(FOG_COLOR, FOG_NEAR_M, FOG_FAR_M);
 
     this.sky = createSky();
@@ -77,13 +79,12 @@ export class EnvironmentManager {
 
   /**
    * Recomputes terrain size + vegetation layout for `floorplan` and swaps them in,
-   * disposing whatever was there before. The terrain texture is loaded through the
-   * shared cache (texture-cache.ts) — free after the very first floor plan load,
-   * even across many reloads.
+   * disposing whatever was there before. The terrain texture is owned and reused by
+   * the engine-level MaterialRegistry across floor-plan reloads.
    */
   async rebuild(floorplan: Floorplan, rendererMaxAnisotropy: number): Promise<EnvironmentBounds> {
     const bounds = computeEnvironmentBounds(floorplan);
-    const material = await this.buildTerrainMaterial(bounds, rendererMaxAnisotropy);
+    const material = await this.buildTerrainMaterial(rendererMaxAnisotropy);
 
     this.directionalLight.position
       .set(bounds.centerX, 0, bounds.centerZ)
@@ -107,20 +108,9 @@ export class EnvironmentManager {
    * a flat-colored material rather than aborting the whole floor-plan load — terrain
    * still gets the right size/collision for the new plan, it just isn't textured.
    */
-  private async buildTerrainMaterial(bounds: EnvironmentBounds, rendererMaxAnisotropy: number): Promise<THREE.Material> {
+  private async buildTerrainMaterial(_rendererMaxAnisotropy: number): Promise<THREE.Material> {
     try {
-      const textures = await loadPbrTextureSet({
-        basePath: TERRAIN_TEXTURE_PATH,
-        repeat: [bounds.terrainWidth / TERRAIN_TEXTURE_TILE_METERS, bounds.terrainDepth / TERRAIN_TEXTURE_TILE_METERS],
-        anisotropy: Math.min(TERRAIN_ANISOTROPY, rendererMaxAnisotropy || TERRAIN_ANISOTROPY),
-      });
-
-      return new THREE.MeshStandardMaterial({
-        map: textures.diffuse,
-        normalMap: textures.normal,
-        roughnessMap: textures.roughness,
-        roughness: 1,
-      });
+      return await this.registry.get('TERRAIN_GRASS');
     } catch (error) {
       console.error('No se pudo cargar la textura del terreno; se usa un color plano de respaldo.', error);
       return new THREE.MeshStandardMaterial({ color: 0x6b8f4e, roughness: 1 });
@@ -138,15 +128,14 @@ export class EnvironmentManager {
     this.scene.remove(this.directionalLight);
     this.scene.remove(this.directionalLight.target);
     this.scene.fog = null;
+    if (this.ownsRegistry) this.registry.dispose();
   }
 
   private disposeGround(): void {
     if (this.terrainMesh) {
       this.collidables.remove(this.terrainMesh);
-      // keepTextures: the leafy_grass texture set is shared via texture-cache.ts and
-      // may be reused by the next rebuild() — only this mesh's own geometry/material
-      // wrapper is freed here.
-      disposeObject3D(this.terrainMesh, { keepTextures: true });
+      // The shared registry owns this material; a terrain rebuild only owns geometry.
+      disposeObject3D(this.terrainMesh, { keepMaterials: true });
       this.terrainMesh = null;
     }
     if (this.vegetationGroup) {

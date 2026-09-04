@@ -2,6 +2,7 @@ import * as THREE from 'three';
 
 import type { Floorplan, Point2 } from '../../../../core/floorplan/floorplan.types';
 import { FLOORPLAN_FLOOR_THICKNESS } from '../viewer-3d.constants';
+import { applyMetricPlanarUvs } from '../materials/physical-uv-mapper';
 
 import {
   ENVIRONMENT_MARGIN_RATIO,
@@ -92,6 +93,7 @@ export function terrainSurfaceY(): number {
 
 export function buildTerrainMesh(bounds: EnvironmentBounds, material: THREE.Material): THREE.Mesh {
   const geometry = new THREE.BoxGeometry(bounds.terrainWidth, TERRAIN_THICKNESS_M, bounds.terrainDepth);
+  applyMetricPlanarUvs(geometry, 'XZ');
   const mesh = new THREE.Mesh(geometry, material);
   mesh.position.set(bounds.centerX, terrainSurfaceY() - TERRAIN_THICKNESS_M / 2, bounds.centerZ);
   mesh.receiveShadow = true;

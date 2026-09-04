@@ -1,7 +1,8 @@
 import { Component, computed, input, output, signal } from '@angular/core';
 import { IonSpinner } from '@ionic/angular';
 
-import { formatClp, type BudgetSummary } from '../../core/interior-style/budget-calculator';
+import { formatClp } from '../../core/budget/budget-calculator';
+import type { ConstructionBudgetSummary } from '../../core/budget/budget.types';
 import { listInteriorStyles } from '../../core/interior-style/interior-style-catalog';
 import type { InteriorStyleId } from '../../core/interior-style/interior-style.types';
 
@@ -27,7 +28,7 @@ export class InteriorStylePanelComponent {
   readonly styleId = input.required<InteriorStyleId>();
   readonly loading = input(false);
   readonly errorMessage = input<string | null>(null);
-  readonly budget = input.required<BudgetSummary>();
+  readonly budget = input.required<ConstructionBudgetSummary>();
   readonly styleChange = output<InteriorStyleId>();
 
   readonly styles = listInteriorStyles();

@@ -20,6 +20,7 @@ import { disposeObject3D } from './three-object-disposal';
  */
 export class FloorplanSceneManager {
   private group: THREE.Group | null = null;
+  private readonly placeholderMaterials = createFloorplanMaterials();
 
   constructor(private readonly parent: THREE.Object3D) {}
 
@@ -39,12 +40,12 @@ export class FloorplanSceneManager {
       throw new Error('El plano CubiCasa no contiene muros.');
     }
 
-    const nextGroup = buildFloorplanGroup(floorplan, createFloorplanMaterials());
+    const nextGroup = buildFloorplanGroup(floorplan, this.placeholderMaterials);
 
     if (this.group) {
       this.parent.remove(this.group);
-      // Style textures belong to texture-cache.ts and must survive a plan reload.
-      disposeObject3D(this.group, { keepTextures: true });
+      // Applied style materials belong to the engine-level registry and survive reloads.
+      disposeObject3D(this.group, { keepMaterials: true });
     }
 
     this.parent.add(nextGroup);
@@ -58,7 +59,8 @@ export class FloorplanSceneManager {
       return;
     }
     this.parent.remove(this.group);
-    disposeObject3D(this.group, { keepTextures: true });
+    disposeObject3D(this.group, { keepMaterials: true });
     this.group = null;
+    for (const material of new Set(Object.values(this.placeholderMaterials))) material.dispose();
   }
 }

@@ -1,7 +1,7 @@
 import { AfterViewInit, Component, ElementRef, OnDestroy, ViewChild, signal } from '@angular/core';
 import { IonContent, IonSpinner } from '@ionic/angular';
 
-import { computeBudget, type BudgetSummary } from '../../core/interior-style/budget-calculator';
+import type { ConstructionBudgetSummary } from '../../core/budget/budget.types';
 import type { InteriorStyleId } from '../../core/interior-style/interior-style.types';
 import { readFloorplanFile } from '../../core/floorplan/floorplan-file';
 
@@ -29,7 +29,13 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
   readonly interiorStyleId = signal<InteriorStyleId>('none');
   readonly interiorStyleLoading = signal(false);
   readonly interiorStyleError = signal<string | null>(null);
-  readonly budget = signal<BudgetSummary>(computeBudget('none'));
+  readonly budget = signal<ConstructionBudgetSummary>({
+    styleId: 'none',
+    isDemoPricing: true,
+    items: [],
+    totalClp: 0,
+    requiresStructuralSpecification: false,
+  });
 
   private engine: Viewer3DEngine | null = null;
 

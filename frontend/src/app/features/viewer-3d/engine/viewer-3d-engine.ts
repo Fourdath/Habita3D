@@ -2,18 +2,17 @@ import * as THREE from 'three';
 import { ColorEnvironment } from 'three/addons/environments/ColorEnvironment.js';
 import { Octree } from 'three/addons/math/Octree.js';
 
-import {
-  computeFloorplanMeasurements,
-  type BudgetSummary,
-} from '../../../core/interior-style/budget-calculator';
+import type { ConstructionBudgetSummary } from '../../../core/budget/budget.types';
 import type { InteriorStyleId } from '../../../core/interior-style/interior-style.types';
 import { FLOORPLAN_URL } from '../../../core/floorplan/floorplan.constants';
 import type { Floorplan } from '../../../core/floorplan/floorplan.types';
+import type { WallSurfaceOverride } from '../../../core/materials/material.types';
 
 import { EnvironmentManager } from './environment/environment-manager';
 import { FloorplanSceneManager } from './floorplan-scene-manager';
 import { InteriorStyleManager } from './interior-style/interior-style-manager';
 import { KeyboardMovementInput } from './movement-input';
+import { MaterialRegistry } from './materials/material-registry';
 import { PlayerController } from './player-controller';
 import { PointerLockLookInput } from './pointer-lock-look-input';
 import { disposeObject3D } from './three-object-disposal';
@@ -21,7 +20,6 @@ import {
   CAMERA_FAR,
   CAMERA_FOV,
   CAMERA_NEAR,
-  FLOORPLAN_WALL_HEIGHT,
   MAX_DELTA_TIME,
   STEPS_PER_FRAME,
 } from './viewer-3d.constants';
@@ -49,6 +47,7 @@ export class Viewer3DEngine {
   private readonly floorplanScene: FloorplanSceneManager;
   private readonly environment: EnvironmentManager;
   private readonly interiorStyle: InteriorStyleManager;
+  private readonly materialRegistry: MaterialRegistry;
   private readonly resizeObserver: ResizeObserver;
 
   private readonly movementInput: MovementInputSource;
@@ -90,9 +89,10 @@ export class Viewer3DEngine {
     this.collidables.name = 'collidables';
     this.scene.add(this.collidables);
 
+    this.materialRegistry = new MaterialRegistry(this.renderer.capabilities.getMaxAnisotropy());
     this.floorplanScene = new FloorplanSceneManager(this.collidables);
-    this.environment = new EnvironmentManager(this.scene, this.collidables);
-    this.interiorStyle = new InteriorStyleManager();
+    this.environment = new EnvironmentManager(this.scene, this.collidables, this.materialRegistry);
+    this.interiorStyle = new InteriorStyleManager(this.materialRegistry);
 
     this.movementInput = new KeyboardMovementInput();
     this.lookInput = new PointerLockLookInput(this.renderer.domElement, this.camera, (locked) =>
@@ -150,15 +150,18 @@ export class Viewer3DEngine {
     );
   }
 
+  /** Applies explicit side-specific accents while preserving the current geometry. */
+  async applyWallSurfaceOverrides(overrides: readonly WallSurfaceOverride[]): Promise<void> {
+    this.interiorStyle.setWallSurfaceOverrides(overrides);
+    await this.applyInteriorStyle(this.interiorStyle.currentStyle);
+  }
+
   get currentInteriorStyle(): InteriorStyleId {
     return this.interiorStyle.currentStyle;
   }
 
-  getBudget(): BudgetSummary {
-    const measurements = this.currentFloorplan
-      ? computeFloorplanMeasurements(this.currentFloorplan, FLOORPLAN_WALL_HEIGHT)
-      : undefined;
-    return this.interiorStyle.getBudget(measurements);
+  getBudget(): ConstructionBudgetSummary {
+    return this.interiorStyle.getBudget(this.currentFloorplan ?? undefined);
   }
 
   dispose(): void {
@@ -173,9 +176,11 @@ export class Viewer3DEngine {
     this.lookInput.dispose();
     this.interiorStyle.dispose();
     this.environment.dispose();
+    this.floorplanScene.dispose();
 
     disposeObject3D(this.scene);
     this.scene.environment?.dispose();
+    this.materialRegistry.dispose();
 
     this.renderer.dispose();
     this.renderer.domElement.remove();

@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 
 /**
+ * @deprecated Legacy style loader cache. Runtime house and terrain materials now use
+ * MaterialRegistry, whose bounded MaterialId catalog owns disposal explicitly.
  * Shared PBR texture loading + caching, used by both the exterior terrain
  * (environment-manager.ts) and the interior style material library (Phase 4). A
  * texture is only ever fetched/decoded once per URL, however many times a style is
