@@ -66,6 +66,7 @@ describe('construction budget calculator', () => {
       CERAMIC_NORDIC_WALL_backsplash: 11,
     });
     expect(budget.items.filter((line) => line.waste).every((line) => line.waste!.waste >= 0)).toBe(true);
-    expect(budget.totalClp).toBe(3_081_868);
+    expect(budget.items.every((line) => line.subtotalClp === Math.round(line.purchaseQuantity * line.unitPriceClp))).toBe(true);
+    expect(budget.totalClp).toBe(3_081_930);
   });
 });

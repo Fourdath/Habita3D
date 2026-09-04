@@ -233,16 +233,17 @@ function basicLine(
   product: ConstructionProduct,
   productId: ConstructionProductId = product.id,
 ): ConstructionBudgetLine {
+  const roundedPurchaseQuantity = round(purchaseQuantity);
   return {
     id,
     productId,
     description,
     unit: product.unit,
     requiredQuantity: round(requiredQuantity),
-    purchaseQuantity: round(purchaseQuantity),
-    quantity: round(purchaseQuantity),
+    purchaseQuantity: roundedPurchaseQuantity,
+    quantity: roundedPurchaseQuantity,
     unitPriceClp: product.unitPriceClp,
-    subtotalClp: Math.round(purchaseQuantity * product.unitPriceClp),
+    subtotalClp: Math.round(roundedPurchaseQuantity * product.unitPriceClp),
     isDemoPrice: product.isDemoPrice,
     priceSource: product.priceSource,
   };
