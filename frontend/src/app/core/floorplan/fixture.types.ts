@@ -21,7 +21,7 @@ export interface FloorplanFixture {
   id: string;
   type: FixtureType;
   sourceClasses: string[];
-  /** Authoritative footprint after all SVG ancestor transforms, in recentered plan meters. */
+  /** Footprint in recentered metres after SVG transforms and fixture dimension normalization. */
   footprint: Point2[];
   position: Point2;
   /** Forward angle in plan coordinates, radians. */
@@ -43,4 +43,7 @@ export interface KitchenRun {
   start: Point2;
   end: Point2;
   wallSide?: 'A' | 'B';
+  /** Meters along the wall centerline: the backsplash covers this span only. */
+  startM?: number;
+  endM?: number;
 }

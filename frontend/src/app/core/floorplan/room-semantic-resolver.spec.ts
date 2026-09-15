@@ -1,6 +1,7 @@
+import { classifyRoomType } from './room-type-classification';
 import type { FloorplanFixture } from './fixture.types';
 import type { FloorplanRoom } from './floorplan.types';
-import { resolveRoomSemantic } from './room-semantic-resolver';
+import { resolveAllRoomSemantics } from './room-semantic-resolver';
 
 const room = (type: string): FloorplanRoom => ({
   id: 'room',
@@ -31,6 +32,12 @@ describe('room semantic resolver', () => {
   it('uses strong anchors deterministically for undefined rooms', () => {
     expect(resolveRoomSemantic(room('Undefined'), [fixture('toilet', 'TOILET'), fixture('shower', 'SHOWER')]).type).toBe('BATHROOM');
     expect(resolveRoomSemantic(room('Undefined'), [fixture('stove', 'STOVE'), fixture('cabinet', 'BASE_CABINET')]).type).toBe('KITCHEN');
-    expect(resolveRoomSemantic(room('Undefined'), [fixture('cabinet', 'BASE_CABINET'), fixture('sink', 'UNKNOWN_SINK')]).type).toBe('UNKNOWN');
+    expect(resolveRoomSemantic(room('Undefined'), [fixture('cabinet', 'BASE_CABINET'), fixture('sink', 'UNKNOWN_SINK')]).type).toBe('DRY');
   });
 });
+
+function resolveRoomSemantic(room: FloorplanRoom, fixtures: FloorplanFixture[]) {
+  room.semantic = classifyRoomType(room.type);
+  resolveAllRoomSemantics([room], fixtures);
+  return room.semantic;
+}

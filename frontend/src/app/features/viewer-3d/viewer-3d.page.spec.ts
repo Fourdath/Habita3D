@@ -62,4 +62,20 @@ describe('Viewer3DPage', () => {
   it('tears down cleanly on destroy without throwing', () => {
     expect(() => fixture.destroy()).not.toThrow();
   });
+
+  it('keeps overview controls accessible and restores the walkthrough prompt', () => {
+    component.status.set('ready');
+    fixture.detectChanges();
+    const host = fixture.nativeElement as HTMLElement;
+    const button = (label: string) => Array.from(host.querySelectorAll('button')).find((node) => node.textContent?.trim() === label)!;
+    button('Vista general').click();
+    fixture.detectChanges();
+    expect(component.viewMode()).toBe('overview');
+    expect(host.querySelector('.viewer-3d__overlay--interactive')).toBeNull();
+    expect(button('Desde arriba')).toBeTruthy();
+    button('Recorrer').click();
+    fixture.detectChanges();
+    expect(component.viewMode()).toBe('walk');
+    expect(host.querySelector('.viewer-3d__overlay--interactive')).not.toBeNull();
+  });
 });

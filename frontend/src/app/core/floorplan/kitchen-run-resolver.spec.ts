@@ -1,3 +1,4 @@
+import { resolveAllWallConstructions } from '../construction/wall-construction-resolver';
 import type { Floorplan } from './floorplan.types';
 import { resolveKitchenRuns } from './kitchen-run-resolver';
 
@@ -16,7 +17,7 @@ const plan: Floorplan = {
 
 describe('kitchen run resolver', () => {
   it('groups compatible nearby modules on the same room wall', () => {
-    const runs = resolveKitchenRuns(plan);
+    const runs = resolveKitchenRuns(plan, resolveAllWallConstructions(plan));
     expect(runs).toHaveLength(1);
     expect(runs[0].fixtureIds).toEqual(['cabinet', 'sink']);
     expect(runs[0].wallId).toBe('wall');
@@ -26,6 +27,6 @@ describe('kitchen run resolver', () => {
   it('does not create runs in non-kitchen rooms', () => {
     const dryPlan = structuredClone(plan);
     dryPlan.rooms[0].semantic.type = 'DRY';
-    expect(resolveKitchenRuns(dryPlan)).toEqual([]);
+    expect(resolveKitchenRuns(dryPlan, resolveAllWallConstructions(dryPlan))).toEqual([]);
   });
 });

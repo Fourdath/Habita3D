@@ -10,12 +10,12 @@ export const FLOORPLAN_SCALE_METERS_PER_UNIT = 0.01;
  * height have no source in the data. These match the values used by Floorplan2Walkthru
  * (https://github.com/Teetertater/Floorplan2Walkthru) for the same SVG schema.
  */
-export const DEFAULT_DOOR_HEIGHT = 2.0;
+export const DEFAULT_DOOR_HEIGHT = 2.1;
 export const DEFAULT_WINDOW_HEIGHT = 1.0;
 export const DEFAULT_WINDOW_SILL_HEIGHT = 0.8;
 
 /** Clamp for degenerate/mis-measured openings. */
-export const MIN_DOOR_WIDTH = 0.7;
+export const MIN_DOOR_WIDTH = 0.9;
 export const MIN_WINDOW_WIDTH = 0.4;
 
 /**

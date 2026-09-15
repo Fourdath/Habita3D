@@ -83,3 +83,32 @@ function pruneContainedRectangles(rectangles: FreeRectangle[]): void {
 
 function fits(piece: RequiredSheetPiece, width: number, height: number): boolean { return piece.width <= width + 1e-8 && piece.height <= height + 1e-8; }
 function fitsRotated(piece: RequiredSheetPiece, width: number, height: number): boolean { return piece.height <= width + 1e-8 && piece.width <= height + 1e-8; }
+export function splitForStock(
+  rect: { widthM: number; heightM: number }, stockWidth: number, stockHeight: number, idPrefix: string,
+): RequiredSheetPiece[] {
+  if (![stockWidth, stockHeight].every((value) => Number.isFinite(value) && value > 0)
+    || ![rect.widthM, rect.heightM].every(Number.isFinite)) throw new Error('Invalid sheet dimensions');
+  const pieces: RequiredSheetPiece[] = [];
+  let remainingWidth = rect.widthM;
+  let column = 0;
+  while (remainingWidth > 1e-6) {
+    const width = Math.min(stockWidth, remainingWidth);
+    let remainingHeight = rect.heightM;
+    let row = 0;
+    while (remainingHeight > 1e-6) {
+      const height = Math.min(stockHeight, remainingHeight);
+      pieces.push({ id: `${idPrefix}_${column}_${row}`, width, height });
+      remainingHeight -= height;
+      row++;
+    }
+    remainingWidth -= width;
+    column++;
+  }
+  return pieces;
+}
+
+
+export function packSheets(stockWidth: number, stockHeight: number, pieces: readonly RequiredSheetPiece[]) {
+  const result = optimizeSheetCuts({ width: stockWidth, height: stockHeight }, pieces);
+  return { ...result, requiredAreaM2: result.requiredArea, purchasedAreaM2: result.totalStockArea };
+}

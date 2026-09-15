@@ -21,6 +21,7 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
 
   readonly status = signal<ViewerStatus>('loading');
   readonly pointerLocked = signal(false);
+  readonly viewMode = signal<'walk' | 'overview'>('walk');
   readonly errorMessage = signal('');
 
   readonly loadingFloorplan = signal(false);
@@ -61,6 +62,15 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
 
   onStartClick(): void {
     this.engine?.requestPointerLock();
+  }
+
+  onViewModeChange(mode: 'walk' | 'overview'): void {
+    this.engine?.setViewMode(mode);
+    this.viewMode.set(mode);
+  }
+
+  onFrameOverview(top = false): void {
+    this.engine?.frameOverview(top);
   }
 
   /**

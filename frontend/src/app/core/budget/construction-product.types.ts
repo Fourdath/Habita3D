@@ -10,7 +10,8 @@ export type ConstructionProductId =
   | 'CERAMIC_INDUSTRIAL_FLOOR'
   | 'CONCRETE_M3';
 
-export type ConstructionProductUnit = 'piece' | 'm3';
+/** How the product is actually sold in Chile — the unit the purchase quantity counts. */
+export type ConstructionProductUnit = 'plancha' | 'tira' | 'caja' | 'm3';
 
 export interface ConstructionProduct {
   id: ConstructionProductId;
@@ -23,6 +24,7 @@ export interface ConstructionProduct {
   thicknessMeters?: number;
   tileWidthMeters?: number;
   tileHeightMeters?: number;
+  tilesPerBox?: number;
   wasteFactor?: number;
   unitPriceClp: number;
   isDemoPrice: true;

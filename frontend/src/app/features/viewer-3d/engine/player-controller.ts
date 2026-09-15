@@ -20,6 +20,7 @@ export class PlayerController {
   private readonly velocity = new THREE.Vector3();
   private readonly direction = new THREE.Vector3();
   private onFloor = false;
+  private spawn: readonly [number, number] = [0, 0];
 
   constructor(
     private readonly camera: THREE.PerspectiveCamera,
@@ -97,9 +98,11 @@ export class PlayerController {
    * look direction. Used both when falling out of bounds and when a new floor plan
    * is loaded at runtime (the previous position may no longer be valid geometry).
    */
-  respawn(): void {
-    this.collider.start.set(0, PLAYER_CAPSULE_RADIUS, 0);
-    this.collider.end.set(0, PLAYER_EYE_HEIGHT, 0);
+  respawn(spawn = this.spawn): void {
+    this.spawn = spawn;
+    this.onFloor = false;
+    this.collider.start.set(spawn[0], PLAYER_CAPSULE_RADIUS + 0.01, -spawn[1]);
+    this.collider.end.set(spawn[0], PLAYER_EYE_HEIGHT + 0.01, -spawn[1]);
     this.velocity.set(0, 0, 0);
     this.camera.position.copy(this.collider.end);
     this.camera.rotation.set(0, 0, 0);

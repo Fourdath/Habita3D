@@ -7,7 +7,7 @@ describe('MaterialRegistry', () => {
 
   it('reuses one material and one texture set for repeated requests', async () => {
     vi.spyOn(THREE.Loader.prototype, 'loadAsync').mockImplementation(async () => new THREE.Texture());
-    const registry = new MaterialRegistry(4);
+    const registry = new MaterialRegistry(4, textureFactory);
     const first = await registry.get('NORDIC_FLOOR_WOOD_LIGHT');
     const second = await registry.get('NORDIC_FLOOR_WOOD_LIGHT');
     expect(second).toBe(first);
@@ -16,12 +16,16 @@ describe('MaterialRegistry', () => {
     registry.dispose();
   });
 
-  it('uses explicit flat fallback for pending assets without loading a URL', async () => {
+  it('creates bathroom ceramic maps without downloading an asset', async () => {
     const load = vi.spyOn(THREE.Loader.prototype, 'loadAsync');
-    const registry = new MaterialRegistry();
+    const registry = new MaterialRegistry(1, textureFactory);
     const material = await registry.get('NORDIC_BATH_WALL_TILE_LIGHT') as THREE.MeshStandardMaterial;
-    expect(material.color.getHex()).toBe(0xf3f4f2);
+    expect(material.map).toBeInstanceOf(THREE.Texture);
+    expect(material.normalMap).toBeInstanceOf(THREE.Texture);
     expect(load).not.toHaveBeenCalled();
     registry.dispose();
   });
 });
+
+
+const textureFactory = () => ({ map: new THREE.Texture(), normal: new THREE.Texture(), roughness: null });

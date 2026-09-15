@@ -1,107 +1,118 @@
-import { resolveBaseboardSegments } from '../construction/baseboard-resolver';
-import { calculateWallFaceRectangles, wallFaceNetArea, type WallFaceRectangle } from '../construction/wall-face-geometry';
-import {
-  DEFAULT_CONSTRUCTION_ASSUMPTIONS,
-  resolveAllWallConstructions,
-} from '../construction/wall-construction-resolver';
-import { WALL_ASSEMBLY_CATALOG } from '../construction/wall-assembly.catalog';
-import type {
-  ConstructionAssumptions,
-  WallConstructionOverride,
-  WallSide,
-} from '../construction/wall-assembly.types';
-import { polygonArea } from '../floorplan/geometry-utils';
-import { resolveKitchenRuns } from '../floorplan/kitchen-run-resolver';
-import type { Floorplan } from '../floorplan/floorplan.types';
-import { BACKSPLASH_HEIGHT_M } from '../floorplan/fixture.constants';
 import type { InteriorStyleId } from '../interior-style/interior-style.types';
-import type { ConstructionBudgetLine, ConstructionBudgetSummary } from './budget.types';
-import { calculateCeramic } from './ceramic-calculator';
-import { CONSTRUCTION_PRODUCT_CATALOG } from './construction-product.catalog';
+import { isCeramicFinish } from '../materials/material.catalog';
+import { getStyleMaterialPreset } from '../materials/style-material-presets';
+import { calculateCeramicBoxes } from './ceramic-calculator';
+import { CONSTRUCTION_PRODUCT_CATALOG, getStyleProductMap } from './construction-product.catalog';
 import type { ConstructionProduct, ConstructionProductId } from './construction-product.types';
-import { optimizeLinearCuts } from './linear-cut-optimizer';
-import { optimizeSheetCuts, type RequiredSheetPiece } from './sheet-cut-optimizer';
+import type { BudgetWaste, ConstructionBudgetLine, ConstructionBudgetSummary } from './budget.types';
+import { packLinear, splitLinear } from './linear-cut-optimizer';
+import type { LinearCutOptimization } from './linear-cut-optimizer';
+import { packSheets, splitForStock } from './sheet-cut-optimizer';
+import type { SheetCutOptimization } from './sheet-cut-optimizer';
+import type { ManifestWallFace, SurfaceManifest } from './surface-manifest.types';
 
-export const DEFAULT_BUDGET_WALL_HEIGHT_M = 2.6;
+type SheetProductId = 'GYPSUM_BOARD_ST_12_5' | 'GYPSUM_BOARD_RH_12_5' | 'EXTERIOR_FIBERCEMENT_BOARD';
 
-export interface ConstructionBudgetOptions {
-  wallHeightM?: number;
-  assumptions?: ConstructionAssumptions;
-  wallOverrides?: readonly WallConstructionOverride[];
-  productCatalog?: Record<ConstructionProductId, ConstructionProduct>;
+interface LineInput {
+  requiredQuantity: number;
+  purchaseQuantity: number;
+  detail?: string;
+  waste?: { unit: BudgetWaste['unit']; required: number; purchased: number };
+  optimizationSummary?: LinearCutOptimization | SheetCutOptimization;
 }
 
-interface SheetDemand {
-  productId: 'GYPSUM_BOARD_ST_12_5' | 'GYPSUM_BOARD_RH_12_5' | 'EXTERIOR_FIBERCEMENT_BOARD';
-  rectangles: WallFaceRectangle[];
-  demandKey: string;
-}
-
+/**
+ * Take-off over the surface manifest produced by the geometry builder.
+ *
+ * Two rules keep it honest: a quantity exists only if the corresponding surface was
+ * actually built, and a ceramic line appears only if the active style really assigns a
+ * ceramic finish to that role (so 'Sin estilo' quotes no tile at all).
+ */
 export function computeConstructionBudget(
-  floorplan: Floorplan,
-  styleId: InteriorStyleId,
-  options: ConstructionBudgetOptions = {},
+  manifest: SurfaceManifest, styleId: InteriorStyleId,
 ): ConstructionBudgetSummary {
-  const wallHeightM = options.wallHeightM ?? DEFAULT_BUDGET_WALL_HEIGHT_M;
-  const catalog = options.productCatalog ?? CONSTRUCTION_PRODUCT_CATALOG;
-  const constructions = !options.assumptions && !options.wallOverrides && floorplan.wallConstructions
-    ? floorplan.wallConstructions
-    : resolveAllWallConstructions(
-        floorplan,
-        options.assumptions ?? DEFAULT_CONSTRUCTION_ASSUMPTIONS,
-        [...(options.wallOverrides ?? [])],
-      );
-  const rooms = new Map(floorplan.rooms.map((room) => [room.id, room]));
-  const sheetDemand: SheetDemand[] = [];
-  let concreteVolumeM3 = 0;
-  let bathroomWallAreaM2 = 0;
-
-  for (const construction of constructions) {
-    const wall = floorplan.walls.find((candidate) => candidate.id === construction.wallId);
-    if (!wall) continue;
-    const rectangles = calculateWallFaceRectangles(floorplan, wall, wallHeightM);
-    const netArea = wallFaceNetArea(rectangles);
-    if (construction.assemblyId === 'INTERIOR_CONCRETE' || construction.assemblyId === 'EXTERIOR_CONCRETE') {
-      concreteVolumeM3 += netArea * wall.thickness;
-    }
-
-    for (const side of [construction.sideA, construction.sideB]) {
-      const roomSemantic = side.roomId ? rooms.get(side.roomId)?.semantic.type : undefined;
-      if (side.environment === 'INTERIOR' && roomSemantic === 'BATHROOM') bathroomWallAreaM2 += netArea;
-      const productId = sheetProductForSide(construction.assemblyId, side, roomSemantic);
-      if (productId) sheetDemand.push({ productId, rectangles, demandKey: `${wall.id}_${side.side}` });
-    }
-  }
-
+  const products = getStyleProductMap(styleId);
+  const preset = getStyleMaterialPreset(styleId);
   const items: ConstructionBudgetLine[] = [];
-  for (const productId of ['GYPSUM_BOARD_ST_12_5', 'GYPSUM_BOARD_RH_12_5', 'EXTERIOR_FIBERCEMENT_BOARD'] as const) {
-    const demands = sheetDemand.filter((demand) => demand.productId === productId);
-    if (demands.length === 0) continue;
-    items.push(sheetBudgetLine(productId, demands, catalog[productId]));
+
+  // Sheets: one demand per FACE, with the product the neighbouring room requires.
+  const sheetDemand: Record<SheetProductId, ManifestWallFace[]> = {
+    GYPSUM_BOARD_ST_12_5: [],
+    GYPSUM_BOARD_RH_12_5: [],
+    EXTERIOR_FIBERCEMENT_BOARD: [],
+  };
+  for (const face of manifest.wallFaces) {
+    const productId = sheetProductForFace(face);
+    if (!productId) continue;
+    sheetDemand[productId].push(face);
   }
 
-  const baseboardProductId = styleId === 'industrial' ? 'BASEBOARD_DARK' : 'BASEBOARD_WHITE';
-  const baseboardSegments = resolveBaseboardSegments(floorplan, constructions);
-  if (baseboardSegments.length > 0) {
-    items.push(linearBudgetLine(baseboardProductId, baseboardSegments.map((segment) => segment.lengthM), catalog[baseboardProductId]));
+  for (const productId of Object.keys(sheetDemand) as SheetProductId[]) {
+    const faces = sheetDemand[productId];
+    if (faces.length === 0) continue;
+    const product = CONSTRUCTION_PRODUCT_CATALOG[productId];
+    const stockWidth = product.widthMeters ?? 1.2;
+    const stockHeight = product.heightMeters ?? 2.4;
+    const pieces = faces.flatMap((face, faceIndex) => face.rects.flatMap((rect, rectIndex) =>
+      splitForStock(rect, stockWidth, stockHeight, `${face.wallId}_${face.side}_${faceIndex}_${rectIndex}`)));
+    const packed = packSheets(stockWidth, stockHeight, pieces);
+
+    items.push(buildLine(productId, product.name, product, {
+      requiredQuantity: packed.requiredAreaM2 / (stockWidth * stockHeight),
+      purchaseQuantity: packed.sheetsUsed,
+      detail: `${faces.length} caras · ${packed.requiredAreaM2.toFixed(1)} m² netos`,
+      waste: { unit: 'm2', required: packed.requiredAreaM2, purchased: packed.purchasedAreaM2 },
+      optimizationSummary: packed,
+    }));
   }
 
-  if (styleId !== 'none') {
-    const bathroomFloorAreaM2 = floorplan.rooms
-      .filter((room) => room.semantic.type === 'BATHROOM')
-      .reduce((sum, room) => sum + polygonArea(room.polygon), 0);
-    const kitchenBacksplashAreaM2 = (floorplan.kitchenRuns ?? resolveKitchenRuns(floorplan))
-      .reduce((sum, run) => sum + Math.hypot(run.end[0] - run.start[0], run.end[1] - run.start[1]) * BACKSPLASH_HEIGHT_M, 0);
-    const wallCeramicId = styleId === 'nordic' ? 'CERAMIC_NORDIC_WALL' : 'CERAMIC_INDUSTRIAL_WALL';
-    const floorCeramicId = styleId === 'nordic' ? 'CERAMIC_NORDIC_FLOOR' : 'CERAMIC_INDUSTRIAL_FLOOR';
-    if (bathroomWallAreaM2 > 0) items.push(ceramicBudgetLine(`${wallCeramicId}_bathroom`, wallCeramicId, 'Cerámica de muros de baño', bathroomWallAreaM2, catalog[wallCeramicId]));
-    if (bathroomFloorAreaM2 > 0) items.push(ceramicBudgetLine(`${floorCeramicId}_bathroom`, floorCeramicId, 'Cerámica de pisos de baño', bathroomFloorAreaM2, catalog[floorCeramicId]));
-    if (kitchenBacksplashAreaM2 > 0) items.push(ceramicBudgetLine(`${wallCeramicId}_backsplash`, wallCeramicId, 'Cerámica de backsplash de cocina', kitchenBacksplashAreaM2, catalog[wallCeramicId]));
+  // Ceramic, only where the style's finish for that role is actually ceramic.
+  if (products.ceramicWall && isCeramicFinish(preset.bathroomWainscot)) {
+    const wainscotArea = manifest.wallFaces.reduce((sum, face) => sum + face.wainscotAreaM2, 0);
+    if (wainscotArea > 0) {
+      items.push(ceramicLine(products.ceramicWall, 'Cerámica revestimiento de baño (hasta 2,10 m)', wainscotArea));
+    }
+  }
+  if (products.ceramicWall && isCeramicFinish(preset.kitchenBacksplash)) {
+    const backsplashArea = manifest.backsplash.reduce((sum, run) => sum + run.areaM2, 0);
+    if (backsplashArea > 0) {
+      items.push(ceramicLine(products.ceramicWall, 'Cerámica backsplash de cocina (tramo del mesón)', backsplashArea, '_backsplash'));
+    }
+  }
+  if (products.ceramicFloor && isCeramicFinish(preset.bathroomFloor)) {
+    const bathroomFloorArea = manifest.floors
+      .filter((floor) => floor.semantic === 'BATHROOM')
+      .reduce((sum, floor) => sum + floor.areaM2, 0);
+    if (bathroomFloorArea > 0) {
+      items.push(ceramicLine(products.ceramicFloor, 'Cerámica piso de baño', bathroomFloorArea));
+    }
   }
 
-  if (concreteVolumeM3 > 0) {
-    const product = catalog.CONCRETE_M3;
-    items.push(basicLine('CONCRETE_M3', product.name, concreteVolumeM3, concreteVolumeM3, product));
+  // Baseboard.
+  const baseboardLengths = manifest.baseboards.map((segment) => segment.lengthM);
+  if (baseboardLengths.length > 0) {
+    const product = CONSTRUCTION_PRODUCT_CATALOG[products.baseboard];
+    const stockLength = product.lengthMeters ?? 2.4;
+    const cuts = baseboardLengths.flatMap((length) => splitLinear(length, stockLength));
+    const packed = packLinear(stockLength, cuts);
+    items.push(buildLine(products.baseboard, product.name, product, {
+      requiredQuantity: packed.requiredLengthM / stockLength,
+      purchaseQuantity: packed.stockPiecesUsed,
+      detail: `${baseboardLengths.length} tramos · ${packed.requiredLengthM.toFixed(1)} m`,
+      waste: { unit: 'm', required: packed.requiredLengthM, purchased: packed.purchasedLengthM },
+      optimizationSummary: packed,
+    }));
+  }
+
+  // Concrete, where the inferred assembly demands it.
+  const concreteVolume = manifest.concrete.reduce((sum, wall) => sum + wall.volumeM3, 0);
+  if (concreteVolume > 0) {
+    const product = CONSTRUCTION_PRODUCT_CATALOG.CONCRETE_M3;
+    items.push(buildLine('CONCRETE_M3', product.name, product, {
+      requiredQuantity: concreteVolume,
+      purchaseQuantity: Math.ceil(concreteVolume * 10) / 10,
+      detail: `${manifest.concrete.length} muros de hormigón inferidos por espesor`,
+    }));
   }
 
   return {
@@ -109,151 +120,73 @@ export function computeConstructionBudget(
     isDemoPricing: true,
     items,
     totalClp: items.reduce((sum, item) => sum + item.subtotalClp, 0),
-    requiresStructuralSpecification: constructions.some((construction) => WALL_ASSEMBLY_CATALOG[construction.assemblyId].requiresStructuralSpecification),
+    requiresStructuralSpecification: manifest.concrete.length > 0,
   };
 }
 
-export function formatClp(amountClp: number): string {
-  return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(amountClp);
-}
-
-function sheetProductForSide(
-  assemblyId: string,
-  side: WallSide,
-  roomSemantic: string | undefined,
-): SheetDemand['productId'] | undefined {
-  if (assemblyId !== 'INTERIOR_LIGHT' && assemblyId !== 'EXTERIOR_LIGHT') return undefined;
-  if (assemblyId === 'EXTERIOR_LIGHT' && side.environment === 'EXTERIOR') return 'EXTERIOR_FIBERCEMENT_BOARD';
-  if (side.environment !== 'INTERIOR') return undefined;
-  return roomSemantic === 'BATHROOM' ? 'GYPSUM_BOARD_RH_12_5' : 'GYPSUM_BOARD_ST_12_5';
-}
-
-function sheetBudgetLine(productId: SheetDemand['productId'], demands: SheetDemand[], product: ConstructionProduct): ConstructionBudgetLine {
-  const stockWidth = requiredDimension(product.widthMeters, product.id, 'widthMeters');
-  const stockHeight = requiredDimension(product.heightMeters, product.id, 'heightMeters');
-  const pieces = demands.flatMap((demand) => demand.rectangles.flatMap((rectangle) =>
-    splitForStock(rectangle, stockWidth, stockHeight, `${demand.demandKey}_${rectangle.id}`)));
-  const optimization = optimizeSheetCuts({ width: stockWidth, height: stockHeight }, pieces);
-  const stockArea = stockWidth * stockHeight;
-  const requiredQuantity = optimization.requiredArea / stockArea;
-  const line = basicLine(productId, product.name, requiredQuantity, optimization.sheetsUsed, product);
-  line.optimizationSummary = optimization;
-  line.waste = {
-    unit: 'm2',
-    required: optimization.requiredArea,
-    purchased: optimization.totalStockArea,
-    waste: optimization.wasteArea,
-    utilizationPercent: optimization.utilizationPercent,
-  };
-  return line;
-}
-
-function splitForStock(
-  rectangle: WallFaceRectangle,
-  stockWidth: number,
-  stockHeight: number,
-  idPrefix: string,
-): RequiredSheetPiece[] {
-  const pieces: RequiredSheetPiece[] = [];
-  let remainingWidth = rectangle.widthM;
-  let column = 0;
-  while (remainingWidth > 1e-7) {
-    const width = Math.min(stockWidth, remainingWidth);
-    let remainingHeight = rectangle.heightM;
-    let row = 0;
-    while (remainingHeight > 1e-7) {
-      const height = Math.min(stockHeight, remainingHeight);
-      pieces.push({ id: `${idPrefix}_${column}_${row}`, width, height });
-      remainingHeight -= height;
-      row++;
-    }
-    remainingWidth -= width;
-    column++;
+/**
+ * Which sheet a face needs. Moisture-resistant board goes ONLY on the face looking into
+ * the wet room — the other face of that same wall is standard board.
+ */
+function sheetProductForFace(face: ManifestWallFace): SheetProductId | null {
+  if (face.assemblyId !== 'INTERIOR_LIGHT' && face.assemblyId !== 'EXTERIOR_LIGHT') return null;
+  if (face.environment === 'EXTERIOR') {
+    return face.assemblyId === 'EXTERIOR_LIGHT' ? 'EXTERIOR_FIBERCEMENT_BOARD' : null;
   }
-  return pieces;
+  if (face.environment !== 'INTERIOR') return null;
+  return face.roomSemantic === 'BATHROOM' ? 'GYPSUM_BOARD_RH_12_5' : 'GYPSUM_BOARD_ST_12_5';
 }
 
-function linearBudgetLine(
-  productId: 'BASEBOARD_WHITE' | 'BASEBOARD_DARK',
-  requiredSegments: number[],
-  product: ConstructionProduct,
+function ceramicLine(
+  productId: ConstructionProductId, description: string, areaM2: number, suffix = '',
 ): ConstructionBudgetLine {
-  const stockLength = requiredDimension(product.lengthMeters, product.id, 'lengthMeters');
-  const splittableCuts = requiredSegments.flatMap((segment) => splitLinearSegment(segment, stockLength));
-  const optimization = optimizeLinearCuts(stockLength, splittableCuts);
-  const line = basicLine(productId, product.name, optimization.requiredLength / stockLength, optimization.stockPiecesUsed, product);
-  line.optimizationSummary = optimization;
-  line.waste = {
-    unit: 'm',
-    required: optimization.requiredLength,
-    purchased: optimization.purchasedLength,
-    waste: optimization.wasteLength,
-    utilizationPercent: optimization.utilizationPercent,
-  };
-  return line;
+  const product = CONSTRUCTION_PRODUCT_CATALOG[productId];
+  const takeOff = calculateCeramicBoxes(product, areaM2);
+  return buildLine(productId, description, product, {
+    requiredQuantity: takeOff.boxAreaM2 > 0 ? areaM2 / takeOff.boxAreaM2 : 0,
+    purchaseQuantity: takeOff.boxes,
+    detail: `${areaM2.toFixed(1)} m² · pérdida ${Math.round((takeOff.wasteFactor - 1) * 100)}%`,
+    waste: { unit: 'm2', required: areaM2, purchased: takeOff.purchasedAreaM2 },
+  }, suffix);
 }
 
-function splitLinearSegment(segment: number, stockLength: number): number[] {
-  const cuts: number[] = [];
-  let remaining = Math.max(0, segment);
-  while (remaining > 1e-7) {
-    const cut = Math.min(stockLength, remaining);
-    cuts.push(cut);
-    remaining -= cut;
-  }
-  return cuts;
-}
-
-function ceramicBudgetLine(
-  id: string,
-  productId: 'CERAMIC_NORDIC_WALL' | 'CERAMIC_NORDIC_FLOOR' | 'CERAMIC_INDUSTRIAL_WALL' | 'CERAMIC_INDUSTRIAL_FLOOR',
-  description: string,
-  areaM2: number,
-  product: ConstructionProduct,
+function buildLine(
+  productId: ConstructionProductId, description: string, product: ConstructionProduct,
+  input: LineInput, idSuffix = '',
 ): ConstructionBudgetLine {
-  const estimate = calculateCeramic(areaM2, product);
-  const tileArea = requiredDimension(product.tileWidthMeters, product.id, 'tileWidthMeters')
-    * requiredDimension(product.tileHeightMeters, product.id, 'tileHeightMeters');
-  const line = basicLine(id, description, estimate.requiredAreaM2 / tileArea, estimate.estimatedUnits, product, productId);
-  line.waste = {
-    unit: 'm2',
-    required: estimate.requiredAreaM2,
-    purchased: estimate.purchasedAreaM2,
-    waste: Math.max(0, estimate.purchasedAreaM2 - estimate.requiredAreaM2),
-    utilizationPercent: estimate.purchasedAreaM2 > 0 ? estimate.requiredAreaM2 / estimate.purchasedAreaM2 * 100 : 100,
-  };
-  return line;
-}
-
-function basicLine(
-  id: string,
-  description: string,
-  requiredQuantity: number,
-  purchaseQuantity: number,
-  product: ConstructionProduct,
-  productId: ConstructionProductId = product.id,
-): ConstructionBudgetLine {
-  const roundedPurchaseQuantity = round(purchaseQuantity);
-  return {
-    id,
-    productId,
+  const purchase = round(input.purchaseQuantity);
+  const line: ConstructionBudgetLine = {
+    id: productId + idSuffix,
+    productId: product.id,
     description,
+    category: product.category,
     unit: product.unit,
-    requiredQuantity: round(requiredQuantity),
-    purchaseQuantity: roundedPurchaseQuantity,
-    quantity: roundedPurchaseQuantity,
+    requiredQuantity: round(input.requiredQuantity),
+    purchaseQuantity: purchase,
+    quantity: purchase,
     unitPriceClp: product.unitPriceClp,
-    subtotalClp: Math.round(roundedPurchaseQuantity * product.unitPriceClp),
-    isDemoPrice: product.isDemoPrice,
-    priceSource: product.priceSource,
+    subtotalClp: Math.round(purchase * product.unitPriceClp),
+    isDemoPrice: true,
+    priceSource: 'demo',
+    detail: input.detail,
+    optimizationSummary: input.optimizationSummary,
   };
+  if (input.waste) {
+    line.waste = {
+      unit: input.waste.unit,
+      required: round(input.waste.required),
+      purchased: round(input.waste.purchased),
+      waste: round(Math.max(0, input.waste.purchased - input.waste.required)),
+      utilizationPercent: input.waste.purchased > 0
+        ? round((input.waste.required / input.waste.purchased) * 100)
+        : 100,
+    };
+  }
+  return line;
 }
 
-function requiredDimension(value: number | undefined, productId: string, field: string): number {
-  if (!(typeof value === 'number' && value > 0)) throw new Error(`Product ${productId} has no valid ${field}`);
-  return value;
-}
+const round = (value: number): number => Number(value.toFixed(3));
 
-function round(value: number): number {
-  return Number(value.toFixed(3));
-}
+export const formatClp = (amount: number): string => new Intl.NumberFormat('es-CL', {
+  style: 'currency', currency: 'CLP', maximumFractionDigits: 0,
+}).format(amount);

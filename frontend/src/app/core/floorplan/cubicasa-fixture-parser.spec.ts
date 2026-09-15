@@ -8,8 +8,8 @@ describe('CubiCasa fixture parsing', () => {
     ['Shower', 'SHOWER'],
     ['Bathtub', 'BATHTUB'],
     ['ShowerScreen', 'SHOWER_SCREEN'],
-    ['RoundSink', 'UNKNOWN_SINK'],
-    ['DoubleSink', 'UNKNOWN_SINK'],
+    ['RoundSink', 'BATHROOM_SINK'],
+    ['DoubleSink', 'DOUBLE_KITCHEN_SINK'],
     ['BaseCabinet', 'BASE_CABINET'],
     ['WallCabinet', 'WALL_CABINET'],
     ['IntegratedStove', 'STOVE'],
@@ -45,8 +45,8 @@ describe('CubiCasa fixture parsing', () => {
   it('does not infer kitchen from base cabinet plus sink alone', () => {
     const svg = wrap(`<g class="FixedFurniture BaseCabinet" transform="matrix(1,0,0,1,100,100)"><g class="BoundaryPolygon"><polygon points="0,0 60,0 60,40 0,40"/></g></g><g class="FixedFurniture Sink" transform="matrix(1,0,0,1,180,100)"><g class="BoundaryPolygon"><polygon points="0,0 60,0 60,40 0,40"/></g></g>`);
     const plan = parseFloorplan(svg, { scaleMetersPerUnit: 0.01 });
-    expect(plan.rooms[0].semantic.type).toBe('UNKNOWN');
-    expect(plan.fixtures[1].type).toBe('UNKNOWN_SINK');
+    expect(plan.rooms[0].semantic.type).toBe('DRY');
+    expect(plan.fixtures[1].type).toBe('BATHROOM_SINK');
   });
 
   it('infers a kitchen from a strong stove anchor and resolves its sink', () => {
@@ -54,5 +54,19 @@ describe('CubiCasa fixture parsing', () => {
     const plan = parseFloorplan(wrap(fixture('IntegratedStove', 100) + fixture('Sink', 170)), { scaleMetersPerUnit: 0.01 });
     expect(plan.rooms[0].semantic.type).toBe('KITCHEN');
     expect(plan.fixtures.find((item) => item.sourceClasses.includes('Sink'))?.type).toBe('KITCHEN_SINK');
+  });
+});
+
+
+describe('SVG coordinate consistency', () => {
+  it('applies ancestor transforms to rooms, walls, openings and fixtures together', () => {
+    const body = '<g class="Space Bath"><polygon points="0,10 300,10 300,300 0,300"/></g><g class="Wall External"><polygon points="0,0 300,0 300,10 0,10"/><g class="Door"><polygon points="100,0 180,0 180,10 100,10"/></g></g><g class="FixedFurniture Sink" transform="translate(50,80)"><g class="BoundaryPolygon"><polygon points="0,0 60,0 60,50 0,50"/></g></g>';
+    const plain = parseFloorplan(`<svg xmlns="http://www.w3.org/2000/svg">${body}</svg>`);
+    const transformed = parseFloorplan(`<svg xmlns="http://www.w3.org/2000/svg"><g transform="translate(500,200) rotate(90)">${body}</g></svg>`);
+    expect(transformed.fixtures[0].roomId).toBe(transformed.rooms[0].id);
+    expect(transformed.fixtures[0].type).toBe('BATHROOM_SINK');
+    expect(transformed.walls[0].thickness).toBeCloseTo(plain.walls[0].thickness);
+    expect(transformed.doors[0].width).toBeCloseTo(plain.doors[0].width);
+    expect(transformed.doors[0].position).toBeCloseTo(plain.doors[0].position);
   });
 });

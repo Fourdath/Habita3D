@@ -43,3 +43,14 @@ export interface WallConstructionOverride {
   wallId: string;
   assemblyId: WallAssemblyId;
 }
+
+/** Exposed brick / exposed concrete are accent surfaces, never a default finish. */
+export type AccentKind = 'BRICK' | 'CONCRETE';
+
+export interface AccentCandidate {
+  wallId: string;
+  side: WallSideName;
+  roomId: string;
+  kind: AccentKind;
+  reason: 'LIVING_ACCENT' | 'CONCRETE_ASSEMBLY';
+}

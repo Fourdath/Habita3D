@@ -1,66 +1,57 @@
 import * as THREE from 'three';
-
 import { parseFloorplan } from '../../../core/floorplan/cubicasa-parser';
-import { FLOORPLAN_SCALE_METERS_PER_UNIT } from '../../../core/floorplan/floorplan.constants';
 import type { Floorplan } from '../../../core/floorplan/floorplan.types';
-
-import { buildFloorplanGroup, createFloorplanMaterials } from './floorplan-geometry';
+import type { InteriorStyleId } from '../../../core/interior-style/interior-style.types';
+import { buildFloorplanGroup } from './floorplan-geometry';
+import { MaterialRegistry } from './materials/material-registry';
+import type { FloorplanBuildResult } from './surface-mesh.types';
 import { disposeObject3D } from './three-object-disposal';
 
-/**
- * Owns the currently-loaded floor plan's Three.js geometry. Pulled out of
- * Viewer3DEngine so it can be reused for both the initial demo plan and any later
- * user-picked SVG, and so it's testable without a WebGLRenderer (this class only
- * touches plain THREE.Object3D graph operations, no GPU context needed).
- *
- * `parent` is whatever collidable container the engine wants this geometry added to
- * (its Octree gets rebuilt from that same container after house and terrain are in
- * place — see Viewer3DEngine.rebuildCollisions()) — this class does not touch
- * the Octree itself.
- */
+/** Commits a complete build; failed or superseded loads keep the current scene. */
 export class FloorplanSceneManager {
-  private group: THREE.Group | null = null;
-  private readonly placeholderMaterials = createFloorplanMaterials();
+  private result: FloorplanBuildResult | null = null;
+  private requestToken = 0;
+  private disposed = false;
+  private readonly registry: MaterialRegistry;
+  private readonly ownsRegistry: boolean;
 
-  constructor(private readonly parent: THREE.Object3D) {}
-
-  get currentGroup(): THREE.Group | null {
-    return this.group;
+  constructor(private readonly parent: THREE.Object3D, registry?: MaterialRegistry) {
+    this.registry = registry ?? new MaterialRegistry();
+    this.ownsRegistry = !registry;
   }
 
-  /**
-   * Parses `svgText` and builds its geometry first; only once that succeeds does it
-   * remove/dispose whatever floor plan was previously loaded. This ordering is what
-   * keeps an invalid SVG from ever affecting the current scene: on failure, this
-   * throws and nothing here has changed yet.
-   */
-  load(svgText: string): Floorplan {
-    const floorplan = parseFloorplan(svgText, { scaleMetersPerUnit: FLOORPLAN_SCALE_METERS_PER_UNIT });
-    if (floorplan.walls.length === 0) {
-      throw new Error('El plano CubiCasa no contiene muros.');
+  get currentGroup(): THREE.Group | null { return this.result?.group ?? null; }
+  get currentManifest() { return this.result?.manifest; }
+
+  async load(svgText: string, styleId: InteriorStyleId = 'none'): Promise<Floorplan | null> {
+    if (this.disposed) return null;
+    const token = ++this.requestToken;
+    const floorplan = parseFloorplan(svgText);
+    if (floorplan.walls.length === 0) throw new Error('El plano CubiCasa no contiene muros.');
+    const next = await buildFloorplanGroup(floorplan, this.registry, styleId);
+    if (this.disposed || token !== this.requestToken) {
+      disposeObject3D(next.group, { keepMaterials: true });
+      return null;
     }
-
-    const nextGroup = buildFloorplanGroup(floorplan, this.placeholderMaterials);
-
-    if (this.group) {
-      this.parent.remove(this.group);
-      // Applied style materials belong to the engine-level registry and survive reloads.
-      disposeObject3D(this.group, { keepMaterials: true });
+    if (this.result) {
+      this.parent.remove(this.result.group);
+      disposeObject3D(this.result.group, { keepMaterials: true });
     }
-
-    this.parent.add(nextGroup);
-    this.group = nextGroup;
-
+    this.parent.add(next.group);
+    this.result = next;
+    floorplan.wallConstructions = next.constructions;
+    floorplan.kitchenRuns = next.kitchenRuns;
     return floorplan;
   }
 
   dispose(): void {
-    if (!this.group) {
-      return;
+    this.disposed = true;
+    ++this.requestToken;
+    if (this.result) {
+      this.parent.remove(this.result.group);
+      disposeObject3D(this.result.group, { keepMaterials: true });
+      this.result = null;
     }
-    this.parent.remove(this.group);
-    disposeObject3D(this.group, { keepMaterials: true });
-    this.group = null;
-    for (const material of new Set(Object.values(this.placeholderMaterials))) material.dispose();
+    if (this.ownsRegistry) this.registry.dispose();
   }
 }

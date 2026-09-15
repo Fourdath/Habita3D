@@ -4,7 +4,7 @@ import type { LinearCutOptimization } from './linear-cut-optimizer';
 import type { SheetCutOptimization } from './sheet-cut-optimizer';
 
 export interface BudgetWaste {
-  unit: 'm' | 'm2';
+  unit: 'm' | 'm2' | 'm3';
   required: number;
   purchased: number;
   waste: number;
@@ -15,6 +15,7 @@ export interface ConstructionBudgetLine {
   id: string;
   productId: ConstructionProductId;
   description: string;
+  category: string;
   unit: ConstructionProductUnit;
   requiredQuantity: number;
   purchaseQuantity: number;
@@ -24,6 +25,8 @@ export interface ConstructionBudgetLine {
   subtotalClp: number;
   isDemoPrice: true;
   priceSource: 'demo';
+  /** Where the quantity came from, in the user's words. */
+  detail?: string;
   waste?: BudgetWaste;
   optimizationSummary?: LinearCutOptimization | SheetCutOptimization;
 }

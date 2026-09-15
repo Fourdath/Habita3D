@@ -1,713 +1,470 @@
 import * as THREE from 'three';
 
-import type {
-  Floorplan,
-  FloorplanDoor,
-  FloorplanWall,
-  FloorplanWindow,
-  Point2,
-} from '../../../core/floorplan/floorplan.types';
+import type { SurfaceManifest } from '../../../core/budget/surface-manifest.types';
+import { resolveAccentCandidates } from '../../../core/construction/accent-surface-resolver';
 import { resolveBaseboardSegments } from '../../../core/construction/baseboard-resolver';
-import { calculateWallFaceRectangles } from '../../../core/construction/wall-face-geometry';
+import { isConcreteAssembly } from '../../../core/construction/wall-assembly.catalog';
 import { resolveAllWallConstructions } from '../../../core/construction/wall-construction-resolver';
-import type { WallConstruction } from '../../../core/construction/wall-assembly.types';
-import { BACKSPLASH_HEIGHT_M, COUNTERTOP_HEIGHT_M } from '../../../core/floorplan/fixture.constants';
+import { resolveWallFaceSpans } from '../../../core/construction/wall-side-resolver';
+import { calculateWallFaceRectangles, openingMeters, wallFaceNetArea } from '../../../core/construction/wall-face-geometry';
 import { resolveKitchenRuns } from '../../../core/floorplan/kitchen-run-resolver';
-
-import { generateProceduralFixtures } from './fixtures/procedural-fixture-builder';
-import { applyMetricPlanarUvs } from './materials/physical-uv-mapper';
+import type { Floorplan } from '../../../core/floorplan/floorplan.types';
+import { distance, polygonArea, polygonCentroid } from '../../../core/floorplan/geometry-utils';
+import type { RoomSemanticType } from '../../../core/floorplan/room-semantic.types';
+import type { InteriorStyleId } from '../../../core/interior-style/interior-style.types';
+import type { SurfaceFinishRole } from '../../../core/materials/material.types';
+import { WAINSCOT_TOP_M } from '../../../core/materials/style-material-presets';
+import { resolveFinishByRole } from '../../../core/materials/surface-material-resolver';
+import { buildFixtureJobs } from './fixtures/procedural-fixture-builder';
+import { applyMetricBoxUvs } from './materials/physical-uv-mapper';
+import type { MaterialRegistry } from './materials/material-registry';
+import type { CollisionSegment, FinishResolver, FloorplanBuildResult, MeshJob } from './surface-mesh.types';
 import { FLOORPLAN_FLOOR_THICKNESS, FLOORPLAN_WALL_HEIGHT } from './viewer-3d.constants';
-import type { SemanticType } from './viewer-3d.types';
+import {
+  centerlineSubQuad, collectOpenings, extrudedPolygonGeometry, planSegmentBoxGeometry,
+  roomPlaneGeometry, wallAlignedBox, wallFaceGeometry,
+} from './wall-geometry-primitives';
 
-const EPSILON = 1e-3;
-const CEILING_THICKNESS = 0.08;
-const BASEBOARD_HEIGHT = 0.07;
-const BASEBOARD_DEPTH = 0.018;
-const TRIM_WIDTH = 0.07;
-const TRIM_PROJECTION = 0.025;
-const WINDOW_FRAME_WIDTH = 0.055;
-const WINDOW_PROJECTION = 0.035;
-const WINDOW_GLASS_THICKNESS = 0.01;
-const WINDOW_SILL_HEIGHT = 0.035;
-const MAX_ROOM_POINT_LIGHTS = 12;
+export const WALL_HEIGHT_M = FLOORPLAN_WALL_HEIGHT;
+export const FLOOR_THICKNESS_M = FLOORPLAN_FLOOR_THICKNESS;
+const CEILING_THICKNESS_M = 0.08;
+const BASEBOARD_HEIGHT_M = 0.08;
+const BASEBOARD_DEPTH_M = 0.018;
+const TRIM_WIDTH_M = 0.07;
+const TRIM_PROJECTION_M = 0.025;
+const WINDOW_FRAME_WIDTH_M = 0.055;
+const WINDOW_PROJECTION_M = 0.035;
+const WINDOW_SILL_HEIGHT_M = 0.035;
+const COUNTERTOP_HEIGHT_M = 0.9;
+const BACKSPLASH_TOP_M = 1.5;
+const MAX_ROOM_LIGHTS = 14;
+const EPS = 1e-3;
 
-export interface FloorplanMaterials {
-  interiorWall: THREE.Material;
-  exteriorWall: THREE.Material;
-  floor: THREE.Material;
-  ceiling: THREE.Material;
-  trim: THREE.Material;
-  windowFrame: THREE.Material;
-  glass: THREE.Material;
-  fixture: THREE.Material;
+interface RoomLight {
+  position: [number, number, number];
+  distance: number;
+  scale: number;
 }
 
-/** Neutral placeholders used until the selected interior style finishes loading. */
-export function createFloorplanMaterials(): FloorplanMaterials {
-  const interiorWall = standardMaterial(0xe8e2d8, 0.92);
-  return {
-    interiorWall,
-    exteriorWall: standardMaterial(0xc9c0b3, 0.95),
-    floor: standardMaterial(0xb9ab97, 0.88),
-    ceiling: standardMaterial(0xf2eee7, 0.95),
-    trim: standardMaterial(0xf4f0e9, 0.82),
-    windowFrame: standardMaterial(0xe7e3dc, 0.75),
-    glass: new THREE.MeshPhysicalMaterial({
-      color: 0xbdd9e4,
-      roughness: 0.15,
-      metalness: 0,
-      transparent: true,
-      opacity: 0.38,
-      side: THREE.DoubleSide,
-      depthWrite: false,
-    }),
-    fixture: standardMaterial(0xffe0a3, 0.55),
+/**
+ * Builds the whole floor plan, and returns the SURFACE MANIFEST alongside it: the budget
+ * is a take-off of what was actually built, not a second parallel estimate of the plan.
+ *
+ * Geometry is built once and every mesh is tagged with its finish role, so switching
+ * interior style only re-resolves materials.
+ */
+export async function buildFloorplanGroup(
+  floorplan: Floorplan, registry: MaterialRegistry, styleId: InteriorStyleId,
+): Promise<FloorplanBuildResult> {
+  const constructions = resolveAllWallConstructions(floorplan);
+  const kitchenRuns = resolveKitchenRuns(floorplan, constructions);
+  const accents = resolveAccentCandidates(floorplan, constructions);
+  const roomsById = new Map(floorplan.rooms.map((room) => [room.id, room]));
+  const resolveFinish: FinishResolver = (userData) => resolveFinishByRole(styleId, userData);
+
+  const manifest: SurfaceManifest = {
+    wallFaces: [], floors: [], ceilings: [], baseboards: [], backsplash: [], concrete: [],
   };
-}
+  const collisionSegments: CollisionSegment[] = [];
+  const jobs: MeshJob[] = [];
+  const lights: RoomLight[] = [];
 
-export function buildFloorplanGroup(floorplan: Floorplan, materials: FloorplanMaterials): THREE.Group {
-  const group = new THREE.Group();
-  group.name = 'cubicasa-floorplan';
-  const constructions = floorplan.wallConstructions ?? resolveAllWallConstructions(floorplan);
-
-  generateWalls(group, floorplan, materials.interiorWall);
-  generateWallFinishes(group, floorplan, constructions, materials.interiorWall);
-
-  if (floorplan.outerPerimeter.length >= 3) {
-    addExtrudedPolygon(
-      group,
-      floorplan.outerPerimeter,
-      -FLOORPLAN_FLOOR_THICKNESS,
-      0,
-      materials.floor,
-      'floor-structure',
-    );
-    addExtrudedPolygon(
-      group,
-      floorplan.outerPerimeter,
-      FLOORPLAN_WALL_HEIGHT,
-      FLOORPLAN_WALL_HEIGHT + CEILING_THICKNESS,
-      materials.ceiling,
-      'ceiling-structure',
-    );
-  }
-
-  generateRoomSurfaces(group, floorplan, materials);
-  generateBaseboards(group, floorplan, constructions, materials.trim);
-  generateDoorCasings(group, floorplan, materials.trim);
-  generateWindows(group, floorplan, materials);
-  generateProceduralFixtures(group, floorplan, materials.fixture);
-  generateKitchenBacksplashes(group, floorplan, materials.interiorWall);
-  generateCeilingFixtures(group, floorplan, materials.fixture);
-
-  return group;
-}
-
-interface WallOpening {
-  tStart: number;
-  tEnd: number;
-  sillHeight: number;
-  lintelHeight: number;
-}
-
-function standardMaterial(color: number, roughness: number): THREE.MeshStandardMaterial {
-  return new THREE.MeshStandardMaterial({ color, roughness, metalness: 0, side: THREE.DoubleSide });
-}
-
-function generateWalls(group: THREE.Group, floorplan: Floorplan, material: THREE.Material): void {
+  // ── wall cores (the construction system) ──────────────────────────────────
   for (const wall of floorplan.walls) {
-    if (wall.polygon.length < 3) {
-      continue;
-    }
-
+    if (wall.polygon.length < 3) continue;
     const wallLength = distance(wall.start, wall.end);
+    if (wallLength < EPS) continue;
+    const construction = constructions.find((candidate) => candidate.wallId === wall.id);
     const openings = collectOpenings(floorplan, wall, wallLength);
-    if (openings.length === 0) {
-      addExtrudedPolygon(group, wall.polygon, 0, FLOORPLAN_WALL_HEIGHT, material, 'wall-structure', { wallId: wall.id });
-      continue;
-    }
 
+    const spans: Array<[number, number, number, number, boolean]> = [];
     let cursor = 0;
     for (const opening of openings) {
-      if (opening.tStart > cursor + EPSILON) {
-        addExtrudedPolygon(
-          group,
-          centerlineSubQuad(wall, cursor, opening.tStart),
-          0,
-          FLOORPLAN_WALL_HEIGHT,
-          material,
-          'wall-structure',
-          { wallId: wall.id },
-        );
-      }
-
-      const openingQuad = centerlineSubQuad(wall, opening.tStart, opening.tEnd);
-      if (opening.sillHeight > EPSILON) {
-        addExtrudedPolygon(group, openingQuad, 0, opening.sillHeight, material, 'wall-structure', { wallId: wall.id });
-      }
-      if (opening.lintelHeight < FLOORPLAN_WALL_HEIGHT - EPSILON) {
-        addExtrudedPolygon(
-          group,
-          openingQuad,
-          opening.lintelHeight,
-          FLOORPLAN_WALL_HEIGHT,
-          material,
-          'wall-structure',
-          { wallId: wall.id },
-        );
+      if (opening.tStart > cursor + EPS) spans.push([cursor, opening.tStart, 0, WALL_HEIGHT_M, true]);
+      if (opening.sillHeight > EPS) spans.push([opening.tStart, opening.tEnd, 0, opening.sillHeight, true]);
+      if (opening.lintelHeight < WALL_HEIGHT_M - EPS) {
+        spans.push([opening.tStart, opening.tEnd, opening.lintelHeight, WALL_HEIGHT_M, opening.sillHeight > EPS]);
       }
       cursor = opening.tEnd;
     }
+    if (cursor < 1 - EPS) spans.push([cursor, 1, 0, WALL_HEIGHT_M, true]);
 
-    if (cursor < 1 - EPSILON) {
-      addExtrudedPolygon(
-        group,
-        centerlineSubQuad(wall, cursor, 1),
-        0,
-        FLOORPLAN_WALL_HEIGHT,
-        material,
-        'wall-structure',
-        { wallId: wall.id },
-      );
+    for (const [tStart, tEnd, yBottom, yTop, blocks] of spans) {
+      const quad = centerlineSubQuad(wall, tStart, tEnd);
+      if (quad.length < 3) continue;
+      jobs.push({
+        geometry: extrudedPolygonGeometry(quad, yTop - yBottom, yBottom),
+        materialId: 'WALL_CORE_STRUCTURE',
+        name: `wall-core-${wall.id}`,
+        userData: { semanticType: 'wall-structure', wallId: wall.id, assemblyId: construction?.assemblyId },
+      });
+      if (blocks && yBottom < 1.7) {
+        collisionSegments.push({
+          start: [
+            wall.start[0] + (wall.end[0] - wall.start[0]) * tStart,
+            wall.start[1] + (wall.end[1] - wall.start[1]) * tStart,
+          ],
+          end: [
+            wall.start[0] + (wall.end[0] - wall.start[0]) * tEnd,
+            wall.start[1] + (wall.end[1] - wall.start[1]) * tEnd,
+          ],
+          half: wall.thickness / 2,
+        });
+      }
+    }
+
+    if (construction && isConcreteAssembly(construction.assemblyId)) {
+      const netArea = wallFaceNetArea(calculateWallFaceRectangles(floorplan, wall, WALL_HEIGHT_M));
+      manifest.concrete.push({ wallId: wall.id, volumeM3: netArea * wall.thickness });
     }
   }
-}
 
-function generateWallFinishes(
-  group: THREE.Group,
-  floorplan: Floorplan,
-  constructions: readonly WallConstruction[],
-  material: THREE.Material,
-): void {
+  // ── finishes, per FACE ────────────────────────────────────────────────────
   for (const construction of constructions) {
     const wall = floorplan.walls.find((candidate) => candidate.id === construction.wallId);
     if (!wall) continue;
     const length = distance(wall.start, wall.end);
-    if (length < EPSILON) continue;
-    const rectangles = calculateWallFaceRectangles(floorplan, wall, FLOORPLAN_WALL_HEIGHT);
-    for (const side of [construction.sideA, construction.sideB]) {
+    if (length < EPS) continue;
+    const faceRectangles = calculateWallFaceRectangles(floorplan, wall, WALL_HEIGHT_M);
+
+    for (const side of [construction.sideA, construction.sideB].flatMap((face) => resolveWallFaceSpans(wall, floorplan, face))) {
       if (side.environment === 'UNKNOWN') continue;
-      const room = side.roomId ? floorplan.rooms.find((candidate) => candidate.id === side.roomId) : undefined;
+      const rectangles = faceRectangles.map((rectangle) => {
+        const startM = Math.max(rectangle.startM, side.startM);
+        const endM = Math.min(rectangle.endM, side.endM);
+        return { ...rectangle, startM, endM, widthM: endM - startM };
+      }).filter((rectangle) => rectangle.widthM > EPS);
+      const room = side.roomId ? roomsById.get(side.roomId) : undefined;
+      const roomSemantic: RoomSemanticType = room?.semantic.type ?? 'DRY';
+      const sideSign: 1 | -1 = side.side === 'A' ? 1 : -1;
+      const accent = accents.find((candidate) => candidate.wallId === wall.id && candidate.side === side.side && candidate.roomId === side.roomId);
+      const isBathroomFace = roomSemantic === 'BATHROOM' && side.environment === 'INTERIOR';
+
+      const entry = {
+        wallId: wall.id,
+        side: side.side,
+        environment: side.environment,
+        assemblyId: construction.assemblyId,
+        roomId: side.roomId,
+        roomSemantic,
+        accentKind: accent?.kind,
+        rects: rectangles.map((rectangle) => ({ widthM: rectangle.widthM, heightM: rectangle.heightM })),
+        areaM2: wallFaceNetArea(rectangles),
+        wainscotAreaM2: 0,
+      };
+
       for (const rectangle of rectangles) {
-        addWallFace(
-          group,
-          wall,
-          rectangle.startM / length,
-          rectangle.endM / length,
-          rectangle.bottomM,
-          rectangle.topM,
-          side.side === 'A' ? 1 : -1,
-          material,
-          side.environment === 'EXTERIOR' ? 'exterior-finish' : 'wall-finish',
-          {
+        // A face rectangle is cut at the wainscot height when the room next to it asks
+        // for it: tile below, paint above, same face, one style switch away.
+        const crossesWainscot = isBathroomFace
+          && rectangle.bottomM < WAINSCOT_TOP_M - EPS
+          && rectangle.topM > WAINSCOT_TOP_M + EPS;
+        const bands: Array<[number, number, SurfaceFinishRole]> = crossesWainscot
+          ? [
+              [rectangle.bottomM, WAINSCOT_TOP_M, 'BATHROOM_WAINSCOT'],
+              [WAINSCOT_TOP_M, rectangle.topM, 'BATHROOM_ABOVE'],
+            ]
+          : [[
+              rectangle.bottomM,
+              rectangle.topM,
+              isBathroomFace
+                ? (rectangle.bottomM < WAINSCOT_TOP_M - EPS ? 'BATHROOM_WAINSCOT' : 'BATHROOM_ABOVE')
+                : side.environment === 'EXTERIOR' ? 'EXTERIOR' : 'DRY_WALL',
+            ]];
+
+        for (const [bottomM, topM, finishRole] of bands) {
+          const userData = {
+            semanticType: side.environment === 'EXTERIOR' ? 'exterior-finish' : 'wall-finish',
+            finishRole,
+            accentKind: accent?.kind,
             wallId: wall.id,
             wallSide: side.side,
             roomId: side.roomId,
-            roomType: room?.type,
-            roomSemantic: room?.semantic.type ?? 'UNKNOWN',
+            roomSemantic,
             environment: side.environment,
             assemblyId: construction.assemblyId,
-          },
-        );
+          };
+          if (finishRole === 'BATHROOM_WAINSCOT') {
+            entry.wainscotAreaM2 += rectangle.widthM * (topM - bottomM);
+          }
+          jobs.push({
+            geometry: wallFaceGeometry(
+              wall, rectangle.startM / length, rectangle.endM / length, bottomM, topM, sideSign, length,
+            ),
+            materialId: resolveFinish(userData),
+            name: `wall-finish-${wall.id}-${side.side}`,
+            userData,
+          });
+        }
       }
+      manifest.wallFaces.push(entry);
     }
   }
-}
 
-function generateRoomSurfaces(group: THREE.Group, floorplan: Floorplan, materials: FloorplanMaterials): void {
-  for (const room of floorplan.rooms) {
-    if (room.polygon.length < 3) continue;
-    addRoomPlane(group, room.polygon, 0.002, materials.floor, 'room-floor', false, {
-      roomId: room.id,
-      roomType: room.type,
-      roomSemantic: room.semantic.type,
+  // ── structural slab and ceiling ───────────────────────────────────────────
+  if (floorplan.outerPerimeter.length >= 3) {
+    jobs.push({
+      geometry: extrudedPolygonGeometry(floorplan.outerPerimeter, FLOOR_THICKNESS_M, -FLOOR_THICKNESS_M),
+      materialId: 'DEFAULT_FLOOR_NEUTRAL',
+      name: 'floor-slab',
+      userData: { semanticType: 'floor-structure' },
     });
-    addRoomPlane(group, room.polygon, FLOORPLAN_WALL_HEIGHT - 0.002, materials.ceiling, 'room-ceiling', true, {
-      roomId: room.id,
-      roomType: room.type,
-      roomSemantic: room.semantic.type,
+    jobs.push({
+      geometry: extrudedPolygonGeometry(floorplan.outerPerimeter, CEILING_THICKNESS_M, WALL_HEIGHT_M),
+      materialId: 'CEILING_WHITE',
+      name: 'ceiling-slab',
+      userData: { semanticType: 'ceiling-structure' },
     });
   }
-}
 
-function generateBaseboards(
-  group: THREE.Group,
-  floorplan: Floorplan,
-  constructions: readonly WallConstruction[],
-  material: THREE.Material,
-): void {
+  // ── per-room floors and ceilings ──────────────────────────────────────────
+  for (const room of floorplan.rooms) {
+    if (room.polygon.length < 3) continue;
+    const areaM2 = polygonArea(room.polygon);
+
+    const floorData = {
+      semanticType: 'room-floor',
+      finishRole: (room.semantic.type === 'BATHROOM' ? 'FLOOR_BATH' : 'FLOOR_DRY') as SurfaceFinishRole,
+      roomId: room.id,
+      roomSemantic: room.semantic.type,
+    };
+    jobs.push({
+      geometry: roomPlaneGeometry(room.polygon, false),
+      materialId: resolveFinish(floorData),
+      name: `room-floor-${room.id}`,
+      userData: floorData,
+      y: 0.004,
+    });
+    manifest.floors.push({ roomId: room.id, name: room.name, semantic: room.semantic.type, areaM2 });
+
+    const ceilingData = {
+      semanticType: 'room-ceiling',
+      finishRole: 'CEILING' as SurfaceFinishRole,
+      roomId: room.id,
+      roomSemantic: room.semantic.type,
+    };
+    jobs.push({
+      geometry: roomPlaneGeometry(room.polygon, true),
+      materialId: resolveFinish(ceilingData),
+      name: `room-ceiling-${room.id}`,
+      userData: ceilingData,
+      y: WALL_HEIGHT_M - 0.004,
+    });
+    manifest.ceilings.push({ roomId: room.id, areaM2 });
+  }
+
+  // ── baseboards ────────────────────────────────────────────────────────────
   for (const segment of resolveBaseboardSegments(floorplan, constructions)) {
-    addPlanSegmentBox(group, segment.start, segment.end, BASEBOARD_HEIGHT, BASEBOARD_DEPTH, BASEBOARD_HEIGHT / 2, material, 'baseboard', {
+    const userData = {
+      semanticType: 'baseboard',
+      finishRole: 'BASEBOARD' as SurfaceFinishRole,
       roomId: segment.roomId,
       wallId: segment.wallId,
       wallSide: segment.wallSide,
+    };
+    jobs.push({
+      geometry: planSegmentBoxGeometry(
+        segment.start, segment.end, BASEBOARD_HEIGHT_M, BASEBOARD_DEPTH_M, BASEBOARD_HEIGHT_M / 2,
+      ),
+      materialId: resolveFinish(userData),
+      name: `baseboard-${segment.id}`,
+      userData,
+    });
+    manifest.baseboards.push({ lengthM: segment.lengthM, roomId: segment.roomId });
+  }
+
+  addDoors(jobs, floorplan, resolveFinish);
+  addWindows(jobs, floorplan, resolveFinish);
+
+  // ── kitchen backsplash: only the stretch behind the run ───────────────────
+  for (const run of kitchenRuns) {
+    const runLength = distance(run.start, run.end);
+    if (runLength < EPS) continue;
+    const height = BACKSPLASH_TOP_M - COUNTERTOP_HEIGHT_M;
+    const userData = {
+      semanticType: 'kitchen-backsplash',
+      finishRole: 'BACKSPLASH' as SurfaceFinishRole,
+      roomId: run.roomId,
+      wallId: run.wallId,
+      wallSide: run.wallSide,
+      kitchenRunId: run.id,
+    };
+    jobs.push({
+      geometry: planSegmentBoxGeometry(run.start, run.end, height, 0.012, COUNTERTOP_HEIGHT_M + height / 2),
+      materialId: resolveFinish(userData),
+      name: `kitchen-backsplash-${run.id}`,
+      userData,
+    });
+    manifest.backsplash.push({
+      runId: run.id, roomId: run.roomId, lengthM: runLength, areaM2: runLength * height,
     });
   }
-}
 
-function generateKitchenBacksplashes(group: THREE.Group, floorplan: Floorplan, material: THREE.Material): void {
-  for (const run of floorplan.kitchenRuns ?? resolveKitchenRuns(floorplan)) {
-    addPlanSegmentBox(
-      group,
-      run.start,
-      run.end,
-      BACKSPLASH_HEIGHT_M,
-      0.008,
-      COUNTERTOP_HEIGHT_M + BACKSPLASH_HEIGHT_M / 2,
-      material,
-      'kitchen-backsplash',
-      { roomId: run.roomId, wallId: run.wallId, wallSide: run.wallSide, kitchenRunId: run.id },
-    );
+  for (const fixture of floorplan.fixtures) {
+    jobs.push(...buildFixtureJobs(fixture, resolveFinish, floorplan.fixtures));
   }
-}
 
-function generateDoorCasings(group: THREE.Group, floorplan: Floorplan, material: THREE.Material): void {
-  for (const door of floorplan.doors) {
-    const wall = floorplan.walls.find((candidate) => candidate.id === door.wallId);
-    if (!wall) {
-      continue;
-    }
-    const length = distance(wall.start, wall.end);
-    if (length < EPSILON) {
-      continue;
-    }
-    const [tStart, tEnd] = openingInterval(door.position, door.width, length);
-    const postT = TRIM_WIDTH / length;
-    const sides = wall.isExterior ? [-resolveExteriorSide(wall, floorplan)] : [-1, 1];
-
-    for (const side of sides) {
-      addWallAlignedBox(
-        group,
-        wall,
-        Math.max(0, tStart - postT),
-        tStart,
-        Math.min(door.height + TRIM_WIDTH, FLOORPLAN_WALL_HEIGHT),
-        TRIM_PROJECTION,
-        Math.min(door.height + TRIM_WIDTH, FLOORPLAN_WALL_HEIGHT) / 2,
-        side,
-        material,
-        'doorFrame',
-      );
-      addWallAlignedBox(
-        group,
-        wall,
-        tEnd,
-        Math.min(1, tEnd + postT),
-        Math.min(door.height + TRIM_WIDTH, FLOORPLAN_WALL_HEIGHT),
-        TRIM_PROJECTION,
-        Math.min(door.height + TRIM_WIDTH, FLOORPLAN_WALL_HEIGHT) / 2,
-        side,
-        material,
-        'doorFrame',
-      );
-      addWallAlignedBox(
-        group,
-        wall,
-        tStart,
-        tEnd,
-        TRIM_WIDTH,
-        TRIM_PROJECTION,
-        Math.min(door.height + TRIM_WIDTH / 2, FLOORPLAN_WALL_HEIGHT - TRIM_WIDTH / 2),
-        side,
-        material,
-        'doorFrame',
-      );
-    }
-  }
-}
-
-function generateWindows(group: THREE.Group, floorplan: Floorplan, materials: FloorplanMaterials): void {
-  for (const windowOpening of floorplan.windows) {
-    const wall = floorplan.walls.find((candidate) => candidate.id === windowOpening.wallId);
-    if (!wall) {
-      continue;
-    }
-    const length = distance(wall.start, wall.end);
-    if (length < EPSILON) {
-      continue;
-    }
-    const [tStart, tEnd] = openingInterval(windowOpening.position, windowOpening.width, length);
-    const openingCenterY = windowOpening.sillHeight + windowOpening.height / 2;
-
-    addWallAlignedBox(
-      group,
-      wall,
-      tStart,
-      tEnd,
-      windowOpening.height,
-      WINDOW_GLASS_THICKNESS,
-      openingCenterY,
-      0,
-      materials.glass,
-      'window',
-    );
-
-    const frameT = Math.min(WINDOW_FRAME_WIDTH / length, (tEnd - tStart) / 3);
-    const frameHeight = Math.min(WINDOW_FRAME_WIDTH, windowOpening.height / 3);
-    addWallAlignedBox(group, wall, tStart, tStart + frameT, windowOpening.height, WINDOW_PROJECTION, openingCenterY, 0, materials.windowFrame, 'windowFrame');
-    addWallAlignedBox(group, wall, tEnd - frameT, tEnd, windowOpening.height, WINDOW_PROJECTION, openingCenterY, 0, materials.windowFrame, 'windowFrame');
-    addWallAlignedBox(group, wall, tStart, tEnd, frameHeight, WINDOW_PROJECTION, windowOpening.sillHeight + frameHeight / 2, 0, materials.windowFrame, 'windowFrame');
-    addWallAlignedBox(group, wall, tStart, tEnd, frameHeight, WINDOW_PROJECTION, windowOpening.sillHeight + windowOpening.height - frameHeight / 2, 0, materials.windowFrame, 'windowFrame');
-
-    if (windowOpening.width >= 1.2) {
-      const centerT = (tStart + tEnd) / 2;
-      addWallAlignedBox(
-        group,
-        wall,
-        centerT - frameT / 2,
-        centerT + frameT / 2,
-        Math.max(frameHeight, windowOpening.height - frameHeight * 2),
-        WINDOW_PROJECTION,
-        openingCenterY,
-        0,
-        materials.windowFrame,
-        'windowFrame',
-      );
-    }
-
-    addWallAlignedBox(
-      group,
-      wall,
-      Math.max(0, tStart - frameT / 2),
-      Math.min(1, tEnd + frameT / 2),
-      WINDOW_SILL_HEIGHT,
-      wall.thickness + 0.12,
-      windowOpening.sillHeight + WINDOW_SILL_HEIGHT / 2,
-      0,
-      materials.trim,
-      'windowFrame',
-    );
-  }
-}
-
-function generateCeilingFixtures(group: THREE.Group, floorplan: Floorplan, material: THREE.Material): void {
-  const rankedRooms = floorplan.rooms
+  // ── luminaires ────────────────────────────────────────────────────────────
+  const ranked = floorplan.rooms
     .filter((room) => room.polygon.length >= 3)
     .map((room) => ({ room, area: polygonArea(room.polygon), center: polygonCentroid(room.polygon) }))
-    .sort((a, b) => b.area - a.area);
-  const illuminatedRoomIds = new Set(rankedRooms.slice(0, MAX_ROOM_POINT_LIGHTS).map(({ room }) => room.id));
+    .sort((left, right) => right.area - left.area);
 
-  for (const { room, area, center } of rankedRooms) {
-    const geometry = new THREE.CylinderGeometry(0.11, 0.13, 0.045, 12);
-    const fixture = new THREE.Mesh(geometry, material);
-    fixture.position.set(center[0], FLOORPLAN_WALL_HEIGHT - 0.04, -center[1]);
-    fixture.userData = { semanticType: 'lightFixture' satisfies SemanticType };
-    group.add(fixture);
-
-    if (illuminatedRoomIds.has(room.id)) {
-      const light = new THREE.PointLight(0xffd6a3, 0.75, Math.max(4.5, Math.sqrt(area) * 2.3), 2);
-      light.position.set(center[0], FLOORPLAN_WALL_HEIGHT - 0.22, -center[1]);
-      light.castShadow = false;
-      light.userData = {
-        semanticType: 'roomLight' satisfies SemanticType,
-        intensityScale: THREE.MathUtils.clamp(Math.sqrt(Math.max(area, 1)) / 3, 0.65, 1.25),
-      };
-      group.add(light);
-    }
-  }
-}
-
-function collectOpenings(floorplan: Floorplan, wall: FloorplanWall, wallLength: number): WallOpening[] {
-  const raw: WallOpening[] = [];
-  for (const door of floorplan.doors) {
-    if (door.wallId !== wall.id) continue;
-    const [tStart, tEnd] = openingInterval(door.position, door.width, wallLength);
-    raw.push({ tStart, tEnd, sillHeight: 0, lintelHeight: door.height });
-  }
-  for (const windowOpening of floorplan.windows) {
-    if (windowOpening.wallId !== wall.id) continue;
-    const [tStart, tEnd] = openingInterval(windowOpening.position, windowOpening.width, wallLength);
-    raw.push({
-      tStart,
-      tEnd,
-      sillHeight: windowOpening.sillHeight,
-      lintelHeight: windowOpening.sillHeight + windowOpening.height,
+  for (const [index, { room, area, center }] of ranked.entries()) {
+    const geometry = new THREE.CylinderGeometry(0.11, 0.14, 0.05, 20);
+    applyMetricBoxUvs(geometry);
+    jobs.push({
+      geometry,
+      materialId: 'LIGHT_FIXTURE',
+      name: `light-${room.id}`,
+      userData: { semanticType: 'lightFixture', roomId: room.id },
+      position: [center[0], WALL_HEIGHT_M - 0.045, -center[1]],
     });
-  }
-
-  raw.sort((a, b) => a.tStart - b.tStart);
-  const merged: WallOpening[] = [];
-  for (const opening of raw) {
-    const last = merged[merged.length - 1];
-    if (last && opening.tStart < last.tEnd + EPSILON) {
-      last.tEnd = Math.max(last.tEnd, opening.tEnd);
-      last.sillHeight = Math.min(last.sillHeight, opening.sillHeight);
-      last.lintelHeight = Math.max(last.lintelHeight, opening.lintelHeight);
-    } else {
-      merged.push({ ...opening });
+    if (index < MAX_ROOM_LIGHTS) {
+      lights.push({
+        position: [center[0], WALL_HEIGHT_M - 0.3, -center[1]],
+        distance: Math.max(4.5, Math.sqrt(area) * 2.4),
+        scale: clamp(Math.sqrt(Math.max(area, 1)) / 3, 0.7, 1.3),
+      });
     }
   }
-  return merged;
-}
 
-function openingInterval(position: number, width: number, wallLength: number): [number, number] {
-  const halfWidthT = wallLength > EPSILON ? width / 2 / wallLength : 0.5;
-  return [Math.max(0, position - halfWidthT), Math.min(1, position + halfWidthT)];
-}
+  // ── materialize ───────────────────────────────────────────────────────────
+  const materials = await registry.warm(jobs.map((job) => job.materialId)).catch((error: unknown) => {
+    for (const job of jobs) job.geometry.dispose();
+    throw error;
+  });
+  const group = new THREE.Group();
+  group.name = 'habita3d-floorplan';
 
-function centerlineSubQuad(wall: FloorplanWall, tStart: number, tEnd: number): Point2[] {
-  const dx = wall.end[0] - wall.start[0];
-  const dy = wall.end[1] - wall.start[1];
-  const length = Math.hypot(dx, dy);
-  if (length < EPSILON) return [];
-
-  const ux = dx / length;
-  const uy = dy / length;
-  const nx = -uy;
-  const ny = ux;
-  const halfThickness = wall.thickness / 2;
-  let sx = wall.start[0] + dx * tStart;
-  let sy = wall.start[1] + dy * tStart;
-  let ex = wall.start[0] + dx * tEnd;
-  let ey = wall.start[1] + dy * tEnd;
-
-  if (tStart <= EPSILON) {
-    sx -= ux * halfThickness;
-    sy -= uy * halfThickness;
+  for (const job of jobs) {
+    const material = materials.get(job.materialId);
+    const mesh = new THREE.Mesh(job.geometry, material);
+    mesh.name = job.name;
+    mesh.userData = job.userData;
+    // The resolved finish stays on the mesh, so a diagnostic overlay can restore the
+    // exact material without relying on applyStyle having written it first.
+    mesh.userData['surfaceMaterialId'] = job.materialId;
+    if (job.position) mesh.position.set(job.position[0], job.position[1], job.position[2]);
+    if (job.y !== undefined) mesh.position.y = job.y;
+    if (job.rotationY !== undefined) mesh.rotation.y = job.rotationY;
+    mesh.castShadow = job.castShadow !== false;
+    mesh.receiveShadow = true;
+    group.add(mesh);
   }
-  if (tEnd >= 1 - EPSILON) {
-    ex += ux * halfThickness;
-    ey += uy * halfThickness;
+
+  for (const light of lights) {
+    const point = new THREE.PointLight(0xffd9b0, 0.9 * light.scale, light.distance, 2);
+    point.position.set(light.position[0], light.position[1], light.position[2]);
+    point.userData = { semanticType: 'roomLight', intensityScale: light.scale };
+    group.add(point);
   }
-  return [
-    [sx + nx * halfThickness, sy + ny * halfThickness],
-    [ex + nx * halfThickness, ey + ny * halfThickness],
-    [ex - nx * halfThickness, ey - ny * halfThickness],
-    [sx - nx * halfThickness, sy - ny * halfThickness],
-  ];
+
+  return { group, manifest, collisionSegments, constructions, accents, kitchenRuns };
 }
 
-function addWallAlignedBox(
-  group: THREE.Group,
-  wall: FloorplanWall,
-  tStart: number,
-  tEnd: number,
-  height: number,
-  depth: number,
-  centerY: number,
-  side: number,
-  material: THREE.Material,
-  semanticType: SemanticType,
-  gap = 0,
-): void {
-  const dx = wall.end[0] - wall.start[0];
-  const dy = wall.end[1] - wall.start[1];
-  const wallLength = Math.hypot(dx, dy);
-  const boxLength = wallLength * Math.max(0, tEnd - tStart);
-  if (boxLength < EPSILON || height < EPSILON || depth < EPSILON) return;
+/** Open leaves rest along a free wall span; never swing across another doorway. */
+function addDoors(jobs: MeshJob[], floorplan: Floorplan, resolveFinish: FinishResolver): void {
+  const parked = new Map<string, Array<[number, number]>>();
+  for (const door of floorplan.doors) {
+    const wall = floorplan.walls.find((candidate) => candidate.id === door.wallId);
+    if (!wall) continue;
+    const length = distance(wall.start, wall.end);
+    if (length < EPS) continue;
+    const [startM, endM] = openingMeters(door.position, door.width, length);
+    const widthM = endM - startM;
+    if (widthM < 0.2) continue;
+    const postT = TRIM_WIDTH_M / length;
+    const height = Math.min(door.height + TRIM_WIDTH_M, WALL_HEIGHT_M);
 
-  const centerT = (tStart + tEnd) / 2;
-  const nx = -dy / wallLength;
-  const ny = dx / wallLength;
-  const offset = side === 0 ? 0 : side * (wall.thickness / 2 + depth / 2 + gap);
-  const planX = wall.start[0] + dx * centerT + nx * offset;
-  const planY = wall.start[1] + dy * centerT + ny * offset;
-  const mesh = new THREE.Mesh(new THREE.BoxGeometry(boxLength, height, depth), material);
-  mesh.position.set(planX, centerY, -planY);
-  mesh.rotation.y = Math.atan2(dy, dx);
-  mesh.userData = { semanticType };
-  mesh.castShadow = true;
-  mesh.receiveShadow = true;
-  group.add(mesh);
-}
-
-function addPlanSegmentBox(
-  group: THREE.Group,
-  start: Point2,
-  end: Point2,
-  height: number,
-  depth: number,
-  centerY: number,
-  material: THREE.Material,
-  semanticType: SemanticType,
-  metadata: Record<string, unknown>,
-): void {
-  const dx = end[0] - start[0];
-  const dy = end[1] - start[1];
-  const length = Math.hypot(dx, dy);
-  if (length < EPSILON) return;
-  const geometry = new THREE.BoxGeometry(length, height, depth);
-  applyMetricPlanarUvs(geometry, 'XY');
-  const mesh = new THREE.Mesh(geometry, material);
-  mesh.position.set((start[0] + end[0]) / 2, centerY, -(start[1] + end[1]) / 2);
-  mesh.rotation.y = Math.atan2(dy, dx);
-  mesh.userData = { semanticType, ...metadata };
-  mesh.castShadow = true;
-  mesh.receiveShadow = true;
-  group.add(mesh);
-}
-
-function addRoomPlane(
-  group: THREE.Group,
-  points: Point2[],
-  y: number,
-  material: THREE.Material,
-  semanticType: SemanticType,
-  faceDown: boolean,
-  metadata: Record<string, unknown>,
-): void {
-  const shape = new THREE.Shape();
-  shape.moveTo(points[0][0], points[0][1]);
-  for (let index = 1; index < points.length; index++) shape.lineTo(points[index][0], points[index][1]);
-  shape.closePath();
-  const geometry = new THREE.ShapeGeometry(shape);
-  geometry.rotateX(-Math.PI / 2);
-  if (faceDown) reverseTriangleWinding(geometry);
-  applyMetricPlanarUvs(geometry, 'XZ');
-  const mesh = new THREE.Mesh(geometry, material);
-  mesh.position.y = y;
-  mesh.userData = { semanticType, ...metadata };
-  mesh.receiveShadow = true;
-  group.add(mesh);
-}
-
-function reverseTriangleWinding(geometry: THREE.BufferGeometry): void {
-  const index = geometry.getIndex();
-  if (index) {
-    for (let offset = 0; offset < index.count; offset += 3) {
-      const second = index.getX(offset + 1);
-      index.setX(offset + 1, index.getX(offset + 2));
-      index.setX(offset + 2, second);
+    for (const sideSign of [1, -1] as const) {
+      jobs.push(wallAlignedBox({
+        wall, tStart: Math.max(0, startM / length - postT), tEnd: startM / length,
+        height, depth: TRIM_PROJECTION_M, centerY: height / 2, sideSign,
+        finishRole: 'FRAME', semanticType: 'doorFrame',
+      }, resolveFinish));
+      jobs.push(wallAlignedBox({
+        wall, tStart: endM / length, tEnd: Math.min(1, endM / length + postT),
+        height, depth: TRIM_PROJECTION_M, centerY: height / 2, sideSign,
+        finishRole: 'FRAME', semanticType: 'doorFrame',
+      }, resolveFinish));
+      jobs.push(wallAlignedBox({
+        wall, tStart: startM / length, tEnd: endM / length,
+        height: TRIM_WIDTH_M, depth: TRIM_PROJECTION_M,
+        centerY: Math.min(door.height + TRIM_WIDTH_M / 2, WALL_HEIGHT_M - TRIM_WIDTH_M / 2),
+        sideSign, finishRole: 'FRAME', semanticType: 'doorFrame',
+      }, resolveFinish));
     }
-    index.needsUpdate = true;
+
+    // A wide merged entrance is a passage. If neither side can store a full leaf,
+    // show the open frame instead of inventing a panel through a wall or furniture.
+    if (widthM > 1.2) continue;
+    const leafWidth = widthM - 0.02;
+    const occupied = [...floorplan.doors, ...floorplan.windows].filter((item) => item.wallId === wall.id)
+      .map((item) => openingMeters(item.position, item.width, length));
+    occupied.push(...(parked.get(wall.id) ?? []));
+    const gap = TRIM_WIDTH_M + 0.015;
+    const storage: Array<[number, number]> = [[startM - gap - leafWidth, startM - gap], [endM + gap, endM + gap + leafWidth]];
+    const free = storage.find(([a, b]) => a >= wall.thickness / 2 && b <= length - wall.thickness / 2
+      && occupied.every(([c, d]) => b + gap <= c || a - gap >= d));
+    if (!free) continue;
+    parked.set(wall.id, [...(parked.get(wall.id) ?? []), free]);
+    const leaf = wallAlignedBox({
+      wall, tStart: free[0] / length, tEnd: free[1] / length, height: door.height - 0.02,
+      depth: 0.04, centerY: door.height / 2, sideSign: 1, finishRole: 'DOOR', semanticType: 'door',
+    }, resolveFinish);
+    leaf.name = `door-leaf-${door.id}`;
+    leaf.userData['doorId'] = door.id;
+    jobs.push(leaf);
   }
-  geometry.computeVertexNormals();
 }
 
-function addWallFace(
-  group: THREE.Group,
-  wall: FloorplanWall,
-  tStart: number,
-  tEnd: number,
-  yBottom: number,
-  yTop: number,
-  side: number,
-  material: THREE.Material,
-  semanticType: SemanticType,
-  metadata: Record<string, unknown> = {},
-): void {
-  const dx = wall.end[0] - wall.start[0];
-  const dy = wall.end[1] - wall.start[1];
-  const length = Math.hypot(dx, dy);
-  if (length < EPSILON || yTop <= yBottom + EPSILON) return;
-  const nx = -dy / length;
-  const ny = dx / length;
-  const offset = side * (wall.thickness / 2 + 0.0015);
-  const start: Point2 = [wall.start[0] + dx * tStart + nx * offset, wall.start[1] + dy * tStart + ny * offset];
-  const end: Point2 = [wall.start[0] + dx * tEnd + nx * offset, wall.start[1] + dy * tEnd + ny * offset];
-  const positions = new Float32Array([
-    start[0], yBottom, -start[1],
-    end[0], yBottom, -end[1],
-    end[0], yTop, -end[1],
-    start[0], yTop, -start[1],
-  ]);
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-  geometry.setAttribute(
-    'uv',
-    new THREE.Float32BufferAttribute(
-      [length * tStart, yBottom, length * tEnd, yBottom, length * tEnd, yTop, length * tStart, yTop],
-      2,
-    ),
-  );
-  geometry.setIndex(side < 0 ? [0, 1, 2, 0, 2, 3] : [0, 3, 2, 0, 2, 1]);
-  geometry.computeVertexNormals();
-  const mesh = new THREE.Mesh(geometry, material);
-  mesh.userData = { semanticType, ...metadata };
-  mesh.castShadow = true;
-  mesh.receiveShadow = true;
-  group.add(mesh);
-}
+function addWindows(jobs: MeshJob[], floorplan: Floorplan, resolveFinish: FinishResolver): void {
+  for (const window of floorplan.windows) {
+    const wall = floorplan.walls.find((candidate) => candidate.id === window.wallId);
+    if (!wall) continue;
+    const length = distance(wall.start, wall.end);
+    if (length < EPS) continue;
+    const [startM, endM] = openingMeters(window.position, window.width, length);
+    const tStart = startM / length;
+    const tEnd = endM / length;
+    const centerY = window.sillHeight + window.height / 2;
 
-function resolveExteriorSide(wall: FloorplanWall, floorplan: Floorplan): number {
-  const dx = wall.end[0] - wall.start[0];
-  const dy = wall.end[1] - wall.start[1];
-  const length = Math.hypot(dx, dy);
-  if (length < EPSILON) return 1;
-  const midpoint: Point2 = [(wall.start[0] + wall.end[0]) / 2, (wall.start[1] + wall.end[1]) / 2];
-  const nx = -dy / length;
-  const ny = dx / length;
-  const probeDistance = wall.thickness / 2 + 0.04;
-  const plus: Point2 = [midpoint[0] + nx * probeDistance, midpoint[1] + ny * probeDistance];
-  const minus: Point2 = [midpoint[0] - nx * probeDistance, midpoint[1] - ny * probeDistance];
-  const plusInside = floorplan.rooms.some((room) => pointInPolygon(plus, room.polygon));
-  const minusInside = floorplan.rooms.some((room) => pointInPolygon(minus, room.polygon));
-  if (plusInside !== minusInside) return plusInside ? -1 : 1;
+    jobs.push(wallAlignedBox({
+      wall, tStart, tEnd, height: window.height, depth: 0.012, centerY, sideSign: 0,
+      finishRole: null, semanticType: 'window', fixedMaterialId: 'WINDOW_GLASS', castShadow: false,
+    }, resolveFinish));
 
-  const plusInPerimeter = pointInPolygon(plus, floorplan.outerPerimeter);
-  const minusInPerimeter = pointInPolygon(minus, floorplan.outerPerimeter);
-  if (plusInPerimeter !== minusInPerimeter) return plusInPerimeter ? -1 : 1;
-  return 1;
-}
+    const frameT = Math.min(WINDOW_FRAME_WIDTH_M / length, (tEnd - tStart) / 3);
+    const frameH = Math.min(WINDOW_FRAME_WIDTH_M, window.height / 3);
+    const frame = (tA: number, tB: number, height: number, centre: number): void => {
+      jobs.push(wallAlignedBox({
+        wall, tStart: tA, tEnd: tB, height, depth: WINDOW_PROJECTION_M, centerY: centre,
+        sideSign: 0, finishRole: 'FRAME', semanticType: 'windowFrame',
+      }, resolveFinish));
+    };
 
-function pointInPolygon(point: Point2, polygon: Point2[]): boolean {
-  if (polygon.length < 3) return false;
-  let inside = false;
-  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-    const [xi, yi] = polygon[i];
-    const [xj, yj] = polygon[j];
-    const intersects = yi > point[1] !== yj > point[1] && point[0] < ((xj - xi) * (point[1] - yi)) / (yj - yi) + xi;
-    if (intersects) inside = !inside;
+    frame(tStart, tStart + frameT, window.height, centerY);
+    frame(tEnd - frameT, tEnd, window.height, centerY);
+    frame(tStart, tEnd, frameH, window.sillHeight + frameH / 2);
+    frame(tStart, tEnd, frameH, window.sillHeight + window.height - frameH / 2);
+    if (window.width >= 1.2) {
+      const centerT = (tStart + tEnd) / 2;
+      frame(centerT - frameT / 2, centerT + frameT / 2, Math.max(frameH, window.height - frameH * 2), centerY);
+    }
+
+    jobs.push(wallAlignedBox({
+      wall,
+      tStart: Math.max(0, tStart - frameT / 2),
+      tEnd: Math.min(1, tEnd + frameT / 2),
+      height: WINDOW_SILL_HEIGHT_M,
+      depth: wall.thickness + 0.1,
+      centerY: window.sillHeight + WINDOW_SILL_HEIGHT_M / 2,
+      sideSign: 0,
+      finishRole: 'FRAME',
+      semanticType: 'windowFrame',
+    }, resolveFinish));
   }
-  return inside;
 }
 
-function polygonArea(polygon: Point2[]): number {
-  let twiceArea = 0;
-  for (let i = 0; i < polygon.length; i++) {
-    const current = polygon[i];
-    const next = polygon[(i + 1) % polygon.length];
-    twiceArea += current[0] * next[1] - next[0] * current[1];
-  }
-  return Math.abs(twiceArea) / 2;
-}
-
-function polygonCentroid(polygon: Point2[]): Point2 {
-  let twiceArea = 0;
-  let x = 0;
-  let y = 0;
-  for (let i = 0; i < polygon.length; i++) {
-    const current = polygon[i];
-    const next = polygon[(i + 1) % polygon.length];
-    const cross = current[0] * next[1] - next[0] * current[1];
-    twiceArea += cross;
-    x += (current[0] + next[0]) * cross;
-    y += (current[1] + next[1]) * cross;
-  }
-  if (Math.abs(twiceArea) < EPSILON) {
-    return [
-      polygon.reduce((sum, point) => sum + point[0], 0) / polygon.length,
-      polygon.reduce((sum, point) => sum + point[1], 0) / polygon.length,
-    ];
-  }
-  return [x / (3 * twiceArea), y / (3 * twiceArea)];
-}
-
-function addExtrudedPolygon(
-  group: THREE.Group,
-  points: Point2[],
-  yBottom: number,
-  yTop: number,
-  material: THREE.Material,
-  semanticType: SemanticType,
-  metadata: Record<string, unknown> = {},
-): void {
-  const height = yTop - yBottom;
-  if (points.length < 3 || height <= EPSILON) return;
-  const shape = new THREE.Shape();
-  shape.moveTo(points[0][0], points[0][1]);
-  for (let i = 1; i < points.length; i++) shape.lineTo(points[i][0], points[i][1]);
-  shape.closePath();
-  const geometry = new THREE.ExtrudeGeometry(shape, { depth: height, bevelEnabled: false });
-  geometry.rotateX(-Math.PI / 2);
-  const mesh = new THREE.Mesh(geometry, material);
-  mesh.position.y = yBottom;
-  mesh.userData = { semanticType, ...metadata };
-  mesh.castShadow = true;
-  mesh.receiveShadow = true;
-  group.add(mesh);
-}
-
-function distance(a: Point2, b: Point2): number {
-  return Math.hypot(b[0] - a[0], b[1] - a[1]);
-}
+const clamp = (value: number, min: number, max: number): number => Math.max(min, Math.min(max, value));

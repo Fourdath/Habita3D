@@ -24,27 +24,27 @@ function countOctreeTriangles(node: Octree): number {
 }
 
 describe('FloorplanSceneManager', () => {
-  it('loads a floor plan, adding its geometry under the given parent', () => {
+  it('loads a floor plan, adding its geometry under the given parent', async () => {
     const collidables = new THREE.Group();
     const manager = new FloorplanSceneManager(collidables);
 
-    manager.load(PLAN_A);
+    await manager.load(PLAN_A);
 
     expect(manager.currentGroup).not.toBeNull();
     expect(collidables.children).toContain(manager.currentGroup);
     expect(manager.currentGroup!.children.length).toBeGreaterThan(0);
   });
 
-  it('replaces the previous scenario on a second load: disposes old meshes, swaps groups', () => {
+  it('replaces the previous scenario on a second load: disposes old meshes, swaps groups', async () => {
     const collidables = new THREE.Group();
     const manager = new FloorplanSceneManager(collidables);
 
-    manager.load(PLAN_A);
+    await manager.load(PLAN_A);
     const firstGroup = manager.currentGroup!;
     const firstMesh = firstGroup.children[0] as THREE.Mesh;
     const disposeSpy = vi.spyOn(firstMesh.geometry, 'dispose');
 
-    manager.load(PLAN_B);
+    await manager.load(PLAN_B);
 
     expect(disposeSpy).toHaveBeenCalled();
     expect(collidables.children).not.toContain(firstGroup);
@@ -52,24 +52,24 @@ describe('FloorplanSceneManager', () => {
     expect(manager.currentGroup).not.toBe(firstGroup);
   });
 
-  it('throws and leaves the current scenario untouched when the SVG has no walls', () => {
+  it('throws and leaves the current scenario untouched when the SVG has no walls', async () => {
     const collidables = new THREE.Group();
     const manager = new FloorplanSceneManager(collidables);
 
-    manager.load(PLAN_A);
+    await manager.load(PLAN_A);
     const firstGroup = manager.currentGroup;
 
-    expect(() => manager.load('<svg xmlns="http://www.w3.org/2000/svg"></svg>')).toThrow();
+    await expect(manager.load('<svg xmlns="http://www.w3.org/2000/svg"></svg>')).rejects.toThrow();
 
     expect(manager.currentGroup).toBe(firstGroup);
     expect(collidables.children).toContain(firstGroup);
   });
 
-  it('dispose() removes and frees the current group', () => {
+  it('dispose() removes and frees the current group', async () => {
     const collidables = new THREE.Group();
     const manager = new FloorplanSceneManager(collidables);
 
-    manager.load(PLAN_A);
+    await manager.load(PLAN_A);
     const group = manager.currentGroup!;
     const disposeSpy = vi.spyOn((group.children[0] as THREE.Mesh).geometry, 'dispose');
 
@@ -80,13 +80,13 @@ describe('FloorplanSceneManager', () => {
     expect(manager.currentGroup).toBeNull();
   });
 
-  it('composes with other collidable geometry (e.g. terrain) sharing the same parent for one combined Octree rebuild', () => {
+  it('composes with other collidable geometry (e.g. terrain) sharing the same parent for one combined Octree rebuild', async () => {
     // Viewer3DEngine feeds ONE shared "collidables" group to both FloorplanSceneManager
     // and EnvironmentManager, then rebuilds the Octree once from that group — this is
     // what makes house + terrain collide correctly together.
     const collidables = new THREE.Group();
     const manager = new FloorplanSceneManager(collidables);
-    manager.load(PLAN_A);
+    await manager.load(PLAN_A);
 
     const terrainMesh = new THREE.Mesh(new THREE.BoxGeometry(50, 0.3, 50), new THREE.MeshStandardMaterial());
     collidables.add(terrainMesh);

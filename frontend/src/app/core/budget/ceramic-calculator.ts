@@ -1,16 +1,24 @@
 import type { ConstructionProduct } from './construction-product.types';
 
-export interface CeramicEstimate {
-  requiredAreaM2: number;
+export interface CeramicTakeOff {
+  areaM2: number;
+  boxAreaM2: number;
+  boxes: number;
   purchasedAreaM2: number;
-  estimatedUnits: number;
   wasteFactor: number;
 }
 
-export function calculateCeramic(areaM2: number, product: ConstructionProduct): CeramicEstimate {
-  const unitArea = (product.tileWidthMeters ?? 0) * (product.tileHeightMeters ?? 0);
-  if (!(unitArea > 0)) throw new Error(`Product ${product.id} has no ceramic tile dimensions`);
+/**
+ * Boxes of tile for a finished area, including the catalog's cutting-loss factor.
+ * Tile is sold by the box, so the purchase is always rounded up.
+ */
+export function calculateCeramicBoxes(product: ConstructionProduct, areaM2: number): CeramicTakeOff {
+  const tileArea = (product.tileWidthMeters ?? 0) * (product.tileHeightMeters ?? 0);
+  const boxArea = tileArea * (product.tilesPerBox ?? 1);
   const wasteFactor = product.wasteFactor ?? 1;
-  const estimatedUnits = Math.ceil(Math.max(0, areaM2) * wasteFactor / unitArea);
-  return { requiredAreaM2: Math.max(0, areaM2), purchasedAreaM2: estimatedUnits * unitArea, estimatedUnits, wasteFactor };
+  if (boxArea <= 0) {
+    return { areaM2, boxAreaM2: 0, boxes: 0, purchasedAreaM2: 0, wasteFactor };
+  }
+  const boxes = Math.ceil((areaM2 * wasteFactor) / boxArea);
+  return { areaM2, boxAreaM2: boxArea, boxes, purchasedAreaM2: boxes * boxArea, wasteFactor };
 }

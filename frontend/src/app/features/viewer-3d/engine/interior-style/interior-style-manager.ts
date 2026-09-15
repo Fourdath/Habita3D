@@ -2,7 +2,7 @@ import * as THREE from 'three';
 
 import { computeConstructionBudget } from '../../../../core/budget/budget-calculator';
 import type { ConstructionBudgetSummary } from '../../../../core/budget/budget.types';
-import type { Floorplan } from '../../../../core/floorplan/floorplan.types';
+import type { SurfaceManifest } from '../../../../core/budget/surface-manifest.types';
 import { getInteriorStyle } from '../../../../core/interior-style/interior-style-catalog';
 import type { InteriorStyleId } from '../../../../core/interior-style/interior-style.types';
 import { getStyleMaterialPreset } from '../../../../core/materials/style-material-presets';
@@ -10,12 +10,13 @@ import {
   resolveRoomCeilingMaterial,
   resolveRoomFloorMaterial,
   resolveWallSurfaceMaterial,
+  resolveFinishByRole,
 } from '../../../../core/materials/surface-material-resolver';
-import type { MaterialId, WallSurfaceOverride } from '../../../../core/materials/material.types';
+import type { MaterialId, WallSurfaceOverride, SurfaceUserData } from '../../../../core/materials/material.types';
 import { MaterialRegistry } from '../materials/material-registry';
 import type { SemanticType } from '../viewer-3d.types';
 
-interface SemanticMetadata {
+interface SemanticMetadata extends SurfaceUserData {
   semanticType?: SemanticType;
   wallId?: string;
   wallSide?: 'A' | 'B';
@@ -46,9 +47,9 @@ export class InteriorStyleManager {
     this.wallOverrides = [...overrides];
   }
 
-  getBudget(floorplan?: Floorplan): ConstructionBudgetSummary {
-    return floorplan
-      ? computeConstructionBudget(floorplan, this.currentStyleId)
+  getBudget(manifest?: SurfaceManifest): ConstructionBudgetSummary {
+    return manifest
+      ? computeConstructionBudget(manifest, this.currentStyleId)
       : { styleId: this.currentStyleId, isDemoPricing: true, items: [], totalClp: 0, requiresStructuralSpecification: false };
   }
 
@@ -83,6 +84,13 @@ export class InteriorStyleManager {
   }
 
   private resolveMaterialId(styleId: InteriorStyleId, metadata: SemanticMetadata): MaterialId {
+    if (metadata.finishRole) {
+      const override = (metadata.semanticType === 'wall-finish' || metadata.semanticType === 'exterior-finish')
+        ? this.wallOverrides.find((item) => item.wallId === metadata.wallId && item.side === metadata.wallSide)
+        : undefined;
+      return override?.materialId ?? resolveFinishByRole(styleId, metadata);
+    }
+    if (metadata.materialId) return metadata.materialId;
     const preset = getStyleMaterialPreset(styleId);
     switch (metadata.semanticType) {
       case 'wall-finish':
@@ -119,7 +127,7 @@ export class InteriorStyleManager {
       case 'lightFixture':
         return 'LIGHT_FIXTURE';
       case 'wall-structure':
-        return 'DEFAULT_WALL_NEUTRAL';
+        return 'WALL_CORE_STRUCTURE';
       case 'wall':
         return preset.dryWall;
       case 'exteriorWall':

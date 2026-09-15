@@ -46,3 +46,20 @@ export function optimizeLinearCuts(stockLength: number, requiredSegments: readon
     cutPlan: bins.map((cuts, stockIndex) => ({ stockIndex, cuts, leftoverLength: Math.max(0, stockLength - cuts.reduce((sum, value) => sum + value, 0)) })),
   };
 }
+export function splitLinear(segmentLengthM: number, stockLength: number): number[] {
+  if (!Number.isFinite(stockLength) || stockLength <= 0 || !Number.isFinite(segmentLengthM)) throw new Error('Invalid cut dimensions');
+  const cuts: number[] = [];
+  let remaining = Math.max(0, segmentLengthM);
+  while (remaining > 1e-6) {
+    const cut = Math.min(stockLength, remaining);
+    cuts.push(cut);
+    remaining -= cut;
+  }
+  return cuts;
+}
+
+
+export function packLinear(stockLength: number, cuts: readonly number[]) {
+  const result = optimizeLinearCuts(stockLength, cuts);
+  return { ...result, requiredLengthM: result.requiredLength, purchasedLengthM: result.purchasedLength };
+}

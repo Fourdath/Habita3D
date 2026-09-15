@@ -1,3 +1,5 @@
+import { buildFloorplanGroup } from '../floorplan-geometry';
+import { MaterialRegistry } from '../materials/material-registry';
 import * as THREE from 'three';
 
 import { InteriorStyleManager } from './interior-style-manager';
@@ -48,11 +50,11 @@ describe('InteriorStyleManager', () => {
   afterEach(() => vi.restoreAllMocks());
 
   it('starts on the neutral style', () => {
-    expect(new InteriorStyleManager().currentStyle).toBe('none');
+    expect(new InteriorStyleManager(new MaterialRegistry(1, textureFactory)).currentStyle).toBe('none');
   });
 
   it('applies separate materials to every semantic architectural finish', async () => {
-    const manager = new InteriorStyleManager();
+    const manager = new InteriorStyleManager(new MaterialRegistry(1, textureFactory));
     const house = buildHouseGroup();
     const original = new Map(
       house.children
@@ -72,7 +74,7 @@ describe('InteriorStyleManager', () => {
   });
 
   it('updates room lights using the selected style palette', async () => {
-    const manager = new InteriorStyleManager();
+    const manager = new InteriorStyleManager(new MaterialRegistry(1, textureFactory));
     const house = buildHouseGroup();
     const light = house.getObjectByName('roomLight') as THREE.PointLight;
 
@@ -83,7 +85,7 @@ describe('InteriorStyleManager', () => {
   });
 
   it('resolves room surfaces and keeps industrial accents opt-in per wall side', async () => {
-    const manager = new InteriorStyleManager();
+    const manager = new InteriorStyleManager(new MaterialRegistry(1, textureFactory));
     const house = new THREE.Group();
     const wallA = new THREE.Mesh(new THREE.PlaneGeometry(), new THREE.MeshStandardMaterial());
     wallA.userData = { semanticType: 'wall-finish', wallId: 'w', wallSide: 'A', environment: 'INTERIOR', roomSemantic: 'DRY' };
@@ -103,7 +105,7 @@ describe('InteriorStyleManager', () => {
   });
 
   it('walks none -> nordic -> industrial with fresh finish materials', async () => {
-    const manager = new InteriorStyleManager();
+    const manager = new InteriorStyleManager(new MaterialRegistry(1, textureFactory));
     const house = buildHouseGroup();
 
     await manager.applyStyle('none', house, 1);
@@ -119,14 +121,14 @@ describe('InteriorStyleManager', () => {
   });
 
   it('does not create furniture for any floor plan', async () => {
-    const manager = new InteriorStyleManager();
+    const manager = new InteriorStyleManager(new MaterialRegistry(1, textureFactory));
     const house = buildHouseGroup();
     await manager.applyStyle('nordic', house, 1);
     expect(house.getObjectByName('furniture')).toBeUndefined();
   });
 
   it('keeps only the result of the latest rapid style request', async () => {
-    const manager = new InteriorStyleManager();
+    const manager = new InteriorStyleManager(new MaterialRegistry(1, textureFactory));
     const house = buildHouseGroup();
     await Promise.all([
       manager.applyStyle('nordic', house, 1),
@@ -137,16 +139,21 @@ describe('InteriorStyleManager', () => {
   });
 
   it('computes the budget for the selected style', async () => {
-    const manager = new InteriorStyleManager();
+    const manager = new InteriorStyleManager(new MaterialRegistry(1, textureFactory));
     expect(manager.getBudget().totalClp).toBe(0);
     await manager.applyStyle('industrial', buildHouseGroup(), 1);
-    expect(manager.getBudget(BUDGET_PLAN).totalClp).toBeGreaterThan(0);
-    expect(manager.getBudget(BUDGET_PLAN).styleId).toBe('industrial');
+    const { manifest } = await buildFloorplanGroup(BUDGET_PLAN, new MaterialRegistry(1, textureFactory), 'industrial');
+    expect(manager.getBudget(manifest).totalClp).toBeGreaterThan(0);
+    expect(manager.getBudget(manifest).styleId).toBe('industrial');
   });
 
   it('can be disposed after style application', async () => {
-    const manager = new InteriorStyleManager();
+    const manager = new InteriorStyleManager(new MaterialRegistry(1, textureFactory));
     await manager.applyStyle('nordic', buildHouseGroup(), 1);
     expect(() => manager.dispose()).not.toThrow();
   });
 });
+
+
+
+const textureFactory = () => ({ map: new THREE.Texture(), normal: new THREE.Texture(), roughness: null });

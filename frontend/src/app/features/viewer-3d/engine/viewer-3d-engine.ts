@@ -6,6 +6,7 @@ import type { ConstructionBudgetSummary } from '../../../core/budget/budget.type
 import type { InteriorStyleId } from '../../../core/interior-style/interior-style.types';
 import { FLOORPLAN_URL } from '../../../core/floorplan/floorplan.constants';
 import type { Floorplan } from '../../../core/floorplan/floorplan.types';
+import { resolveFloorplanSpawn } from '../../../core/floorplan/floorplan-spawn';
 import type { WallSurfaceOverride } from '../../../core/materials/material.types';
 
 import { EnvironmentManager } from './environment/environment-manager';
@@ -15,6 +16,7 @@ import { KeyboardMovementInput } from './movement-input';
 import { MaterialRegistry } from './materials/material-registry';
 import { PlayerController } from './player-controller';
 import { PointerLockLookInput } from './pointer-lock-look-input';
+import { OverviewController } from './overview-controller';
 import { disposeObject3D } from './three-object-disposal';
 import {
   CAMERA_FAR,
@@ -22,6 +24,7 @@ import {
   CAMERA_NEAR,
   MAX_DELTA_TIME,
   STEPS_PER_FRAME,
+  PLAYER_CAPSULE_RADIUS,
 } from './viewer-3d.constants';
 import type { MovementInputSource, Viewer3DEngineCallbacks } from './viewer-3d.types';
 
@@ -53,6 +56,8 @@ export class Viewer3DEngine {
   private readonly movementInput: MovementInputSource;
   private readonly lookInput: PointerLockLookInput;
   private readonly player: PlayerController;
+  private readonly overview: OverviewController;
+  private viewMode: 'walk' | 'overview' = 'walk';
 
   private currentFloorplan: Floorplan | null = null;
   private disposed = false;
@@ -66,7 +71,7 @@ export class Viewer3DEngine {
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.05;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -90,7 +95,7 @@ export class Viewer3DEngine {
     this.scene.add(this.collidables);
 
     this.materialRegistry = new MaterialRegistry(this.renderer.capabilities.getMaxAnisotropy());
-    this.floorplanScene = new FloorplanSceneManager(this.collidables);
+    this.floorplanScene = new FloorplanSceneManager(this.collidables, this.materialRegistry);
     this.environment = new EnvironmentManager(this.scene, this.collidables, this.materialRegistry);
     this.interiorStyle = new InteriorStyleManager(this.materialRegistry);
 
@@ -99,6 +104,7 @@ export class Viewer3DEngine {
       this.callbacks.onPointerLockChange?.(locked),
     );
     this.player = new PlayerController(this.camera, this.worldOctree, this.movementInput);
+    this.overview = new OverviewController(this.renderer.domElement);
 
     this.resizeObserver = new ResizeObserver(() => this.handleResize());
     this.resizeObserver.observe(this.container);
@@ -110,7 +116,18 @@ export class Viewer3DEngine {
   }
 
   requestPointerLock(): void {
-    this.lookInput.requestLock();
+    if (this.viewMode === 'walk') this.lookInput.requestLock();
+  }
+
+  setViewMode(mode: 'walk' | 'overview'): void {
+    if (this.disposed) return;
+    this.viewMode = mode;
+    if (mode === 'overview' && document.pointerLockElement === this.renderer.domElement) document.exitPointerLock();
+    this.overview.setEnabled(mode === 'overview');
+  }
+
+  frameOverview(top = false): void {
+    this.overview.frame(top);
   }
 
   /**
@@ -123,19 +140,24 @@ export class Viewer3DEngine {
    * into a usable plan.
    */
   async loadFloorplanFromSvgText(svgText: string): Promise<void> {
-    const floorplan = this.floorplanScene.load(svgText);
+    if (this.disposed) return;
+    const floorplan = await this.floorplanScene.load(svgText, this.interiorStyle.currentStyle);
+    if (!floorplan || this.disposed) return;
     this.currentFloorplan = floorplan;
 
     const maxAnisotropy = this.renderer.capabilities.getMaxAnisotropy();
     await this.environment.rebuild(floorplan, maxAnisotropy);
+    if (this.disposed || this.currentFloorplan !== floorplan) return;
     await this.interiorStyle.applyStyle(
       this.interiorStyle.currentStyle,
       this.floorplanScene.currentGroup,
       maxAnisotropy,
     );
 
+    if (this.disposed || this.currentFloorplan !== floorplan) return;
     this.rebuildCollisions();
-    this.player.respawn();
+    this.player.respawn(resolveFloorplanSpawn(floorplan, PLAYER_CAPSULE_RADIUS));
+    this.overview.setHouse(this.floorplanScene.currentGroup);
   }
 
   /**
@@ -143,6 +165,7 @@ export class Viewer3DEngine {
    * the player's position.
    */
   async applyInteriorStyle(styleId: InteriorStyleId): Promise<void> {
+    if (this.disposed) return;
     await this.interiorStyle.applyStyle(
       styleId,
       this.floorplanScene.currentGroup,
@@ -161,7 +184,7 @@ export class Viewer3DEngine {
   }
 
   getBudget(): ConstructionBudgetSummary {
-    return this.interiorStyle.getBudget(this.currentFloorplan ?? undefined);
+    return this.interiorStyle.getBudget(this.floorplanScene.currentManifest);
   }
 
   dispose(): void {
@@ -174,6 +197,7 @@ export class Viewer3DEngine {
     this.resizeObserver.disconnect();
     this.movementInput.dispose();
     this.lookInput.dispose();
+    this.overview.dispose();
     this.interiorStyle.dispose();
     this.environment.dispose();
     this.floorplanScene.dispose();
@@ -202,18 +226,20 @@ export class Viewer3DEngine {
       const svgText = await response.text();
       await this.loadFloorplanFromSvgText(svgText);
 
-      this.callbacks.onReady?.();
+      if (!this.disposed) this.callbacks.onReady?.();
     } catch (error) {
-      this.callbacks.onError?.(error);
+      if (!this.disposed) this.callbacks.onError?.(error);
     }
   }
 
   private readonly animate = (): void => {
     const deltaTime = Math.min(MAX_DELTA_TIME, this.clock.getDelta()) / STEPS_PER_FRAME;
-    for (let i = 0; i < STEPS_PER_FRAME; i++) {
-      this.player.update(deltaTime);
+    if (this.viewMode === 'walk') {
+      for (let i = 0; i < STEPS_PER_FRAME; i++) this.player.update(deltaTime);
+    } else {
+      this.overview.update();
     }
-    this.renderer.render(this.scene, this.camera);
+    this.renderer.render(this.scene, this.viewMode === 'overview' ? this.overview.camera : this.camera);
   };
 
   private handleResize(): void {
@@ -221,6 +247,7 @@ export class Viewer3DEngine {
     const height = this.container.clientHeight || 1;
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
+    this.overview.resize(width / height);
     this.renderer.setSize(width, height, false);
   }
 

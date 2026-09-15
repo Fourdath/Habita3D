@@ -19,6 +19,8 @@ export interface FloorplanWall {
   /** Wall thickness in meters. */
   thickness: number;
   isExterior: boolean;
+  /** g.Railing in the SVG: never receives an accent finish. */
+  isRailing?: boolean;
 }
 
 export interface FloorplanDoor {
@@ -48,6 +50,8 @@ export interface FloorplanRoom {
   polygon: Point2[];
   /** Deterministic semantic classification, refined with fixtures after parsing. */
   semantic: RoomSemantic;
+  /** Living/dining: the only rooms eligible for a brick accent face. */
+  isLiving?: boolean;
 }
 
 export interface Floorplan {

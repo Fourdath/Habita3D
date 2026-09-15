@@ -16,7 +16,7 @@
       </div>
     }
 
-    @if (status() === 'ready' && !pointerLocked()) {
+    @if (status() === 'ready' && viewMode() === 'walk' && !pointerLocked()) {
       <button type="button" class="viewer-3d__overlay viewer-3d__overlay--interactive" (click)="onStartClick()">
         <p class="viewer-3d__overlay-title">Haz clic para comenzar</p>
         <ul class="viewer-3d__instructions">
@@ -29,6 +29,15 @@
     }
 
     @if (status() === 'ready') {
+      <nav class="viewer-3d__views" aria-label="Vista de la vivienda">
+        <button type="button" [attr.aria-pressed]="viewMode() === 'walk'" (click)="onViewModeChange('walk')">Recorrer</button>
+        <button type="button" [attr.aria-pressed]="viewMode() === 'overview'" (click)="onViewModeChange('overview')">Vista general</button>
+        @if (viewMode() === 'overview') {
+          <button type="button" (click)="onFrameOverview(true)">Desde arriba</button>
+          <button type="button" (click)="onFrameOverview()">Centrar</button>
+          <p>Arrastra para girar · Rueda para acercar o alejar · Botón derecho para desplazar</p>
+        }
+      </nav>
       <div class="viewer-3d__floorplan-picker">
         <label class="viewer-3d__floorplan-picker-button">
           Cargar plano SVG

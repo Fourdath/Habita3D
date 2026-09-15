@@ -110,7 +110,7 @@ describe('wall thickness resolution', () => {
     // own polygon projected onto the (unchanged) centerline — same numbers as before.
     expect(plan.doors[0].position).toBeGreaterThan(0);
     expect(plan.doors[0].position).toBeLessThan(1);
-    expect(plan.doors[0].width).toBeCloseTo(0.7, 2);
+    expect(plan.doors[0].width).toBeCloseTo(0.9, 2);
   });
 
   it('never produces NaN, zero, or negative thickness for a degenerate wall polygon', () => {

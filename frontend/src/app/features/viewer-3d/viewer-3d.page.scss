@@ -93,7 +93,40 @@
   z-index: 1;
 }
 
+.viewer-3d__views {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  width: max-content;
+  max-width: calc(100% - 32px);
+  padding: 8px;
+  border-radius: 12px;
+  color: white;
+  background: rgba(0, 0, 0, 0.72);
+
+  button {
+    padding: 10px 14px;
+    border: 1px solid #ffffff50;
+    border-radius: 7px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+  }
+
+  button[aria-pressed='true'] { background: #315e76; }
+  button:focus-visible { outline: 2px solid white; }
+  p { flex-basis: 100%; margin: 3px 0; font-size: 0.75rem; text-align: center; }
+}
+
 @media (max-width: 600px) {
+  .viewer-3d__views { top: 65px; bottom: auto; }
   .viewer-3d__style-panel {
     top: auto;
     right: 16px;
