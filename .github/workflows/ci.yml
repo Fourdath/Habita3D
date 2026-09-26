@@ -2,8 +2,11 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop, 'feature/**', 'codex/**']
   pull_request:
+
+permissions:
+  contents: read
 
 jobs:
   frontend:
@@ -58,3 +61,27 @@ jobs:
       - run: pip install -r requirements-dev.txt
       - run: ruff check .
       - run: pytest
+
+  terraform-staging:
+    name: Terraform staging plan
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infrastructure/terraform/staging
+    env:
+      TF_IN_AUTOMATION: 'true'
+      # Pull requests execute the proposed Terraform code. Use only a dummy value
+      # for this plan-only job; real staging credentials must never enter PR CI.
+      TF_VAR_database_password: 'ep1-ci-plan-placeholder'
+      TF_VAR_frontend_port: ${{ vars.STAGING_FRONTEND_PORT || '18080' }}
+      TF_VAR_image_tag: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '1.16.0'
+      - run: docker info --format '{{.ServerVersion}}'
+      - run: terraform fmt -check -recursive ..
+      - run: terraform init -backend=false -input=false -lockfile=readonly
+      - run: terraform validate -no-color
+      - run: terraform plan -input=false -no-color

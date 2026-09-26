@@ -32,6 +32,9 @@ venv/
 *.tfstate
 *.tfstate.*
 *.tfplan
+**/terraform.tfvars
+**/*.auto.tfvars
+**/*.tfvars.json
 crash.log
 
 # Docker
