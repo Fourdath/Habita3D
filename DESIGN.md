@@ -3,8 +3,8 @@
 ## Purpose
 
 Habita3D helps users visualize interior/architectural projects in 3D, explore materials, and
-get recommendations. This document describes the current (bootstrap) architecture and the
-scope intentionally deferred beyond it.
+get recommendations. The current design, deployment zones, data model and ADR are documented
+in [docs/architecture/overview.md](docs/architecture/overview.md).
 
 ## Architecture overview
 
@@ -31,32 +31,29 @@ scope intentionally deferred beyond it.
 ## Module boundaries (backend)
 
 `src/modules/{auth,users,projects,scenes,materials,recommendations,health}` — one Nest module
-per bounded context. Only `health` has real logic today; the rest are empty module shells so
-the dependency graph and folder conventions are established before feature work begins.
+per bounded context. `health` and `projects` have controllers and services; `projects` persists
+to PostgreSQL through Prisma. Authentication and the remaining domains are placeholders.
 
 ## Frontend feature boundaries
 
 `src/app/features/{landing,auth,projects,viewer-3d,materials,recommendations}` mirror the
-backend's bounded contexts. `core/` will hold singleton services, route guards, and HTTP
-interceptors; `shared/` will hold reusable, presentation-only building blocks. Both are empty
-placeholders for now.
+backend's bounded contexts. `landing` and `viewer-3d` are navigable; `core/` contains the
+floor-plan, construction, material and budget logic. API services, guards and the other
+feature pages remain pending.
 
 ## Deferred scope (deliberate, not oversight)
 
-The following are out of scope for this bootstrap and are tracked as future work:
+The following areas are still pending in the current implementation:
 
 - **Visual design system** — no UI/branding has been applied; pages use framework defaults.
-- **3D viewer (Three.js)** — `features/viewer-3d` and `public/assets/models/demo` are placeholders.
+- **Full mobile 3D walkthrough** — the overview works on touch devices; first-person movement still uses keyboard and mouse.
 - **Authentication** — `features/auth` (frontend) and `modules/auth` (backend) are empty; no
   session/token strategy has been chosen yet.
 - **Scraping** — `python-service/app/services/scraping` is a placeholder.
 - **Recommendations** — both `modules/recommendations` (backend) and
   `app/services/recommendation` (python-service) are placeholders; no model or ranking logic exists.
-- **Floor-plan processing** — `app/services/plan-processing` is a placeholder.
-- **Infrastructure/Terraform** — `infrastructure/terraform` is empty; no cloud provider or
-  environment topology has been decided.
-- **Deployment** — CI currently only installs, lints, tests, and builds; there is no CD/release
-  pipeline.
+- **Floor-plan processing in Python** — `app/services/plan-processing` is a placeholder; the Angular viewer already parses SVG plans locally.
+- **Deployment** — [Terraform](infrastructure/terraform/README.md) defines a local EP1 staging plan and CI validates it. No `apply`, remote provider or CD/release pipeline exists yet.
 - **End-to-end tests** — `tests/e2e` is empty; will be populated once there is a UI worth
   driving end-to-end.
 
@@ -69,8 +66,7 @@ graph focused on core domain/API concerns.
 
 ## Data flow contract (current)
 
-Today the only real contract is the health check, mirrored across both backend services so
-orchestration (Docker Compose, future readiness probes) has a consistent shape:
+Both backend services expose a health endpoint with this response shape:
 
 ```json
 { "status": "ok", "timestamp": "2026-09-01T00:00:00.000Z" }

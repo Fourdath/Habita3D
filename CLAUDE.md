@@ -4,11 +4,10 @@ Guidance for AI coding assistants (and human contributors) working in this repos
 
 ## What this repo is right now
 
-A **bootstrap**. Four services (`frontend`, `backend`, `python-service`, `postgres`) with
-official-generator scaffolding, a shared health-check contract, and CI. Most feature folders
-are intentionally empty (`.gitkeep` only). Before adding logic to any placeholder folder, check
-[DESIGN.md](DESIGN.md)'s "Deferred scope" section — if it's listed there, confirm with the user
-before implementing rather than assuming it's expected.
+Four services (`frontend`, `backend`, `python-service`, `postgres`) with a working 3D viewer,
+an initial Prisma-backed project API, and preliminary staging infrastructure. Several feature
+folders are placeholders. See [DESIGN.md](DESIGN.md) for the current implementation state and
+the [EP1 architecture](docs/architecture/overview.md) for planned integrations.
 
 ## Repository structure
 
@@ -21,9 +20,8 @@ before implementing rather than assuming it's expected.
 - `python-service/` — FastAPI, routers under `app/api/`, domain services under
   `app/services/*`. Uses `requirements.txt` (runtime) / `requirements-dev.txt` (adds pytest,
   httpx, ruff) rather than a build backend, since this is an app, not a published package.
-- `docs/` — `product/`, `design/`, `architecture/`, `adr/` — currently empty, for future
-  documentation.
-- `infrastructure/terraform/`, `tests/e2e/` — empty, future work.
+- `docs/` — architecture diagrams, initial data model, ADR and design notes.
+- `infrastructure/terraform/` — isolated local staging plan; `tests/e2e/` is still pending.
 
 ## Conventions
 
@@ -31,8 +29,7 @@ before implementing rather than assuming it's expected.
   `--no-git` / `--skip-git` equivalents; they must stay part of the single root repo.
 - Don't reintroduce `src/assets` in the frontend — the build (`angular.json`) is configured to
   read static assets from `public/`.
-- Backend modules other than `health` are empty on purpose. Don't add speculative providers/
-  controllers to them without a concrete feature request.
+- `health` and `projects` contain working backend controllers. Other modules remain placeholders.
 - Global API prefix for the backend is `api` (set in `src/main.ts`), so routes are exposed as
   `/api/<module>`, matching `GET /api/health`.
 - The FastAPI service exposes routes without an `/api` prefix (`GET /health`), matching how it's
@@ -57,9 +54,8 @@ docker compose up --build
 
 ## What NOT to do without explicit instruction
 
-- Don't implement the visual design system, Three.js viewer, real authentication, scraping,
-  recommendation models, floor-plan processing, Terraform resources, or a CD/deployment
-  pipeline — all deliberately deferred (see DESIGN.md).
+- Keep new feature work aligned with the project requirements and the user request. The
+  Terraform staging plan is part of EP1; `apply` and automatic deployment are later steps.
 - Don't add Android/iOS native platforms via `ionic capacitor add` — Capacitor is configured
   but no native platform has been added yet.
-- Don't add security-scanning steps to CI — that was explicitly excluded from this bootstrap.
+- CI security controls are required by the course project, although they remain incomplete.

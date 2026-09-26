@@ -1,0 +1,8 @@
+# Optional, non-sensitive overrides for a local EP1 plan.
+# Copy to terraform.tfvars only on your machine. The real password must be
+# supplied separately using TF_VAR_database_password.
+name_prefix   = "habita3d-staging"
+image_tag     = "ep1"
+frontend_port = 18080
+database_name = "habita3d_staging"
+database_user = "habita3d_staging"

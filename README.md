@@ -1,12 +1,10 @@
 # Habita3D
 
-Monorepo bootstrap for Habita3D: an Ionic/Angular frontend, a NestJS backend, a FastAPI
-specialized service, and PostgreSQL, orchestrated with Docker Compose.
-
-This repository is currently a **bootstrap**: project skeletons, tooling, and a minimal
-health-check contract between services. Feature work (visual design, 3D viewer, real auth,
-scraping, recommendations, floor-plan processing, infrastructure/deployment) is intentionally
-not implemented yet — see [DESIGN.md](DESIGN.md) for what is deferred and why.
+Habita3D helps clients explore a home in 3D, compare finishes and estimate a budget.
+The repository contains an Ionic/Angular viewer prototype, a NestJS API backed by
+PostgreSQL, a FastAPI service, and separate development and preliminary staging
+infrastructure. The viewer and budget use demonstration data; web-sourced prices,
+recommendations and the integrated request flow are still in development.
 
 ## Stack
 
@@ -21,20 +19,20 @@ not implemented yet — see [DESIGN.md](DESIGN.md) for what is deferred and why.
 
 ```
 frontend/            Ionic + Angular standalone app (Capacitor-enabled)
-  src/app/core/       Singleton services, guards, interceptors (future work)
+  src/app/core/       Floor-plan, material, construction and budget logic
   src/app/shared/      Reusable components/pipes/directives (future work)
   src/app/features/   Feature modules: landing, auth, projects, viewer-3d, materials, recommendations
-  public/assets/      Static assets, incl. models/demo for the future 3D viewer
+  public/assets/      Static plans, textures and models for the 3D viewer
 backend/             NestJS API
   src/modules/        auth, users, projects, scenes, materials, recommendations, health
-  database/           Migrations/seeds (future work)
+  prisma/             Project model and initial migration
   test/               e2e tests
 python-service/      FastAPI specialized service
   app/api/            HTTP routers (health implemented; others future work)
   app/services/       scraping, recommendation, plan-processing (future work)
   tests/              pytest suite
-docs/                product, design, architecture, adr
-infrastructure/      terraform (future work)
+docs/                Architecture, initial data model, ADR and design notes
+infrastructure/      Terraform definition of an isolated local staging environment
 tests/e2e            cross-service end-to-end tests (future work)
 .github/workflows/   CI
 ```
@@ -53,7 +51,11 @@ Copy the environment template:
 cp .env.example .env
 ```
 
-### Run everything with Docker Compose
+### Run the development stack with Docker Compose
+
+This is the intended full-stack command. The current backend Dockerfile still needs Prisma
+client generation and migration handling before the API container can run successfully;
+frontend, Python and PostgreSQL can be started while that work is completed.
 
 ```sh
 docker compose up --build
@@ -88,8 +90,21 @@ cd backend && npm run lint && npm test && npm run build
 cd python-service && ruff check . && pytest
 ```
 
-CI (`.github/workflows/ci.yml`) runs the same install/lint/test/build steps for each service
-on every push and pull request.
+CI (`.github/workflows/ci.yml`) runs install/lint/test/build steps for each service and
+also checks the staging Terraform format, initialization, validation and plan.
+
+## Architecture and preliminary staging
+
+- [Architecture, container and deployment diagrams](docs/architecture/overview.md)
+- [Initial data model](docs/architecture/data-model.md)
+- [Architecture decisions](docs/adr/0001-staging-local-con-terraform.md)
+- [Terraform staging guide](infrastructure/terraform/README.md)
+
+Development runs with Docker Compose. The EP1 staging configuration is independent and
+plans four containers, three networks and a persistent PostgreSQL volume on a local Docker
+host. The Terraform plan is verified; `terraform apply` has not been performed. Before an
+application deployment, the backend image still needs Prisma client generation and
+migration execution, and the frontend–NestJS–FastAPI integration must be completed.
 
 ## Health checks
 
@@ -98,5 +113,5 @@ on every push and pull request.
 
 ## Further reading
 
-- [DESIGN.md](DESIGN.md) — architecture overview and deferred scope
+- [DESIGN.md](DESIGN.md) — architecture overview and current limits
 - [CLAUDE.md](CLAUDE.md) — guidance for AI coding assistants working in this repo
