@@ -1,63 +1,100 @@
 <ion-content [fullscreen]="true">
-
   <main class="landing">
-
-    <section class="hero">
-
+    <section class="hero" aria-labelledby="hero-title">
       <div class="hero-content">
-
-        <span class="badge">
-          Visualización interactiva
-        </span>
-
-        <h1>
-          Diseña y visualiza
-          <span>tu espacio en 3D</span>
-        </h1>
-
+        <span class="badge">Visualización interactiva</span>
+        <h1 id="hero-title">Diseña y visualiza <span>tu espacio en 3D</span></h1>
         <p class="description">
-          Explora espacios tridimensionales de forma interactiva
-          y visualiza distintas posibilidades para su diseño.
+          Explora espacios tridimensionales de forma interactiva y visualiza
+          distintas posibilidades para su diseño.
         </p>
-
         <div class="actions">
-
-          <ion-button
-            routerLink="/viewer-3d"
-            size="large"
-            class="primary-button"
-          >
+          <ion-button routerLink="/viewer-3d" size="large" class="primary-button">
             Abrir visualizador 3D
           </ion-button>
-
         </div>
-
       </div>
 
-      <div class="hero-preview">
-
+      <div class="hero-preview" aria-hidden="true">
         <div class="preview-card">
-
           <div class="preview-grid"></div>
-
           <div class="preview-content">
             <span>VISOR 3D</span>
-
-            <h2>
-              Explora tu espacio
-            </h2>
-
-            <p>
-              Muévete libremente dentro del entorno tridimensional.
-            </p>
+            <h2>Explora tu espacio</h2>
+            <p>Muévete libremente dentro del entorno tridimensional.</p>
           </div>
-
         </div>
-
       </div>
-
     </section>
 
-  </main>
+    <section class="estimate-section" aria-labelledby="estimate-title">
+      <div class="estimate-intro">
+        <span class="badge">Vista previa de EP1</span>
+        <h2 id="estimate-title">Explora una estimación inicial</h2>
+        <p>
+          Registra una vivienda de prueba y solicita una recomendación preliminar
+          según su superficie y presupuesto. Los valores son de demostración:
+          no provienen de precios ni disponibilidad de tiendas web.
+        </p>
+      </div>
 
+      <form class="estimate-form" [formGroup]="previewForm" (ngSubmit)="submitPreview()">
+        <div class="form-field">
+          <label for="preview-name">Nombre del proyecto</label>
+          <input id="preview-name" type="text" formControlName="name" maxlength="120"
+            autocomplete="off" [attr.aria-invalid]="previewForm.controls.name.invalid && previewForm.controls.name.touched" />
+          @if (previewForm.controls.name.invalid && previewForm.controls.name.touched) {
+            <small class="field-error">Escribe un nombre de hasta 120 caracteres.</small>
+          }
+        </div>
+
+        <div class="form-row">
+          <div class="form-field">
+            <label for="preview-area">Superficie (m²)</label>
+            <input id="preview-area" type="number" formControlName="areaM2" min="1" max="10000" step="1"
+              inputmode="numeric" [attr.aria-invalid]="previewForm.controls.areaM2.invalid && previewForm.controls.areaM2.touched" />
+            @if (previewForm.controls.areaM2.invalid && previewForm.controls.areaM2.touched) {
+              <small class="field-error">Ingresa una superficie entre 1 y 10.000 m².</small>
+            }
+          </div>
+
+          <div class="form-field">
+            <label for="preview-budget">Presupuesto (CLP)</label>
+            <input id="preview-budget" type="number" formControlName="budgetClp" min="1" step="1"
+              inputmode="numeric" [attr.aria-invalid]="previewForm.controls.budgetClp.invalid && previewForm.controls.budgetClp.touched" />
+            @if (previewForm.controls.budgetClp.invalid && previewForm.controls.budgetClp.touched) {
+              <small class="field-error">Ingresa un presupuesto entero mayor que cero.</small>
+            }
+          </div>
+        </div>
+
+        <button class="estimate-submit" type="submit" [disabled]="isLoading()"
+          [attr.aria-busy]="isLoading()">
+          {{ isLoading() ? 'Calculando…' : 'Crear vista previa' }}
+        </button>
+
+        @if (errorMessage()) {
+          <p class="form-alert" role="alert">{{ errorMessage() }}</p>
+        }
+      </form>
+
+      @if (preview(); as result) {
+        <section class="estimate-result" aria-label="Resultado de la estimación" role="status">
+          <div>
+            <span class="result-label">Proyecto guardado</span>
+            <h3>{{ result.project.name }}</h3>
+            <p class="project-id">ID: {{ result.project.id }}</p>
+          </div>
+          <div class="result-grid">
+            <p><span>Nivel recomendado</span><strong>{{ result.recommendation.recommended_tier }}</strong></p>
+            <p><span>Costo estimado</span><strong>{{ formatClp(result.recommendation.estimated_cost_clp) }}</strong></p>
+            <p><span>Diferencia con el presupuesto</span><strong>{{ formatClp(result.recommendation.budget_difference_clp) }}</strong></p>
+            <p><span>Resultado</span><strong>{{ result.recommendation.fits_budget ? 'Dentro del presupuesto' : 'Supera el presupuesto' }}</strong></p>
+          </div>
+          <p class="result-reason">{{ result.recommendation.reason }}</p>
+          <p class="result-disclaimer">Estimación de demostración; no representa una cotización ni precios web actualizados.</p>
+        </section>
+      }
+    </section>
+  </main>
 </ion-content>
