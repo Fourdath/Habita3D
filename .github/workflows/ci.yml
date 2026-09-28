@@ -17,11 +17,13 @@ jobs:
         working-directory: frontend
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
           cache: npm
           cache-dependency-path: frontend/package-lock.json
+
       - run: npm ci
       - run: npm run lint
       - run: npm test -- --configuration=ci
@@ -35,12 +37,19 @@ jobs:
         working-directory: backend
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
           cache: npm
           cache-dependency-path: backend/package-lock.json
+
       - run: npm ci
+
+      - run: npx prisma generate
+        env:
+          DATABASE_URL: postgresql://habita3d:habita3d@localhost:5432/habita3d
+
       - run: npm run lint
       - run: npm test
       - run: npm run build
@@ -53,11 +62,13 @@ jobs:
         working-directory: python-service
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.14"
           cache: pip
           cache-dependency-path: python-service/requirements-dev.txt
+
       - run: pip install -r requirements-dev.txt
       - run: ruff check .
       - run: pytest
@@ -70,16 +81,20 @@ jobs:
         working-directory: infrastructure/terraform/staging
     env:
       TF_IN_AUTOMATION: 'true'
+
       # Pull requests execute the proposed Terraform code. Use only a dummy value
       # for this plan-only job; real staging credentials must never enter PR CI.
       TF_VAR_database_password: 'ep1-ci-plan-placeholder'
       TF_VAR_frontend_port: ${{ vars.STAGING_FRONTEND_PORT || '18080' }}
       TF_VAR_image_tag: ${{ github.sha }}
+
     steps:
       - uses: actions/checkout@v4
+
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: '1.16.0'
+
       - run: docker info --format '{{.ServerVersion}}'
       - run: terraform fmt -check -recursive ..
       - run: terraform init -backend=false -input=false -lockfile=readonly
