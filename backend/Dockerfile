@@ -1,15 +1,26 @@
 FROM node:24.20.0-alpine AS build
+
 WORKDIR /app
+
 COPY package.json package-lock.json ./
 RUN npm ci
+
 COPY . .
+
+RUN DATABASE_URL=postgresql://habita3d:habita3d@postgres:5432/habita3d npx prisma generate
 RUN npm run build
 
 FROM node:24.20.0-alpine AS runtime
+
 WORKDIR /app
+
 ENV NODE_ENV=production
+
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
+
 COPY --from=build /app/dist ./dist
+
 EXPOSE 3000
+
 CMD ["node", "dist/main.js"]
