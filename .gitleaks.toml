@@ -1,0 +1,18 @@
+title = "Habita3D Gitleaks configuration"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "EP1 Terraform plan placeholder; not a real credential"
+targetRules = ["generic-api-key"]
+regexes = [
+  '''^ep1-ci-plan-placeholder$'''
+]
+
+[[allowlists]]
+description = "NestJS starter README badge example token from initial scaffold"
+targetRules = ["generic-api-key"]
+regexes = [
+  '''^abc123def456$'''
+]

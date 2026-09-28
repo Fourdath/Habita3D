@@ -15,6 +15,7 @@ jobs:
     defaults:
       run:
         working-directory: frontend
+
     steps:
       - uses: actions/checkout@v4
 
@@ -25,6 +26,11 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - run: npm ci
+
+      # Dependency security gate:
+      # block the pipeline if a critical vulnerability is detected.
+      - run: npm audit --audit-level=critical
+
       - run: npm run lint
       - run: npm test -- --configuration=ci
       - run: npm run build
@@ -35,6 +41,7 @@ jobs:
     defaults:
       run:
         working-directory: backend
+
     steps:
       - uses: actions/checkout@v4
 
@@ -46,6 +53,11 @@ jobs:
 
       - run: npm ci
 
+      # Dependency security gate.
+      - run: npm audit --audit-level=critical
+
+      # Prisma Client is generated explicitly so the build does not depend
+      # on generated files from a developer machine.
       - run: npx prisma generate
         env:
           DATABASE_URL: postgresql://habita3d:habita3d@localhost:5432/habita3d
@@ -60,6 +72,7 @@ jobs:
     defaults:
       run:
         working-directory: python-service
+
     steps:
       - uses: actions/checkout@v4
 
@@ -70,6 +83,11 @@ jobs:
           cache-dependency-path: python-service/requirements-dev.txt
 
       - run: pip install -r requirements-dev.txt
+
+      # Audit Python production dependencies against known vulnerabilities.
+      - run: python -m pip install pip-audit==2.10.1
+      - run: pip-audit -r requirements.txt
+
       - run: ruff check .
       - run: pytest
 
@@ -79,11 +97,13 @@ jobs:
     defaults:
       run:
         working-directory: infrastructure/terraform/staging
+
     env:
       TF_IN_AUTOMATION: 'true'
 
-      # Pull requests execute the proposed Terraform code. Use only a dummy value
-      # for this plan-only job; real staging credentials must never enter PR CI.
+      # Pull requests execute the proposed Terraform code. Use only a dummy
+      # value for this plan-only job; real staging credentials must never
+      # enter PR CI.
       TF_VAR_database_password: 'ep1-ci-plan-placeholder'
       TF_VAR_frontend_port: ${{ vars.STAGING_FRONTEND_PORT || '18080' }}
       TF_VAR_image_tag: ${{ github.sha }}
@@ -100,3 +120,34 @@ jobs:
       - run: terraform init -backend=false -input=false -lockfile=readonly
       - run: terraform validate -no-color
       - run: terraform plan -input=false -no-color
+
+  secret-scan:
+    name: Secret scan (Gitleaks)
+    runs-on: ubuntu-latest
+
+    steps:
+      # Full history is required so Gitleaks can inspect previous commits too.
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: gitleaks/gitleaks-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_CONFIG: .gitleaks.toml
+          GITLEAKS_ENABLE_COMMENTS: "false"
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "false"
+          GITLEAKS_VERSION: "8.30.1"
+
+  docker-images:
+    name: Docker image builds
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Validate the Compose configuration before building.
+      - run: docker compose config
+
+      # Verify that every application image can be built from a clean CI host.
+      - run: docker compose build
