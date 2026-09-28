@@ -38,6 +38,22 @@ jobs:
   backend:
     name: Backend (NestJS)
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://habita3d:ep1-ci-only-password@localhost:5432/habita3d
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: habita3d
+          POSTGRES_PASSWORD: ep1-ci-only-password
+          POSTGRES_DB: habita3d
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U habita3d -d habita3d"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     defaults:
       run:
         working-directory: backend
@@ -59,11 +75,11 @@ jobs:
       # Prisma Client is generated explicitly so the build does not depend
       # on generated files from a developer machine.
       - run: npx prisma generate
-        env:
-          DATABASE_URL: postgresql://habita3d:habita3d@localhost:5432/habita3d
+      - run: npx prisma migrate deploy
 
       - run: npm run lint
       - run: npm test
+      - run: npm run test:e2e
       - run: npm run build
 
   python-service:
@@ -139,9 +155,18 @@ jobs:
           GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "false"
           GITLEAKS_VERSION: "8.30.1"
 
+      - name: Block tracked credential files
+        run: python3 scripts/check-tracked-secrets.py .
+
+      - name: Demonstrate a blocked credential file
+        run: python3 scripts/security-gate-self-test.py
+
   docker-images:
-    name: Docker image builds
+    name: Docker build and integration smoke
     runs-on: ubuntu-latest
+    env:
+      # Disposable local-Compose credential for this isolated CI runner only.
+      POSTGRES_PASSWORD: ep1-ci-only-password
 
     steps:
       - uses: actions/checkout@v4
@@ -151,3 +176,12 @@ jobs:
 
       # Verify that every application image can be built from a clean CI host.
       - run: docker compose build
+
+      # Build success alone does not prove that migrations or service calls work.
+      - run: docker compose up -d --wait --wait-timeout 180
+      - run: bash scripts/ep1-smoke.sh
+
+      - if: failure()
+        run: docker compose logs --no-color
+      - if: always()
+        run: docker compose down -v --remove-orphans
