@@ -1,67 +1,135 @@
-# Arquitectura inicial de Habita3D
+# Arquitectura de Habita3D para EP1
 
-**Estado:** diseño de EP1, actualizado el 26-09-2026. Distingue el código que existe de las integraciones previstas. [Terraform](../../infrastructure/terraform/README.md) define el staging local; no se ha aplicado todavía.
+**Estado:** diseño e integración inicial de EP1. El desarrollo integrado se ejecuta
+con Docker Compose. [Terraform](../../infrastructure/terraform/README.md) define
+un staging local preliminar y reproducible, validado con `plan` pero sin `apply`.
 
 ## Problema, usuarios y alcance
 
-Los clientes de proyectos habitacionales necesitan visualizar espacios y terminaciones antes de construir, comparar alternativas y comprender su costo. Los usuarios previstos son clientes compradores y, para la gestión del catálogo y proyectos, operadores del equipo. Habita3D propone un recorrido 3D, selección de terminaciones y presupuesto, con recomendaciones futuras basadas en preferencias, necesidades y precios/disponibilidad procedentes de fuentes web.
+Los clientes de proyectos habitacionales necesitan visualizar una vivienda y sus
+terminaciones antes de construir, comparar alternativas y comprender el efecto en
+el presupuesto. El cliente comprador usa el visor; un operador podrá administrar
+catálogos y proyectos en etapas posteriores. Habita3D apunta a recomendaciones
+basadas en presupuesto, preferencias, necesidades y precios/disponibilidad de
+fuentes web. **EP1 demuestra la arquitectura y un flujo integrado con datos
+ilustrativos; todavía no consulta proveedores web.**
 
-Los objetivos de arquitectura son mantener un cliente web/móvil reutilizable, aislar la lógica de negocio y los datos, permitir procesamiento especializado en Python, y desplegar con cambios repetibles y credenciales fuera de Git. La EP1 delimita la definición de estos contratos y un plan de staging local. Quedan fuera de este alcance la extracción web automatizada, recomendaciones productivas, autenticación real y despliegue público. Las restricciones actuales son la ausencia de proveedor cloud y de cuenta de staging compartida, el prototipo de frontend con datos locales y el Dockerfile de NestJS aún sin preparación de Prisma.
+La fuente web **considerada** para la siguiente etapa es el
+[catálogo de materiales de construcción de Sodimac Chile](https://www.sodimac.cl/sodimac-cl/lista/CATG10731/Materiales-de-Construccion).
+Es una candidata, no una integración implementada ni una fuente de los valores
+mostrados por EP1. Antes de automatizar su uso se revisarán condiciones de acceso,
+licencia, estructura de datos, cobertura, disponibilidad y frecuencia de cambio.
+La capacidad adaptativa propuesta ordenaría materiales y terminaciones según
+presupuesto, preferencias de estilo y necesidades del cliente, usando ofertas
+actualizadas y explicando los criterios de cada sugerencia. La comparación actual
+solo aplica valores ilustrativos por superficie y presupuesto.
 
-La separación Ionic/Angular, NestJS, FastAPI y PostgreSQL aprovecha el monorepositorio existente: el cliente sirve la experiencia 3D, NestJS concentra reglas y persistencia, y Python queda preparado para tareas de datos. Se consideró reunir la lógica en un solo backend, pero mantener FastAPI delimita el procesamiento previsto y permite probarlo de forma independiente; esta separación añade una llamada de red y exige contratos y observabilidad entre servicios. El [ADR de staging](../adr/0001-staging-local-con-terraform.md) explica por qué se eligió el proveedor Docker para EP1.
+Los objetivos son reutilizar el cliente Angular del navegador en una futura app
+móvil, concentrar reglas y persistencia en una API, aislar el cálculo especializado
+en Python, y poder
+repetir la infraestructura sin introducir credenciales en Git. La elección de
+Ionic/Angular aprovecha el visor y sus activos 3D; NestJS valida y coordina las
+operaciones; FastAPI permite evolucionar hacia tareas de datos sin trasladar ese
+ecosistema al proceso Node; PostgreSQL aporta persistencia relacional. La llamada
+adicional entre NestJS y Python tiene costo y posibles fallos: por eso el backend
+usa tiempo límite, valida la respuesta y devuelve errores controlados. Mantener
+ambos servicios en el mismo repositorio facilita cambios de contrato coordinados.
 
-En EP1 ya existe un visor 3D con plano SVG y presupuesto **demostrativo**. La autenticación, la recomendación, la recuperación de precios web y el flujo completo entre servicios siguen pendientes. Como fuente web inicial se considera un catálogo de materiales de construcción con precios públicos, por ejemplo el [catálogo de Sodimac Chile](https://www.sodimac.cl/sodimac-cl/lista/CATG10731/Materiales-de-Construccion). La selección definitiva del método de acceso y la revisión de términos, `robots.txt`, licencia, actualización y calidad se harán antes de cualquier extracción automatizada en EP2.
+La EP1 tiene restricciones concretas: no se ha elegido proveedor cloud ni existe
+una cuenta compartida de staging; las estimaciones 3D y la comparación en Python
+usan datos de demostración; Capacitor está configurado pero no se han generado
+plataformas nativas. Para el alcance de las etapas siguientes se deja la selección
+de fuentes web autorizadas, su actualización y validación, permisos por proyecto,
+despliegue público y observabilidad completa.
 
 ### Contexto
 
 ```mermaid
 flowchart LR
     Cliente[Cliente de vivienda] -->|explora, configura y compara| Sistema[Habita3D]
-    Operador[Operador del proyecto] -->|administra catálogo y proyectos, previsto| Sistema
-    Sistema -.->|precios y disponibilidad, previsto para EP2| Fuente[Fuente web externa candidata]
+    Operador[Operador del proyecto] -.->|administra catálogo y proyectos, previsto| Sistema
+    Sistema -.->|precios y disponibilidad, etapa posterior| Fuente[Fuente web autorizada]
 ```
 
 ### Contenedores de software
 
 ```mermaid
 flowchart LR
-    Usuario[Cliente] --> FE["Ionic + Angular + Capacitor<br/>visor 3D y presupuesto"]
-    FE -->|API REST /api, integración pendiente| BE["NestJS<br/>autenticación y lógica de negocio"]
-    BE -->|Prisma| DB[("PostgreSQL<br/>proyectos")]
-    BE -->|REST interno, integración pendiente| PY["FastAPI<br/>procesamiento especializado"]
-    PY -.->|obtención web, EP2| WEB[Catálogo externo]
+    Usuario[Cliente] --> FE["Ionic + Angular + Capacitor<br/>visor 3D y formulario de EP1"]
+    FE -->|/api: vista previa| BE["NestJS<br/>validación y coordinación"]
+    BE -->|Prisma: proyectos, usuarios, sesiones| DB[(PostgreSQL)]
+    BE -->|REST: comparación de terminaciones| PY["FastAPI<br/>cálculo demostrativo"]
+    PY -.->|extracción futura| WEB[Fuente web]
 ```
 
-NestJS es el único servicio de aplicación que administra PostgreSQL y el punto principal de entrada para el frontend. FastAPI expone un endpoint de salud; todavía no procesa datos de materiales ni recibe solicitudes de NestJS. La interfaz actualmente carga planos SVG locales y **no consume la API**. Las flechas indicadas como pendientes expresan el contrato objetivo, no funcionalidad demostrada hoy.
+NestJS es la única aplicación que administra PostgreSQL y la entrada principal
+del frontend. El visor construye la escena a partir de un SVG local y calcula su
+presupuesto demostrativo en el navegador. En otra sección de inicio, Angular sí
+solicita una vista previa a NestJS; esa operación conecta las cuatro piezas.
+Las rutas de proyectos son públicas por ahora. La API de autenticación ofrece
+registro, login, consulta de sesión y logout; todavía no asigna proyectos a
+usuarios ni aplica autorización por propietario.
 
-## Despliegue preliminar de staging
+## Flujo de una vista previa
 
-Terraform y el proveedor Docker definen recursos aislados de Compose sobre el mismo host Docker local:
+1. Angular envía `POST /api/projects/preview` con nombre, superficie en m² y
+   presupuesto entero en CLP.
+2. NestJS valida el DTO y llama `POST /recommendations/compare` en FastAPI usando
+   `PYTHON_SERVICE_URL` y un tiempo límite de cinco segundos.
+3. FastAPI compara tres niveles ilustrativos (`basic`, `standard`, `premium`) y
+   responde con costo, diferencia, ajuste al presupuesto, explicación y
+   `source: "demo"`. No usa disponibilidad ni precios de comercio web.
+4. NestJS comprueba el contrato, persiste `Project` con Prisma y devuelve
+   `{ project, recommendation }`. Si Python falla o devuelve datos inesperados,
+   informa 503 o 502 y no crea el proyecto. Entradas inválidas devuelven 400.
+
+La [prueba de humo](../../scripts/ep1-smoke.sh) verifica HTTP, recomendación,
+persistencia y rechazo de datos inválidos en Compose. Las pruebas unitarias y el
+control de secretos complementan ese recorrido en CI. La salud `/api/health`
+comprueba que NestJS responde; no inspecciona por sí sola PostgreSQL ni Python.
+
+## Staging preliminar con Terraform
+
+Terraform usa el proveedor Docker para definir recursos separados de Compose
+sobre un host Docker local:
 
 ```mermaid
 flowchart LR
-    Browser[Navegador en host] -->|127.0.0.1:18080| Nginx[frontend: Nginx + Angular]
-    Nginx -->|/api/ en red edge| Nest[backend: NestJS]
-    Nest -->|REST en red services| Python[python: FastAPI]
-    Nest -->|SQL en red data interna| Postgres[(postgres: PostgreSQL)]
-    Postgres --- Volume[(volumen persistente staging)]
-    Python -.->|salida web futura| Source[Fuente externa]
+    Browser[Navegador en el host] -->|127.0.0.1:18080| Nginx[frontend: Nginx + Angular]
+    Nginx -->|/api/ en edge| Nest[backend: NestJS]
+    Nest -->|REST en services| Python[python: FastAPI]
+    Nest -->|Prisma en data| Postgres[(postgres: PostgreSQL)]
+    Postgres --- Volume[(volumen persistente de staging)]
+    Python -.->|fuente web futura| Source[Proveedor externo]
 ```
 
 | Zona | Miembros | Acceso |
 | --- | --- | --- |
-| `edge` | frontend y NestJS | Solo frontend publica un puerto al loopback del host. |
-| `services` | NestJS y FastAPI | REST interno; Python conserva salida web para futuras fuentes. |
-| `data` | NestJS y PostgreSQL | Red Docker interna; PostgreSQL no publica puerto al host ni es accesible desde Python. |
+| `edge` | Frontend y NestJS | Solo el frontend publica un puerto en el loopback del host. |
+| `services` | NestJS y FastAPI | REST interno; Python no tiene puerto publicado al host. |
+| `data` | NestJS y PostgreSQL | Red Docker interna; PostgreSQL no publica puerto y Python no se une a ella. |
 
-Al aplicar el plan, el frontend serviría rutas Angular mediante `try_files` y reenviaría `/api/` a NestJS con el [Nginx de staging](../../infrastructure/terraform/staging/nginx.conf). El backend recibiría `DATABASE_URL` y `PYTHON_SERVICE_URL` desde Terraform; el código todavía no utiliza la segunda variable. La contraseña de PostgreSQL se suministra mediante una variable sensible y, tras un `apply`, quedaría en el estado local de Terraform, que no se versiona. Los cuatro contenedores tienen health checks definidos, pero el actual `/api/health` de NestJS no inspecciona dependencias.
+Nginx sirve las rutas Angular y reenvía `/api/` a NestJS en el mismo origen. El
+backend recibe `DATABASE_URL` y `PYTHON_SERVICE_URL` desde Terraform. La contraseña
+de PostgreSQL entra por una variable sensible; tras un `apply` quedaría también
+en el estado local de Terraform, excluido de Git. Un `plan` correcto **no prueba**
+que este staging se haya desplegado. El [ADR 0001](../adr/0001-staging-local-con-terraform.md)
+documenta la elección local; el [ADR 0002](../adr/0002-redes-y-acceso-staging.md)
+explica las redes.
 
-## Flujo de información
+## Seguridad, datos y evolución
 
-1. **Actual:** Angular genera una escena 3D desde el SVG y calcula un presupuesto demostrativo en el navegador. NestJS ofrece `GET/POST /api/projects` con validación y Prisma; FastAPI responde `/health`. Estos flujos todavía no están unidos por una petición de usuario.
-2. **Meta de EP1:** Angular consulta NestJS; NestJS consulta una operación útil de FastAPI, usa PostgreSQL y devuelve una respuesta estructurada. Se demuestra también un error controlado.
-3. **Meta de EP2:** Python obtiene datos de una fuente web autorizada, los valida y normaliza; NestJS almacena procedencia, fecha, precio y disponibilidad. La recomendación posterior explicará sus criterios y permitirá al usuario modificarla.
+Las contraseñas de cuentas se derivan con `scrypt`; los tokens de sesión se
+guardan como hashes y caducan a las 24 horas. La autenticación básica protege
+`/api/auth/me` y `/api/auth/logout`, pero **no** las rutas de proyectos. El
+[modelo de datos](data-model.md) separa las tablas implementadas (`Project`,
+`User`, `Session`) de las entidades futuras de materiales, proveedores, ofertas,
+selecciones y recomendaciones. Antes de extraer información de una fuente web
+habrá que comprobar sus condiciones de uso, licencias, calidad y frecuencia de
+actualización, y guardar procedencia y fecha de cada precio.
 
-## Seguridad y decisiones
-
-El frontend nunca conecta directamente con PostgreSQL o FastAPI. La base de datos no tiene puerto público en staging; el frontend solo expone loopback. Los secretos no se guardan en Git ni se imprimen en CI. Los riesgos y límites del estado local se describen en la [guía de staging](../../infrastructure/terraform/README.md). Las decisiones están registradas en [ADR 0001](../adr/0001-staging-local-con-terraform.md) y [ADR 0002](../adr/0002-redes-y-acceso-staging.md). El [modelo de datos](data-model.md) distingue la tabla implementada del diseño propuesto.
+La [CI](../../.github/workflows/ci.yml) analiza dependencias y secretos, ejecuta
+pruebas y builds, levanta Compose para la prueba integrada y valida el plan
+Terraform. La protección de `main`, los revisores y las verificaciones obligatorias
+son ajustes de GitHub que deben comprobarse fuera del repositorio. El staging local
+no proporciona TLS, alta disponibilidad ni una URL pública.

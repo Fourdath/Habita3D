@@ -23,3 +23,11 @@ Utilizar el proveedor `kreuzwerker/docker` fijado en la configuración de Terraf
 - El entorno no es público, no tiene alta disponibilidad y depende del host local. Para EP2 se decidirá si migrar a un proveedor remoto y un backend de estado cifrado.
 - El estado local contiene atributos sensibles de Docker y debe permanecer fuera de Git con acceso restringido.
 - Un plan exitoso no demuestra que la aplicación haya arrancado. El backend todavía necesita generación de Prisma, migraciones e integración de servicios antes de aplicar todo el staging.
+
+## Actualización de implementación, 28-09-2026
+
+La consecuencia anterior describe el estado al aprobar el ADR. Desde entonces, el
+Dockerfile de NestJS genera el cliente Prisma, ejecuta migraciones al iniciar y el
+flujo de vista previa conecta Angular, NestJS, FastAPI y PostgreSQL en Compose.
+La decisión de staging local no cambia: CI valida su `plan` y todavía no se ha
+ejecutado `terraform apply`.

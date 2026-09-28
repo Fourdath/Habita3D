@@ -8,7 +8,7 @@ La configuración [staging/](staging/) planifica 12 recursos reales: tres redes,
 
 - `terraform fmt -check -recursive ..`, `terraform init -backend=false`, `terraform validate` y `terraform plan` funcionan en la configuración de staging con Docker Desktop activo.
 - El plan inicial contiene **12 altas, 0 cambios y 0 eliminaciones**. El job `Terraform staging plan` de GitHub Actions repite estas comprobaciones y detiene el workflow si alguna falla.
-- **No se ha ejecutado `terraform apply`**. Un plan válido define la infraestructura, pero no demuestra que Habita3D ya esté desplegada. El Dockerfile actual de NestJS todavía necesita generar Prisma y preparar migraciones antes de poder arrancar la aplicación completa.
+- **No se ha ejecutado `terraform apply`**. Un plan válido define la infraestructura, pero no demuestra que Habita3D ya esté desplegada. El Dockerfile actual genera el cliente Prisma y aplica migraciones antes de iniciar NestJS. El arranque y la integración se verifican por separado con Docker Compose y [la prueba de humo](../../scripts/ep1-smoke.sh).
 
 ## Requisitos y variables
 
@@ -38,7 +38,7 @@ La contraseña del último comando es **solo para revisar el plan**. Para una ap
 
 ## Aplicación controlada y operación futura
 
-Cuando el build de NestJS, la generación del cliente Prisma y las migraciones estén corregidos, el equipo podrá revisar un plan con imágenes etiquetadas con un commit identificable y aprobar manualmente `terraform apply`. No hay `apply` automático en CI durante EP1. La versión aplicada deberá registrarse en el repositorio y verificarse con `terraform output`, `docker ps`, `GET /api/health` y pruebas de integración. El health check actual de NestJS solo comprueba que responde; no certifica todavía PostgreSQL ni Python.
+Si el equipo decide aplicar este staging después de EP1, debe revisar un plan con imágenes etiquetadas con un commit identificable, proporcionar una contraseña propia fuera de Git y autorizar manualmente `terraform apply` en un host controlado. **No hay `apply` automático en CI durante EP1**. La versión aplicada deberá registrarse y verificarse con `terraform output`, el estado de los contenedores, `GET /api/health` y la misma prueba de integración apuntada a la URL de staging: `bash scripts/ep1-smoke.sh http://127.0.0.1:18080`. Esta prueba crea un proyecto de demostración en PostgreSQL. El health check de NestJS solo comprueba que responde; no certifica por sí solo PostgreSQL ni Python.
 
 El volumen `habita3d-staging-postgres-data` persiste los datos. Antes de reemplazar o eliminar staging debe existir una copia de seguridad. Los logs se consultan con `docker logs <nombre-del-contenedor>` y los contenedores tienen health checks; la observabilidad completa corresponde a etapas posteriores.
 
