@@ -1,73 +1,64 @@
-# DESIGN
+# Diseño de Habita3D para EP1
 
-## Purpose
+La [arquitectura](docs/architecture/overview.md), el
+[modelo de datos](docs/architecture/data-model.md) y los
+[ADR](docs/adr/0001-staging-local-con-terraform.md) contienen el detalle y las
+decisiones. Este resumen distingue los flujos implementados de los previstos.
 
-Habita3D helps users visualize interior/architectural projects in 3D, explore materials, and
-get recommendations. The current design, deployment zones, data model and ADR are documented
-in [docs/architecture/overview.md](docs/architecture/overview.md).
+## Límites de cada componente
 
-## Architecture overview
-
-```
-┌────────────┐     HTTP      ┌────────────┐     HTTP      ┌──────────────────┐
-│  frontend  │ ─────────────▶│  backend   │──────────────▶│  python-service   │
-│ Ionic/     │               │  NestJS    │               │  FastAPI          │
-│ Angular +  │               │  (modular) │               │ (scraping, reco,  │
-│ Capacitor  │               │            │               │  plan-processing) │
-└────────────┘               └─────┬──────┘               └──────────────────┘
-                                    │
-                                    ▼
-                              ┌────────────┐
-                              │ PostgreSQL │
-                              └────────────┘
+```mermaid
+flowchart LR
+    Cliente[Cliente web o móvil] --> Angular[Ionic + Angular y visor 3D]
+    Angular -->|/api: misma procedencia| Nest[NestJS]
+    Nest -->|Prisma| PG[(PostgreSQL)]
+    Nest -->|REST interno| Python[FastAPI]
+    Python -.->|fuentes web, etapa posterior| Web[Proveedores externos]
 ```
 
-- **frontend** is the Ionic/Angular client, Capacitor-ready for a future native shell.
-- **backend** (NestJS) owns core domain logic and is the frontend's primary API.
-- **python-service** (FastAPI) is a specialized service for tasks better suited to Python's
-  ecosystem: scraping, recommendation models, and floor-plan processing.
-- **postgres** is the system of record, reachable from the backend today.
+- **Angular/Ionic** ofrece navegación, visor 3D, selección de terminaciones y un
+  presupuesto demostrativo calculado en el navegador. Capacitor está configurado;
+  todavía no se han añadido las plataformas nativas.
+- **NestJS** valida solicitudes, posee la lógica de la vista previa y es el único
+  servicio que escribe en PostgreSQL. La API incluye proyectos y autenticación básica.
+- **FastAPI** calcula una comparación determinista de tres niveles de terminación
+  para EP1. Sus valores CLP/m² son ilustrativos y no proceden de tiendas web.
+- **PostgreSQL** almacena proyectos, usuarios y sesiones. Las recomendaciones de
+  la vista previa se devuelven en la respuesta; no se guardan aún como entidad.
 
-## Module boundaries (backend)
+## Contrato de integración de EP1
 
-`src/modules/{auth,users,projects,scenes,materials,recommendations,health}` — one Nest module
-per bounded context. `health` and `projects` have controllers and services; `projects` persists
-to PostgreSQL through Prisma. Authentication and the remaining domains are placeholders.
+El formulario de inicio envía `name`, `areaM2` y `budgetClp` a
+`POST /api/projects/preview`. NestJS transforma área y presupuesto al contrato de
+`POST /recommendations/compare` de FastAPI, valida la respuesta y solo entonces
+crea el proyecto mediante Prisma. Devuelve `project` y `recommendation`, cuyo
+`source` es `demo`. Si Python no responde, NestJS devuelve 503; si la respuesta
+especializada no cumple el contrato, devuelve 502. Los datos de entrada inválidos
+producen 400. [La guía de demostración](docs/ep1-demo.md) prueba el recorrido.
 
-## Frontend feature boundaries
+El frontend usa `/api` relativo. En Compose y en el staging definido por Terraform,
+Nginx lo redirige a NestJS; en desarrollo, Angular usa su proxy local. FastAPI y
+PostgreSQL no reciben peticiones directas del navegador en el flujo normal.
 
-`src/app/features/{landing,auth,projects,viewer-3d,materials,recommendations}` mirror the
-backend's bounded contexts. `landing` and `viewer-3d` are navigable; `core/` contains the
-floor-plan, construction, material and budget logic. API services, guards and the other
-feature pages remain pending.
+## Módulos y seguridad
 
-## Deferred scope (deliberate, not oversight)
+`backend/src/modules/` separa `auth`, `users`, `projects`, `scenes`, `materials`,
+`recommendations` y `health`. `projects` y `auth` tienen operaciones implementadas;
+los módulos de otros dominios son preparación para próximas entregas. El registro
+y el inicio de sesión crean sesiones de 24 horas: las contraseñas se derivan con
+`scrypt`, los tokens aleatorios se almacenan como hash y el cliente usa
+`Authorization: Bearer`. `GET /api/auth/me` y `POST /api/auth/logout` exigen sesión.
+Las rutas de proyectos **aún son públicas** y los proyectos no tienen propietario;
+esta autenticación inicial no representa un sistema de permisos completo.
 
-The following areas are still pending in the current implementation:
+## Pendientes del producto
 
-- **Visual design system** — no UI/branding has been applied; pages use framework defaults.
-- **Full mobile 3D walkthrough** — the overview works on touch devices; first-person movement still uses keyboard and mouse.
-- **Authentication** — `features/auth` (frontend) and `modules/auth` (backend) are empty; no
-  session/token strategy has been chosen yet.
-- **Scraping** — `python-service/app/services/scraping` is a placeholder.
-- **Recommendations** — both `modules/recommendations` (backend) and
-  `app/services/recommendation` (python-service) are placeholders; no model or ranking logic exists.
-- **Floor-plan processing in Python** — `app/services/plan-processing` is a placeholder; the Angular viewer already parses SVG plans locally.
-- **Deployment** — [Terraform](infrastructure/terraform/README.md) defines a local EP1 staging plan and CI validates it. No `apply`, remote provider or CD/release pipeline exists yet.
-- **End-to-end tests** — `tests/e2e` is empty; will be populated once there is a UI worth
-  driving end-to-end.
+- La extracción autorizada de precios y disponibilidad desde fuentes web, su fecha
+  y procedencia, y una recomendación basada en esos datos.
+- La asociación de proyectos a usuarios, controles de acceso y roles.
+- Una aplicación nativa instalada y una evaluación de interacción 3D táctil completa.
+- Despliegue público, TLS, estado remoto cifrado y operación continua de staging.
 
-## Why FastAPI is a separate service rather than a NestJS module
-
-Scraping, recommendation, and plan-processing workloads are expected to lean on Python's data/ML
-ecosystem, which is a poor fit for the NestJS/TypeScript runtime. Keeping them as a separate
-service avoids forcing that ecosystem into the Node process and keeps the backend's dependency
-graph focused on core domain/API concerns.
-
-## Data flow contract (current)
-
-Both backend services expose a health endpoint with this response shape:
-
-```json
-{ "status": "ok", "timestamp": "2026-09-01T00:00:00.000Z" }
-```
+Terraform ofrece un **plan** de staging local aislado; la aplicación integrada se
+verifica por separado con Docker Compose y CI. Un `terraform plan` válido no
+equivale a un `terraform apply` ni a una aplicación publicada.

@@ -5,9 +5,10 @@ Guidance for AI coding assistants (and human contributors) working in this repos
 ## What this repo is right now
 
 Four services (`frontend`, `backend`, `python-service`, `postgres`) with a working 3D viewer,
-an initial Prisma-backed project API, and preliminary staging infrastructure. Several feature
-folders are placeholders. See [DESIGN.md](DESIGN.md) for the current implementation state and
-the [EP1 architecture](docs/architecture/overview.md) for planned integrations.
+an integrated demonstration preview through Angular, NestJS, FastAPI and PostgreSQL, basic
+API authentication, and preliminary staging infrastructure. Several feature folders remain
+placeholders. See [DESIGN.md](DESIGN.md), the [EP1 architecture](docs/architecture/overview.md)
+and the [EP1 demo](docs/ep1-demo.md) for the current implementation and its limits.
 
 ## Repository structure
 
@@ -21,7 +22,8 @@ the [EP1 architecture](docs/architecture/overview.md) for planned integrations.
   `app/services/*`. Uses `requirements.txt` (runtime) / `requirements-dev.txt` (adds pytest,
   httpx, ruff) rather than a build backend, since this is an app, not a published package.
 - `docs/` — architecture diagrams, initial data model, ADR and design notes.
-- `infrastructure/terraform/` — isolated local staging plan; `tests/e2e/` is still pending.
+- `infrastructure/terraform/` — isolated local staging plan; `scripts/ep1-smoke.sh` verifies
+  a cross-service flow under Compose. Browser-driven end-to-end tests remain pending.
 
 ## Conventions
 
@@ -29,27 +31,32 @@ the [EP1 architecture](docs/architecture/overview.md) for planned integrations.
   `--no-git` / `--skip-git` equivalents; they must stay part of the single root repo.
 - Don't reintroduce `src/assets` in the frontend — the build (`angular.json`) is configured to
   read static assets from `public/`.
-- `health` and `projects` contain working backend controllers. Other modules remain placeholders.
+- `health`, `projects` and `auth` contain working backend controllers. Projects are still public;
+  authentication does not yet authorize project ownership. Other modules remain placeholders.
 - Global API prefix for the backend is `api` (set in `src/main.ts`), so routes are exposed as
   `/api/<module>`, matching `GET /api/health`.
-- The FastAPI service exposes routes without an `/api` prefix (`GET /health`), matching how it's
-  proxied/consumed today. Don't add a prefix without checking how the frontend/backend call it.
+- The FastAPI service exposes routes without an `/api` prefix (`GET /health`,
+  `POST /recommendations/compare`). NestJS consumes the comparison via `PYTHON_SERVICE_URL`.
+  Don't add a prefix without checking that contract.
+- The preview and 3D budget use demo figures, not current web prices or availability. Keep
+  this distinction visible in API responses and UI copy.
 
 ## Commands
 
 ```sh
 # Frontend
-cd frontend && npm run lint && npm test -- --configuration=ci && npm run build
+(cd frontend && npm run lint && npm test -- --configuration=ci && npm run build)
 
 # Backend
-cd backend && npm run lint && npm test && npm run build
+(cd backend && DATABASE_URL='postgresql://demo:demo@localhost:5432/demo' npx prisma generate && npm run lint && npm test && npm run build)
 
 # Python service
-cd python-service && ruff check . && pytest
+(cd python-service && ruff check . && pytest)
 
 # Whole stack
 docker compose config   # validate compose file
-docker compose up --build
+docker compose up --build -d --wait --wait-timeout 180
+bash scripts/ep1-smoke.sh
 ```
 
 ## What NOT to do without explicit instruction
@@ -58,4 +65,5 @@ docker compose up --build
   Terraform staging plan is part of EP1; `apply` and automatic deployment are later steps.
 - Don't add Android/iOS native platforms via `ionic capacitor add` — Capacitor is configured
   but no native platform has been added yet.
-- CI security controls are required by the course project, although they remain incomplete.
+- CI checks builds, tests, dependency audits, secret scanning, Compose integration and Terraform
+  planning. Branch protection and required checks are managed in GitHub settings, not in this repo.
