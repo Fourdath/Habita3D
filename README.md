@@ -7,6 +7,16 @@ local con Terraform. Las estimaciones y recomendaciones usan **valores de
 demostración**: todavía no consultan precios ni disponibilidad de tiendas web y no
 constituyen cotizaciones.
 
+## Planificación de la EP2
+
+Los [acuerdos y el plan de trabajo de EP2](docs/ep2/README.md) definen la integración
+de datos reales de Sodimac y Easy, los proyectos por habitación, el historial de
+precios y la previsualización orientativa. Incluyen la distribución en tres bloques,
+las tareas de CI/CD y las opciones de staging gratuito sin tarjeta.
+
+Esta documentación describe **trabajo pendiente de implementación**; la aplicación
+actual mantiene el alcance de EP1 explicado a continuación.
+
 ## Definición del proyecto para EP1
 
 - **Problema:** una vivienda terminada y sus costos son difíciles de anticipar
@@ -34,7 +44,7 @@ constituyen cotizaciones.
 | `backend/` | API NestJS, validación, autenticación básica y persistencia con Prisma. |
 | `python-service/` | FastAPI: salud y comparación demostrativa de terminaciones según superficie y presupuesto. |
 | `infrastructure/terraform/staging/` | Infraestructura preliminar y aislada en Docker local, validada con `terraform plan`. |
-| `docs/` | Arquitectura, modelo de datos, decisiones y guía de demostración de EP1. |
+| `docs/` | Arquitectura, modelo de datos, guía de EP1 y acuerdos/planificación de EP2. |
 | `.github/workflows/ci.yml` | Calidad, seguridad, compilación, integración con Compose y plan Terraform. |
 
 PostgreSQL es la base de datos. NestJS es el único servicio de aplicación que la
