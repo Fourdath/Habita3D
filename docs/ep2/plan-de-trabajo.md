@@ -2,15 +2,15 @@
 
 Fecha de revisión: 18 de octubre de 2026.
 
-Estado: **ronda de alcance terminada**. Consolida las respuestas del usuario y el trabajo necesario para EP2. Las casillas son tareas pendientes; este documento no acredita funcionalidades implementadas ni modifica el código del repositorio. El orden de implementación se decidirá a partir de los bloques definidos.
+Estado: **bloque 1 de datos/FastAPI implementado**. Los bloques 2 y 3 continúan pendientes. El [manual del bloque 1](bloque-1-datos.md) registra los contratos, la ejecución y las limitaciones; las casillas siguientes distinguen avances verificados de integración pendiente. Esto no certifica toda la EP2.
 
 ## Alcance acordado
 
 Actualización del 18 de octubre de 2026, posterior a la investigación de fuentes:
 
-- Fuentes elegidas por el equipo: Sodimac y Easy. La revisión de términos, robots.txt y condiciones de reutilización sigue pendiente; se verificó acceso técnico a muestras, no una API contractual para terceros.
+- Fuentes elegidas por el equipo: Sodimac y Easy. El bloque 1 incluye adaptadores de ambas categorías, revisión de robots y documentación de condiciones; no se afirma una API contractual ni una licencia de reutilización para terceros. Véanse [Sodimac](sodimac-acceso.md) y [Easy](easy-acceso.md).
 - Ubicación de referencia: La Florida, Región Metropolitana, Santiago. La selección de una sucursal específica de retiro requiere una definición adicional si se incluye ese alcance.
-- Alcance funcional acordado en la ronda de preguntas: pisos de **cerámica y piso flotante laminado**, con cálculo del costo de compra del piso según superficie y cobertura. No se incluyen vinílicos/SPC, insumos de instalación ni mano de obra en EP2. Se aplicará un **10 % inicial de material adicional, editable por habitación**, para cortes/desperdicios. La extracción de laminados aún requiere validación técnica.
+- Alcance funcional acordado en la ronda de preguntas: pisos de **cerámica y piso flotante laminado**, con cálculo del costo de compra del piso según superficie y cobertura. No se incluyen vinílicos/SPC, insumos de instalación ni mano de obra en EP2. Se aplicará un **10 % inicial de material adicional, editable por habitación**, para cortes/desperdicios. La extracción de ambas categorías se validó en el bloque 1.
 - Cobertura acordada: **hasta 10 publicaciones por categoría y tienda**, máximo **40 publicaciones** entre las dos categorías y las dos fuentes. Registrar conteos reales y evitar duplicados; no inventar productos para completar la muestra.
 - Comprobaciones programadas: **08:00, 12:00 y 16:00**, en hora de Chile (`America/Santiago`), mediante tres procesos de actualización con solicitudes limitadas/espaciadas por tienda. Mostrar **“Última comprobación: DD/MM/AAAA HH:MM”** usando la captura exitosa real de cada publicación. Consultar la aplicación no dispara una nueva extracción de precios. El mecanismo de programación debe validarse con el alojamiento gratuito sin tarjeta. El presupuesto usará siempre los últimos precios comprobados disponibles, conservando habitaciones y pisos elegidos; el usuario descartó versiones históricas de presupuestos. Se aprueba **“Ver historial de precios”** por publicación como opción informativa adicional, con tabla/gráfico de valores observados y fechas.
 - Cada proyecto incluirá **varias habitaciones**, cada una con sus propios metros cuadrados y selección de piso. La superficie podrá ingresarse directamente en m² o calcularse a partir del largo y ancho. Se definirá **un presupuesto total por proyecto y límites opcionales por habitación**. El modelo de datos, los contratos, los cálculos y la interfaz deben contemplar ese alcance.
@@ -20,7 +20,7 @@ Actualización del 18 de octubre de 2026, posterior a la investigación de fuent
 - Diseño/prototipo: tras indicar que existe y requiere actualización, el usuario aclaró que el integrante encargado solo compartió el código y la información del repositorio; no dispone de un enlace de prototipo. Usar esas pantallas como referencia actual. El usuario pedirá detalles en una reunión posterior; dejar la actualización y el enlace del prototipo como tareas, sin bloquear la planificación ni asumir un Figma accesible.
 - Flujo aceptado: extracción Python de los JSON del frontend de las tiendas → validación y procesamiento mediante FastAPI → integración con NestJS → persistencia en PostgreSQL → consulta y visualización Angular.
 - Se verificó paginación mediante `page` en ambas fuentes. No se ha confirmado una opción `full`.
-- Las consultas de muestra no requirieron contratar una API ni pagar por acceso. Staging debe ser **completamente gratuito y sin tarjeta bancaria**; no hay un servidor propio/institucional disponible. El destino se validará al implementar infraestructura. La demo usará cuentas ficticias; los materiales y precios provendrán de fuentes reales.
+- Las consultas de muestra no requirieron contratar una API ni pagar por acceso. Staging debe ser **completamente gratuito y sin tarjeta bancaria**. La opción actual prevista es el computador Windows de un integrante para la demo en clase; se validará la ejecución integral al implementar el bloque 2. La demo usará cuentas ficticias y materiales/precios reales.
 
 ## Especificación para implementar
 
@@ -91,11 +91,11 @@ El orden expresa dependencias entre tareas; no se fija un calendario de entrega 
 
 ### Staging: validación temprana
 
-La candidata documental es Angular en Cloudflare Pages, NestJS/FastAPI en Render Free y PostgreSQL en Neon Free, con Actions para CI y las tres franjas. **Aún no está validada para una cuenta del equipo sin tarjeta**: si el proveedor exige tarjeta, se descarta y se evalúa la alternativa documentada. No se presenta como un despliegue ya disponible. Consultar [opciones de staging](staging.md) para fuentes oficiales, cuotas, sueño del servicio y alternativa Vercel Hobby.
+La opción prioritaria prevista es la demo local en el computador Windows del compañero. El bloque 1 puede ejecutarse desde PowerShell/Visual Studio Code; Figma sirve como referencia de diseño. Las alternativas cloud de [opciones de staging](staging.md) quedan como investigación opcional y no bloquean esta implementación.
 
-Validar durante infraestructura: registro gratuito sin tarjeta, persistencia, cuotas, primer despliegue, Terraform, acceso de las tiendas desde el host de adquisición y URL del evaluador. La limitación de una cuenta o del acceso desde cloud se documentará como resultado de la validación, manteniendo la restricción de costo cero y sin tarjeta.
+Validar durante el bloque 2: persistencia, primer despliegue local, Terraform, acceso de las tiendas desde ese computador, conectividad para la demo y automatización. Para las capturas programadas el computador debe estar encendido y conectado; una franja perdida no se convierte en una captura ficticia.
 
-Las respuestas y decisiones quedan registradas en [registro de acuerdos](acuerdos.md). El backlog siguiente cubre los apartados de la pauta; ninguna casilla se considera completada por haber definido su alcance.
+Las respuestas y decisiones quedan registradas en [registro de acuerdos](acuerdos.md). El backlog cubre toda la pauta; los endpoints y la caché de evidencia del bloque 1 no sustituyen la integración NestJS/PostgreSQL/Angular. El progreso de Python se acredita con pruebas y [evidencia de captura](evidencias/bloque-1-calidad.json).
 
 ## Fuentes y alcance
 
@@ -153,7 +153,7 @@ Aceptación: existe una trazabilidad observación → tarea/cambio → prueba/do
 
 ### B. Fuente de materiales y contrato de datos
 
-- [ ] **EP2-04 — Validar el alcance piloto acordado.** Sodimac y Easy ya fueron seleccionadas; se verificaron muestras de cerámicas en sus JSON. Se incluirán cerámicas para piso y piso flotante laminado, comenzando por productos vendidos directamente por cada tienda, hasta 10 publicaciones por categoría y tienda (máximo 40). Falta validar la extracción de laminados y la obtención de registros pertinentes con los campos necesarios. La pauta no fija una cantidad mínima de tiendas, productos ni categorías. La revisión de condiciones de acceso corresponde a EP2-05.
+- [x] **EP2-04 — Validar el alcance piloto acordado.** Sodimac y Easy ya fueron seleccionadas; se verificaron muestras de cerámicas en sus JSON. Se incluirán cerámicas para piso y piso flotante laminado, comenzando por productos vendidos directamente por cada tienda, hasta 10 publicaciones por categoría y tienda (máximo 40). Validado en el bloque 1: diez publicaciones por cada combinación, con precio por caja y cobertura verificable; véase la evidencia de calidad. La pauta no fija una cantidad mínima de tiendas, productos ni categorías. La revisión de condiciones de acceso corresponde a EP2-05.
 - [ ] **EP2-05 — Documentar el acceso y las restricciones.** URL, cobertura, datos disponibles, método API/feed/datos abiertos/HTML/JSON-LD, límites, autenticación si aplica, términos/licencia, robots.txt cuando corresponda, privacidad, atribución y condiciones de reutilización. Verificar el acceso permitido antes de automatizarlo. No evadir restricciones.
 - [ ] **EP2-06 — Fijar el contrato y la actualización.** Campos obligatorios/opcionales, unidades, moneda, disponibilidad y datos ausentes. Programar comprobaciones a las 08:00, 12:00 y 16:00 en `America/Santiago`, con límites por fuente y registro del resultado de cada ejecución. Mostrar la captura exitosa real en Última comprobación. Definir detección de cambios, tratamiento de datos antiguos/fallos y selección estable de la muestra. No inventar stock o características que no publique.
 
@@ -161,12 +161,12 @@ Aceptación: una fuente real proporciona una muestra utilizable con procedencia,
 
 ### C. Adquisición y procesamiento Python
 
-- [ ] **EP2-07 — Implementar adquisición automatizada.** Adaptador para el método elegido, paginación cuando aplique, límites de solicitudes y tiempo de espera. Preferir una API oficial adecuada cuando exista. Usar navegador automatizado solo si los datos realmente lo requieren.
-- [ ] **EP2-08 — Limpiar y validar.** Nombres, categorías, formatos numéricos, moneda, medidas y unidades; registros incompletos y precios inválidos. Conservar el dato original o evidencia permitida suficiente para explicar la transformación.
-- [ ] **EP2-09 — Normalizar costos comparables.** Distinguir caja, pieza, litro y m². Calcular precio por unidad comparable solo cuando exista cobertura/rendimiento verificable. Para un piso por habitación: superficie de compra = superficie × (1 + margen/100); cajas = techo(superficie de compra/cobertura por caja); costo = cajas × precio por caja. El margen inicial acordado es 10 %, editable por habitación. Marcar como no comparable el registro sin cobertura necesaria.
+- [x] **EP2-07 — Implementar adquisición automatizada.** Adaptador para el método elegido, paginación cuando aplique, límites de solicitudes y tiempo de espera. Preferir una API oficial adecuada cuando exista. Usar navegador automatizado solo si los datos realmente lo requieren.
+- [x] **EP2-08 — Limpiar y validar.** Nombres, categorías, formatos numéricos, moneda, medidas y unidades; registros incompletos y precios inválidos. Conservar el dato original o evidencia permitida suficiente para explicar la transformación.
+- [x] **EP2-09 — Normalizar costos comparables.** Distinguir caja, pieza, litro y m². Calcular precio por unidad comparable solo cuando exista cobertura/rendimiento verificable. Para un piso por habitación: superficie de compra = superficie × (1 + margen/100); cajas = techo(superficie de compra/cobertura por caja); costo = cajas × precio por caja. El margen inicial acordado es 10 %, editable por habitación. Marcar como no comparable el registro sin cobertura necesaria.
 - [ ] **EP2-10 — Deduplicar, actualizar y conservar historial.** Clave estable para una publicación, considerando fuente, identificador externo, vendedor y contexto. Repetición idempotente sin duplicar productos. No fusionar productos distintos solo por nombre. Conservar el precio inicial y los cambios de precio comparable con sus fechas; actualizar la última comprobación exitosa sin crear un cambio duplicado cuando el valor siga igual. Los presupuestos usan los últimos precios disponibles; el historial se consulta como información adicional.
-- [ ] **EP2-11 — Manejar fallos.** Timeout, reintentos limitados y seguros, fuente caída, datos inválidos o cambio de formato. Conservar la última captura válida si esa es la estrategia elegida y mostrar su fecha; no reemplazarla silenciosamente con precios ficticios.
-- [ ] **EP2-12 — Exponer el procesamiento en FastAPI.** Endpoints y modelos de entrada/salida documentados para procesar/normalizar información real. Integrarlo con NestJS. El código actual que exige `source == demo` debe evolucionar y la procedencia real debe viajar en el contrato.
+- [x] **EP2-11 — Manejar fallos.** Timeout, reintentos limitados y seguros, fuente caída, datos inválidos o cambio de formato. Conservar la última captura válida si esa es la estrategia elegida y mostrar su fecha; no reemplazarla silenciosamente con precios ficticios.
+- [ ] **EP2-12 — Exponer el procesamiento en FastAPI.** Endpoints y modelos de entrada/salida documentados para procesar/normalizar información real. Python terminado: `/materials/*` y `/floors/budget` con procedencia real; el endpoint demostrativo EP1 se conserva compatible. La integración NestJS queda pendiente para el bloque 2.
 
 Aceptación: la aplicación inicia un proceso automático que obtiene y transforma información real; una segunda ejecución no duplica datos y una fuente caída produce un error comprensible o una respuesta degradada explícita.
 
@@ -189,15 +189,15 @@ Aceptación: el usuario encuentra y utiliza datos reales persistidos desde Angul
 
 ### F. Evaluación y diseño de adaptación
 
-- [ ] **EP2-20 — Definir y justificar las métricas de información acordadas.** Porcentaje de registros válidos y porcentaje de duplicados, con población y denominadores definidos. Separar registros inválidos, repeticiones y productos fuera del alcance; explicar que la muestra acotada no representa todo el catálogo. Se puede informar antigüedad/tasa de errores como contexto. No exigir métricas de relevancia sin un buscador evaluado.
-- [ ] **EP2-21 — Aplicar la evaluación y guardar resultados.** Conjunto evaluado, fecha, conteos/denominadores, procedimiento/script, resultados reales y limitaciones. No basta con definir la fórmula. Ejemplos: validez = registros aceptados/recuperados; duplicados = repeticiones detectadas/recuperados. No atribuir recall a toda la Web.
+- [x] **EP2-20 — Definir y justificar las métricas de información acordadas.** Porcentaje de registros válidos y porcentaje de duplicados, con población y denominadores definidos. Separar registros inválidos, repeticiones y productos fuera del alcance; explicar que la muestra acotada no representa todo el catálogo. Se puede informar antigüedad/tasa de errores como contexto. No exigir métricas de relevancia sin un buscador evaluado.
+- [x] **EP2-21 — Aplicar la evaluación y guardar resultados.** Conjunto evaluado, fecha, conteos/denominadores, procedimiento/script, resultados reales y limitaciones. No basta con definir la fórmula. Ejemplos: validez = registros aceptados/recuperados; duplicados = repeticiones detectadas/recuperados. No atribuir recall a toda la Web.
 - [ ] **EP2-22 — Especificar la futura adaptación.** Desarrollar la propuesta descrita arriba: usuario, datos web, presupuesto/superficie/tipo/uso, reglas de ordenamiento, explicación, control y evaluación futura. Separar restricciones indispensables de preferencias y documentar datos ausentes. No implementar el motor adaptativo completo como requisito de este hito.
 
 Aceptación: se muestra una medición reproducible con valores reales y una especificación que otro integrante pueda implementar durante el Módulo 3.
 
 ### G. Pruebas y controles de CI
 
-- [ ] **EP2-23 — Probar adquisición y calidad.** Fixtures permitidas de la fuente para extracción, formatos válidos/rotos, campos ausentes, unidades, precios, duplicados, actualización y caída de la fuente. Pruebas deterministas en PR y verificación en vivo separada para demostrar la adquisición real.
+- [x] **EP2-23 — Probar adquisición y calidad.** Fixtures permitidas de la fuente para extracción, formatos válidos/rotos, campos ausentes, unidades, precios, duplicados, actualización y caída de la fuente. Pruebas deterministas en PR y verificación en vivo separada para demostrar la adquisición real.
 - [ ] **EP2-24 — Probar contratos y persistencia.** NestJS–FastAPI con respuesta válida/inválida, timeout, indisponibilidad y reintentos limitados; guardar/consultar sin duplicados y recorrido integrado hasta frontend. Reutilizar las pruebas EP1.
 - [ ] **EP2-25 — Ampliar seguridad del pipeline.** Análisis estático de seguridad explícito, auditoría de dependencias Python, detección de secretos y análisis de vulnerabilidades de las imágenes Docker. Mantener lint, tests, builds e infraestructura. Un secreto expuesto, vulnerabilidad crítica, prueba/build/infra fallidos o salud fallida deben bloquear el avance correspondiente.
 
@@ -205,7 +205,7 @@ Aceptación: los jobs muestran resultados y existe un fallo controlado que impid
 
 ### H. Staging real, Terraform y despliegue
 
-- [ ] **EP2-26 — Validar el alojamiento gratuito sin tarjeta.** Comprobar la candidata y alternativa de [opciones de staging](staging.md), registro permitido para la cuenta del equipo, cuotas, persistencia, arranque tras inactividad y acceso a las fuentes. Definir URL del evaluador y administración. Descartar cualquier opción que exija pago o tarjeta. Un runner temporal que destruye Compose al terminar no sustituye el staging accesible.
+- [ ] **EP2-26 — Validar el alojamiento gratuito sin tarjeta.** Validar la demo local prevista en el computador Windows: persistencia, arranque, red y acceso a las fuentes. Las candidatas cloud de [opciones de staging](staging.md) son alternativas opcionales. Definir URL del evaluador y administración. Descartar cualquier opción que exija pago o tarjeta. Un runner temporal que destruye Compose al terminar no sustituye el staging accesible.
 - [ ] **EP2-27 — Hacer reproducible la infraestructura.** Adaptar Terraform al host elegido, accesos, almacenamiento, redes y salidas. Mantener fmt/init/validate/plan y aplicar de forma controlada lo necesario. Guardar el estado fuera de Git y gestionar su acceso. La pauta no dice que `terraform apply` deba ejecutarse en cada PR, pero sí exige un despliegue funcional verificable.
 - [ ] **EP2-28 — Configurar Variables y Secrets reales por su función.** Variables como URL/nombre del ambiente/puerto; Secrets para credenciales efectivamente usadas en despliegue/base de datos/servicios. Registrar nombres, propósito y responsables sin valores. No inyectar credenciales reales en código de PR no confiable. Mantener ejemplos por servicio y exclusiones de Git.
 - [ ] **EP2-29 — Automatizar despliegue y comprobación.** Tras aprobar controles y el flujo autorizado, publicar/desplegar una versión identificable del código. Aplicar migraciones con estrategia controlada, esperar salud y ejecutar una prueba funcional contra la URL de staging. Definir rollback a versión estable, considerando compatibilidad de migraciones.

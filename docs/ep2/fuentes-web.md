@@ -1,5 +1,11 @@
 # Fuentes de materiales para Habita3D — investigación EP2
 
+**Actualización de implementación:** el [bloque 1](bloque-1-datos.md) ya incluye
+ambas categorías y fuentes. Consultar [Sodimac](sodimac-acceso.md),
+[Easy](easy-acceso.md) y la [medición real](evidencias/bloque-1-calidad.json).
+El informe siguiente conserva las observaciones de la investigación preliminar;
+sus pendientes históricos no describen por sí solos el estado actual del código.
+
 Fecha de comprobación: 18 de octubre de 2026. Alcance: consultas de muestra, sin recorrer categorías completas ni modificar el repositorio.
 
 ## Decisiones de referencia

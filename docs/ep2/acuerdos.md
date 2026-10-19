@@ -2,8 +2,8 @@
 
 Ronda de definición completada el **18/10/2026**. Este es el registro consolidado
 de las decisiones finales; sustituye las propuestas preliminares de la conversación.
-Las funcionalidades están pendientes de implementación según el
-[plan de trabajo](plan-de-trabajo.md).
+El avance de implementación se registra en el [plan de trabajo](plan-de-trabajo.md)
+y el [manual del bloque 1](bloque-1-datos.md); definir el alcance no certifica toda la EP2.
 
 ## Fuentes y flujo de datos
 
@@ -24,9 +24,9 @@ Las funcionalidades están pendientes de implementación según el
   categoría, moneda, precio, unidad, cobertura, disponibilidad, comuna, URL y
   fecha/hora. Mantener las promociones condicionadas separadas del precio de referencia.
 
-Las pruebas de muestra disponibles corresponden a cerámicas. La extracción de
-laminados, la interpretación de disponibilidad y las condiciones de acceso deben
-verificarse durante la implementación. Véase [fuentes web](fuentes-web.md).
+El bloque 1 incluye cerámicas y laminados de ambas fuentes. La disponibilidad se
+mantiene desconocida cuando el listado no demuestra stock local. Véanse
+[fuentes web](fuentes-web.md), [Sodimac](sodimac-acceso.md) y [Easy](easy-acceso.md).
 
 ## Proyectos, habitaciones y presupuesto
 
@@ -81,8 +81,9 @@ de cada SKU; una fotografía comercial no garantiza una textura repetible.
 ## Restricciones académicas y organización
 
 - Proyecto académico con cuentas y datos de usuarios ficticios para la demo.
-- Alojamiento **completamente gratuito ($0) y sin tarjeta bancaria**. No hay un
-  servidor propio o institucional disponible; el proveedor requiere validación.
+- Alojamiento **completamente gratuito ($0) y sin tarjeta bancaria**. Actualización:
+  se prevé usar el computador Windows de un integrante para la demo local;
+  la puesta en marcha del conjunto sigue por validar. Figma es la referencia de diseño.
 - El profesor no entregó observaciones de EP1. Documentar esa situación y resolver
   los pendientes técnicos verificados sin atribuirlos a comentarios docentes.
 - El integrante encargado de la interfaz trabaja sobre su computador y compartió
@@ -99,7 +100,7 @@ de cada SKU; una fotografía comercial no garantiza una textura repetible.
 
 | Punto | Decisión final |
 | --- | --- |
-| 1. Recursos de staging | Buscar alojamiento: no hay un servidor disponible. |
+| 1. Recursos de staging | Demo prevista en el computador Windows de un integrante; ejecución integral por validar. |
 | 2. Presupuesto de alojamiento | $0. |
 | 3. Registro del alojamiento | Sin tarjeta bancaria. |
 | 4. Calendario | Elaborar el plan por dependencias, sin fijar una fecha de entrega. |
@@ -119,7 +120,7 @@ de cada SKU; una fotografía comercial no garantiza una textura repetible.
 
 ## Validaciones pendientes
 
-Validar acceso y condiciones de las fuentes, extracción de laminados, contratos y
-calidad de datos; comprobar un proveedor gratuito sin tarjeta y el despliegue;
+Revalidar las condiciones y los cambios de formato de las fuentes; integrar los
+contratos y la calidad de datos con NestJS; comprobar el despliegue local en Windows;
 actualizar/enlazar el prototipo; ejecutar las pruebas y la demo del plan.
 El cierre de la ronda define el alcance, no certifica el cumplimiento implementado de EP2.

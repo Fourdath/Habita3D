@@ -1,5 +1,19 @@
 # Opciones de staging EP2 — validación preliminar
 
+## Actualización: demo local prevista
+
+El equipo prevé ejecutar la aplicación en el computador Windows de un integrante
+para la demostración en clase. Esta es la opción prioritaria actual, sin proveedor
+cloud ni tarjeta. Visual Studio Code se usa para trabajar con el proyecto y Figma
+para el diseño; los servicios se ejecutan con sus runtimes o Docker.
+
+El [bloque 1](bloque-1-datos.md) documenta Python/FastAPI y su programador local.
+La persistencia, la integración completa, la infraestructura y el despliegue
+automático del bloque 2 siguen pendientes. El computador debe estar encendido,
+con acceso a Internet y sin suspensión durante las capturas; no se prometen
+actualizaciones cuando esté apagado. Las alternativas cloud siguientes quedan
+como investigación histórica opcional, no como dependencias de la demo.
+
 Revisión documental: 18/10/2026. Restricciones del usuario: **$0 y sin tarjeta bancaria**. No se crearon cuentas ni se contrató infraestructura. Este documento no confirma todavía un proveedor definitivo.
 
 ## Candidata principal

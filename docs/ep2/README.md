@@ -3,7 +3,9 @@
 Actualizado el 18/10/2026.
 
 Esta carpeta registra el alcance definido para la EP2 y el trabajo por ejecutar.
-**La documentación no acredita que las funcionalidades de EP2 ya estén implementadas.**
+El bloque 1 de datos/FastAPI está implementado y tiene un
+[manual de ejecución y contratos](bloque-1-datos.md). Los bloques 2 y 3 y la demo
+integrada siguen pendientes; no se acredita el cumplimiento completo de EP2.
 
 | Documento | Contenido |
 | --- | --- |
@@ -11,6 +13,9 @@ Esta carpeta registra el alcance definido para la EP2 y el trabajo por ejecutar.
 | [Plan de trabajo](plan-de-trabajo.md) | Tres bloques para el equipo, contratos, dependencias, backlog y criterios de aceptación. |
 | [Fuentes web](fuentes-web.md) | Pruebas de muestra de Sodimac/Easy, ubicación, JSON, paginación y limitaciones verificadas. |
 | [Opciones de staging](staging.md) | Candidatas de alojamiento gratuito sin tarjeta y verificaciones pendientes. |
+| [Bloque 1: datos y FastAPI](bloque-1-datos.md) | Ejecución en Windows, capturas, contratos, presupuestos, métricas y pruebas. |
+| [Acceso Sodimac](sodimac-acceso.md) | Categorías, procedencia, condiciones y límites del adaptador. |
+| [Acceso Easy](easy-acceso.md) | Contexto geográfico público, extracción HTML/JSON y límites del adaptador. |
 
 ## Alcance resumido
 
@@ -26,7 +31,8 @@ Esta carpeta registra el alcance definido para la EP2 y el trabajo por ejecutar.
 - Filtros por tipo de piso, tienda y precio por m².
 - Comprobaciones programadas a las 08:00, 12:00 y 16:00 en `America/Santiago`.
   Mostrar la captura exitosa real como **Última comprobación: DD/MM/AAAA HH:MM**.
-- Staging de costo cero y sin tarjeta bancaria; proveedor pendiente de validación.
+- Demo prevista en un computador Windows del equipo, sin costo ni tarjeta;
+  ejecución integral e infraestructura local por validar en el bloque 2.
 
 Los registros de prueba de usuarios serán ficticios. Los productos y precios de la
 demostración integrada deberán provenir de las fuentes web reales acordadas.
