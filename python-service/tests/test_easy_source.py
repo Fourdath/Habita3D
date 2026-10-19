@@ -13,7 +13,7 @@ FIXTURES = Path(__file__).parent / "fixtures"
 
 
 def fixture(category="ceramic"):
-    return json.loads((FIXTURES / f"easy_{category}.json").read_text())
+    return json.loads((FIXTURES / f"easy_{category}.json").read_text(encoding="utf-8"))
 
 
 @pytest.mark.parametrize("category", ["ceramic", "laminate"])
