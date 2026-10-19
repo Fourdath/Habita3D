@@ -1,0 +1,319 @@
+{
+  "data": {
+    "results": [
+      {
+        "productId": "153489509",
+        "skuId": "153489511",
+        "sellerSkuId": "80PB0104075",
+        "displayName": "SPC - Escandinavia Miel 1220x180x5 (4+1) mm IXPE 0.3 CD 4V",
+        "url": "https://www.sodimac.cl/sodimac-cl/articulo/153489509/spc-escandinavia-miel-1220x180x5-41-mm-ixpe-0-3-cd-4v?exp=so_com",
+        "brand": "MOSAICO",
+        "sellerId": "SC8BEED",
+        "sellerName": "Mosaico",
+        "prices": [
+          {
+            "label": "",
+            "icons": "",
+            "symbol": "$ ",
+            "type": "eventPrice",
+            "crossed": false,
+            "price": [
+              "37.490"
+            ]
+          },
+          {
+            "label": "",
+            "icons": "",
+            "symbol": "$ ",
+            "type": "normalPrice",
+            "crossed": true,
+            "price": [
+              "72.990"
+            ]
+          }
+        ],
+        "availability": {
+          "homeDeliveryShipping": "",
+          "pickUpFromStoreShipping": "",
+          "internationalShipping": "",
+          "primeShipping": "",
+          "expressShipping": ""
+        },
+        "GSCCategoryId": "G20041813",
+        "mediaUrls": [
+          "https://media.sodimac.cl/falabellaCL/153489511_01/public",
+          "https://media.sodimac.cl/falabellaCL/153489511_02/public",
+          "https://media.sodimac.cl/falabellaCL/153489511_03/public",
+          "https://media.sodimac.cl/falabellaCL/153489511_04/public"
+        ]
+      },
+      {
+        "productId": "110188558",
+        "skuId": "110188585",
+        "sellerSkuId": "302489X",
+        "displayName": "Piso Flotante 7 mm Winter Copper Beige 2.39 m2",
+        "url": "https://www.sodimac.cl/sodimac-cl/articulo/110188558/piso-flotante-7-mm-winter-copper-beige-2-39-m2?exp=so_com",
+        "brand": "HOLZTEK",
+        "sellerId": "SODIMAC_CHILE",
+        "sellerName": "Sodimac",
+        "prices": [
+          {
+            "label": "",
+            "icons": "",
+            "symbol": "$ ",
+            "type": "internetPrice",
+            "crossed": false,
+            "price": [
+              "19.096"
+            ],
+            "unitPrice": {
+              "price": [
+                "7.989"
+              ],
+              "quantity": "2.39",
+              "unit": "m²",
+              "type": "M2",
+              "unitForSale": "Caja"
+            }
+          }
+        ],
+        "availability": {
+          "homeDeliveryShipping": "",
+          "pickUpFromStoreShipping": "",
+          "internationalShipping": "",
+          "primeShipping": "",
+          "expressShipping": ""
+        },
+        "GSCCategoryId": "G20041804",
+        "merchantCategoryId": "0314050102",
+        "mediaUrls": [
+          "https://media.sodimac.cl/sodimacCL/302489X_001/public",
+          "https://media.sodimac.cl/sodimacCL/302489X_01/public",
+          "https://media.sodimac.cl/sodimacCL/302489X_02/public",
+          "https://media.sodimac.cl/sodimacCL/302489X_14/public",
+          "https://media.sodimac.cl/sodimacCL/302489X_12/public"
+        ]
+      },
+      {
+        "productId": "110536541",
+        "skuId": "110536542",
+        "sellerSkuId": "8775222",
+        "displayName": "Piso Flotante 8 mm Oak Brown OAK 1.99 m2",
+        "url": "https://www.sodimac.cl/sodimac-cl/articulo/110536541/piso-flotante-8-mm-oak-brown-oak-1-99-m2?exp=so_com",
+        "brand": "HOLZTEK",
+        "sellerId": "SODIMAC_CHILE",
+        "sellerName": "Sodimac",
+        "prices": [
+          {
+            "label": "",
+            "icons": "",
+            "symbol": "$ ",
+            "type": "internetPrice",
+            "crossed": false,
+            "price": [
+              "18.885"
+            ],
+            "unitPrice": {
+              "price": [
+                "9.489"
+              ],
+              "quantity": "1.99",
+              "unit": "m²",
+              "type": "M2",
+              "unitForSale": "Caja"
+            }
+          }
+        ],
+        "availability": {
+          "homeDeliveryShipping": "",
+          "pickUpFromStoreShipping": "",
+          "internationalShipping": "",
+          "primeShipping": "",
+          "expressShipping": ""
+        },
+        "GSCCategoryId": "G20041804",
+        "merchantCategoryId": "0314050103",
+        "mediaUrls": [
+          "https://media.sodimac.cl/sodimacCL/8775222_001/public",
+          "https://media.sodimac.cl/sodimacCL/8775222_01/public",
+          "https://media.sodimac.cl/sodimacCL/8775222_400/public",
+          "https://media.sodimac.cl/sodimacCL/8775222_02/public",
+          "https://media.sodimac.cl/sodimacCL/8775222_12/public"
+        ]
+      },
+      {
+        "productId": "110147715",
+        "skuId": "110147717",
+        "sellerSkuId": "2755785",
+        "displayName": "Piso Flotante 8 mm New Ardennes Café 2.13 m2",
+        "url": "https://www.sodimac.cl/sodimac-cl/articulo/110147715/piso-flotante-8-mm-new-ardennes-cafe-2-13-m2?exp=so_com",
+        "brand": "HOLZTEK",
+        "sellerId": "SODIMAC_CHILE",
+        "sellerName": "Sodimac",
+        "prices": [
+          {
+            "label": "",
+            "icons": "",
+            "symbol": "$ ",
+            "type": "internetPrice",
+            "crossed": false,
+            "price": [
+              "19.149"
+            ],
+            "unitPrice": {
+              "price": [
+                "8.990"
+              ],
+              "quantity": "2.13",
+              "unit": "m²",
+              "type": "M2",
+              "unitForSale": "Caja"
+            }
+          },
+          {
+            "label": "",
+            "icons": "",
+            "symbol": "$ ",
+            "type": "normalPrice",
+            "crossed": true,
+            "price": [
+              "25.468"
+            ],
+            "unitPrice": {
+              "price": [
+                "11.956"
+              ],
+              "quantity": "2.13",
+              "unit": "m²",
+              "type": "M2",
+              "unitForSale": "Caja"
+            }
+          }
+        ],
+        "availability": {
+          "homeDeliveryShipping": "",
+          "pickUpFromStoreShipping": "",
+          "internationalShipping": "",
+          "primeShipping": "",
+          "expressShipping": ""
+        },
+        "GSCCategoryId": "G20041804",
+        "merchantCategoryId": "0314050103",
+        "mediaUrls": [
+          "https://media.sodimac.cl/sodimacCL/2755785_001/public",
+          "https://media.sodimac.cl/sodimacCL/2755785_01/public",
+          "https://media.sodimac.cl/sodimacCL/2755785_02/public",
+          "https://media.sodimac.cl/sodimacCL/2755785_12/public",
+          "https://media.sodimac.cl/sodimacCL/2755785_404/public"
+        ]
+      },
+      {
+        "productId": "110404726",
+        "skuId": "110404727",
+        "sellerSkuId": "8775311",
+        "displayName": "Piso Flotante 8 mm Oak Brown Grey 1.99 m2",
+        "url": "https://www.sodimac.cl/sodimac-cl/articulo/110404726/piso-flotante-8-mm-oak-brown-grey-1-99-m2?exp=so_com",
+        "brand": "HOLZTEK",
+        "sellerId": "SODIMAC_CHILE",
+        "sellerName": "Sodimac",
+        "prices": [
+          {
+            "label": "",
+            "icons": "",
+            "symbol": "$ ",
+            "type": "internetPrice",
+            "crossed": false,
+            "price": [
+              "23.794"
+            ],
+            "unitPrice": {
+              "price": [
+                "11.956"
+              ],
+              "quantity": "1.99",
+              "unit": "m²",
+              "type": "M2",
+              "unitForSale": "Caja"
+            }
+          }
+        ],
+        "availability": {
+          "homeDeliveryShipping": "",
+          "pickUpFromStoreShipping": "",
+          "internationalShipping": "",
+          "primeShipping": "",
+          "expressShipping": ""
+        },
+        "GSCCategoryId": "G20041804",
+        "merchantCategoryId": "0314050103",
+        "mediaUrls": [
+          "https://media.sodimac.cl/sodimacCL/8775311_001/public",
+          "https://media.sodimac.cl/sodimacCL/8775311_01/public",
+          "https://media.sodimac.cl/sodimacCL/8775311_300/public",
+          "https://media.sodimac.cl/sodimacCL/8775311_400/public",
+          "https://media.sodimac.cl/sodimacCL/8775311_13/public"
+        ]
+      },
+      {
+        "productId": "143308402",
+        "skuId": "143308403",
+        "sellerSkuId": "9065911",
+        "displayName": "Piso Laminado 6 mm Essen Café claro 2.96 m2",
+        "url": "https://www.sodimac.cl/sodimac-cl/articulo/143308402/piso-laminado-6-mm-essen-cafe-claro-2-96-m2?exp=so_com",
+        "brand": "HOLZTEK",
+        "sellerId": "SODIMAC_CHILE",
+        "sellerName": "Sodimac",
+        "prices": [
+          {
+            "label": "",
+            "icons": "",
+            "symbol": "$ ",
+            "type": "internetPrice",
+            "crossed": false,
+            "price": [
+              "21.282"
+            ],
+            "unitPrice": {
+              "price": [
+                "7.189"
+              ],
+              "quantity": "2.96",
+              "unit": "m²",
+              "type": "M2",
+              "unitForSale": "Caja"
+            }
+          }
+        ],
+        "availability": {
+          "homeDeliveryShipping": "",
+          "pickUpFromStoreShipping": "",
+          "internationalShipping": "",
+          "primeShipping": "",
+          "expressShipping": ""
+        },
+        "GSCCategoryId": "G20041804",
+        "merchantCategoryId": "0314050101",
+        "mediaUrls": [
+          "https://media.sodimac.cl/sodimacCL/9065911_001/public",
+          "https://media.sodimac.cl/sodimacCL/9065911_01/public",
+          "https://media.sodimac.cl/sodimacCL/9065911_02/public",
+          "https://media.sodimac.cl/sodimacCL/9065911_12/public",
+          "https://media.sodimac.cl/sodimacCL/9065911_13/public"
+        ]
+      }
+    ],
+    "pagination": {
+      "count": 147,
+      "perPage": 48,
+      "totalPerPage": 49,
+      "currentPage": 1
+    }
+  },
+  "_fixture": {
+    "source": "https://www.sodimac.cl/s/browse/v1/listing/cl",
+    "observed_date": "2026-10-18",
+    "location": "La Florida, Metropolitana",
+    "purpose": "Reduced public listing fields; no sessions, cookies or image files",
+    "truncated": true
+  }
+}

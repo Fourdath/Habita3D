@@ -107,6 +107,26 @@ jobs:
       - run: ruff check .
       - run: pytest
 
+  python-windows:
+    name: Python service (Windows)
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: python-service
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+          cache-dependency-path: python-service/requirements-dev.txt
+      - run: python -m pip install -r requirements-dev.txt
+      - run: python -m ruff check .
+      # Deterministic fixtures only: CI never contacts the retail sites.
+      - run: python -m pytest
+      - run: python -m app.capture --help
+
   terraform-staging:
     name: Terraform staging plan
     runs-on: ubuntu-latest

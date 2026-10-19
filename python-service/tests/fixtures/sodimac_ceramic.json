@@ -1,0 +1,301 @@
+{
+  "data": {
+    "results": [
+      {
+        "productId": "150286806",
+        "skuId": "150286807",
+        "sellerSkuId": "916426X",
+        "displayName": "Cerámica 45x45 cm Velum Gris 2 m2",
+        "url": "https://www.sodimac.cl/sodimac-cl/articulo/150286806/ceramica-x-2-m2?exp=so_com",
+        "brand": "HOLZTEK",
+        "sellerId": "SODIMAC_CHILE",
+        "sellerName": "Sodimac",
+        "prices": [
+          {
+            "label": "",
+            "icons": "",
+            "symbol": "$ ",
+            "type": "internetPrice",
+            "crossed": false,
+            "price": [
+              "15.980"
+            ],
+            "unitPrice": {
+              "price": [
+                "7.990"
+              ],
+              "quantity": "2",
+              "unit": "m²",
+              "type": "M2",
+              "unitForSale": "Caja"
+            }
+          }
+        ],
+        "availability": {
+          "homeDeliveryShipping": "",
+          "pickUpFromStoreShipping": "",
+          "internationalShipping": "",
+          "primeShipping": "",
+          "expressShipping": ""
+        },
+        "GSCCategoryId": "G20041805",
+        "merchantCategoryId": "0314010103",
+        "mediaUrls": [
+          "https://media.sodimac.cl/sodimacCL/916426X_01/public",
+          "https://media.sodimac.cl/sodimacCL/916426X_02/public",
+          "https://media.sodimac.cl/sodimacCL/916426X_12/public",
+          "https://media.sodimac.cl/sodimacCL/916426X_13/public",
+          "https://media.sodimac.cl/sodimacCL/916426X_14/public"
+        ]
+      },
+      {
+        "productId": "110627691",
+        "skuId": "110627693",
+        "sellerSkuId": "8727708",
+        "displayName": "Cerámica 20x60 cm Albero Gris 1.7 m2",
+        "url": "https://www.sodimac.cl/sodimac-cl/articulo/110627691/ceramica-20x60-cm-9300-gris-1-7-m2?exp=so_com",
+        "brand": "HOLZTEK",
+        "sellerId": "SODIMAC_CHILE",
+        "sellerName": "Sodimac",
+        "prices": [
+          {
+            "label": "",
+            "icons": "",
+            "symbol": "$ ",
+            "type": "internetPrice",
+            "crossed": false,
+            "price": [
+              "14.093"
+            ],
+            "unitPrice": {
+              "price": [
+                "8.290"
+              ],
+              "quantity": "1.7",
+              "unit": "m²",
+              "type": "M2",
+              "unitForSale": "Caja"
+            }
+          }
+        ],
+        "availability": {
+          "homeDeliveryShipping": "",
+          "pickUpFromStoreShipping": "",
+          "internationalShipping": "",
+          "primeShipping": "",
+          "expressShipping": ""
+        },
+        "GSCCategoryId": "G20041805",
+        "merchantCategoryId": "0314010101",
+        "mediaUrls": [
+          "https://media.sodimac.cl/sodimacCL/8727708_001/public",
+          "https://media.sodimac.cl/sodimacCL/8727708_02/public",
+          "https://media.sodimac.cl/sodimacCL/8727708_01/public",
+          "https://media.sodimac.cl/sodimacCL/8727708_12/public",
+          "https://media.sodimac.cl/sodimacCL/8727708_03/public"
+        ]
+      },
+      {
+        "productId": "112743435",
+        "skuId": "112743436",
+        "sellerSkuId": "8727724",
+        "displayName": "Cerámica 20x60 cm Uddo Kyoto Café 1.7 m2",
+        "url": "https://www.sodimac.cl/sodimac-cl/articulo/112743435/ceramica-20x60-cm-uddo-kyoto-cafe-1-7-m2?exp=so_com",
+        "brand": "HOLZTEK",
+        "sellerId": "SODIMAC_CHILE",
+        "sellerName": "Sodimac",
+        "prices": [
+          {
+            "label": "",
+            "icons": "",
+            "symbol": "$ ",
+            "type": "internetPrice",
+            "crossed": false,
+            "price": [
+              "14.093"
+            ],
+            "unitPrice": {
+              "price": [
+                "8.290"
+              ],
+              "quantity": "1.7",
+              "unit": "m²",
+              "type": "M2",
+              "unitForSale": "Caja"
+            }
+          }
+        ],
+        "availability": {
+          "homeDeliveryShipping": "",
+          "pickUpFromStoreShipping": "",
+          "internationalShipping": "",
+          "primeShipping": "",
+          "expressShipping": ""
+        },
+        "GSCCategoryId": "G20041805",
+        "merchantCategoryId": "0314010101",
+        "mediaUrls": [
+          "https://media.sodimac.cl/sodimacCL/8727724_001/public",
+          "https://media.sodimac.cl/sodimacCL/8727724_1/public",
+          "https://media.sodimac.cl/sodimacCL/8727724_01/public",
+          "https://media.sodimac.cl/sodimacCL/8727724_02/public",
+          "https://media.sodimac.cl/sodimacCL/8727724_12/public"
+        ]
+      },
+      {
+        "productId": "122121444",
+        "skuId": "122121445",
+        "sellerSkuId": "8989907",
+        "displayName": "Cerámica Maderada 45x45 cm Orlando Café 2 m2",
+        "url": "https://www.sodimac.cl/sodimac-cl/articulo/122121444/ceramica-maderada-45x45-cm-orlando-cafe-2-m2?exp=so_com",
+        "brand": "HOLZTEK",
+        "sellerId": "SODIMAC_CHILE",
+        "sellerName": "Sodimac",
+        "prices": [
+          {
+            "label": "",
+            "icons": "",
+            "symbol": "$ ",
+            "type": "internetPrice",
+            "crossed": false,
+            "price": [
+              "13.980"
+            ],
+            "unitPrice": {
+              "price": [
+                "6.990"
+              ],
+              "quantity": "2",
+              "unit": "m²",
+              "type": "M2",
+              "unitForSale": "Caja"
+            }
+          }
+        ],
+        "availability": {
+          "homeDeliveryShipping": "",
+          "pickUpFromStoreShipping": "",
+          "internationalShipping": "",
+          "primeShipping": "",
+          "expressShipping": ""
+        },
+        "GSCCategoryId": "G20041805",
+        "merchantCategoryId": "0314010101",
+        "mediaUrls": [
+          "https://media.sodimac.cl/sodimacCL/8989907_001/public",
+          "https://media.sodimac.cl/sodimacCL/8989907_01/public",
+          "https://media.sodimac.cl/sodimacCL/8989907_02/public",
+          "https://media.sodimac.cl/sodimacCL/8989907_1/public",
+          "https://media.sodimac.cl/sodimacCL/8989907_12/public"
+        ]
+      },
+      {
+        "productId": "110152828",
+        "skuId": "110152829",
+        "sellerSkuId": "1791893",
+        "displayName": "Cerámica Muro 20x30 cm Engobe Blanco. 1.5 m2",
+        "url": "https://www.sodimac.cl/sodimac-cl/articulo/110152828/Ceramica-Muro-20x30-cm-Engobe-Blanco.-1.5-m2?exp=so_com",
+        "brand": "KARSON",
+        "sellerId": "SODIMAC_CHILE",
+        "sellerName": "Sodimac",
+        "prices": [
+          {
+            "label": "",
+            "icons": "",
+            "symbol": "$ ",
+            "type": "internetPrice",
+            "crossed": false,
+            "price": [
+              "6.075"
+            ],
+            "unitPrice": {
+              "price": [
+                "4.050"
+              ],
+              "quantity": "1.5",
+              "unit": "m²",
+              "type": "M2",
+              "unitForSale": "Caja"
+            }
+          }
+        ],
+        "availability": {
+          "homeDeliveryShipping": "",
+          "pickUpFromStoreShipping": "",
+          "internationalShipping": "",
+          "primeShipping": "",
+          "expressShipping": ""
+        },
+        "GSCCategoryId": "G20041702",
+        "merchantCategoryId": "0314010203",
+        "mediaUrls": [
+          "https://media.sodimac.cl/sodimacCL/1791893_001/public",
+          "https://media.sodimac.cl/sodimacCL/1791893_01/public",
+          "https://media.sodimac.cl/sodimacCL/1791893_300/public",
+          "https://media.sodimac.cl/sodimacCL/1791893_02/public",
+          "https://media.sodimac.cl/sodimacCL/1791893_1/public"
+        ]
+      },
+      {
+        "productId": "130585531",
+        "skuId": "130585532",
+        "sellerSkuId": "9042695",
+        "displayName": "Cerámica 53x53 cm Mykonos Gray Gris 2.81 m2",
+        "url": "https://www.sodimac.cl/sodimac-cl/articulo/130585531/ceramica-53x53-cm-mykonos-gray-gris-2-81-m2?exp=so_com",
+        "brand": "HOLZTEK",
+        "sellerId": "SODIMAC_CHILE",
+        "sellerName": "Sodimac",
+        "prices": [
+          {
+            "label": "",
+            "icons": "",
+            "symbol": "$ ",
+            "type": "internetPrice",
+            "crossed": false,
+            "price": [
+              "22.452"
+            ],
+            "unitPrice": {
+              "price": [
+                "7.990"
+              ],
+              "quantity": "2.81",
+              "unit": "m²",
+              "type": "M2",
+              "unitForSale": "Caja"
+            }
+          }
+        ],
+        "availability": {
+          "homeDeliveryShipping": "",
+          "pickUpFromStoreShipping": "",
+          "internationalShipping": "",
+          "primeShipping": "",
+          "expressShipping": ""
+        },
+        "GSCCategoryId": "G20041805",
+        "merchantCategoryId": "0314010106",
+        "mediaUrls": [
+          "https://media.sodimac.cl/sodimacCL/9042695_001/public",
+          "https://media.sodimac.cl/sodimacCL/9042695_11/public",
+          "https://media.sodimac.cl/sodimacCL/9042695_02/public",
+          "https://media.sodimac.cl/sodimacCL/9042695_14/public",
+          "https://media.sodimac.cl/sodimacCL/9042695_15/public"
+        ]
+      }
+    ],
+    "pagination": {
+      "count": 452,
+      "perPage": 48,
+      "totalPerPage": 48,
+      "currentPage": 1
+    }
+  },
+  "_fixture": {
+    "source": "https://www.sodimac.cl/s/browse/v1/listing/cl",
+    "observed_date": "2026-10-18",
+    "location": "La Florida, Metropolitana",
+    "purpose": "Reduced public listing fields; no sessions, cookies or image files",
+    "truncated": true
+  }
+}

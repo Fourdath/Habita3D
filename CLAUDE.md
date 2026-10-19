@@ -40,6 +40,14 @@ and the [EP1 demo](docs/ep1-demo.md) for the current implementation and its limi
   Don't add a prefix without checking that contract.
 - The preview and 3D budget use demo figures, not current web prices or availability. Keep
   this distinction visible in API responses and UI copy.
+- EP2 block 1 adds `/materials/normalize`, protected `/materials/captures` and `/materials/status`,
+  and `/floors/budget`. These process real retailer data; NestJS/Angular integration is pending.
+  The original `/recommendations/compare` remains the compatible EP1 demonstration route.
+- `python -m app.capture` performs bounded acquisition; `--schedule` targets 08/12/16 Chile time.
+  `python-service/data/` is an ignored local evidence cache, never the application database.
+  Do not scrape retail sites in CI; use fixtures. Live acquisition respects robots and pacing.
+- Python code supports 3.12+; CI/Docker use 3.14. Keep compatible syntax for Windows installations.
+  Regenerate the checked-in contract with `python -m app.export_contract` after schema changes.
 
 ## Commands
 
