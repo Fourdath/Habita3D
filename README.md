@@ -14,8 +14,11 @@ de datos reales de Sodimac y Easy, los proyectos por habitación, el historial d
 precios y la previsualización orientativa. Incluyen la distribución en tres bloques,
 las tareas de CI/CD y las opciones de staging gratuito sin tarjeta.
 
-Esta documentación describe **trabajo pendiente de implementación**; la aplicación
-actual mantiene el alcance de EP1 explicado a continuación.
+El [bloque 1: datos y FastAPI](docs/ep2/bloque-1-datos.md) incorpora capturas reales
+acotadas, normalización, cálculo por cajas, métricas y ejecución programada local.
+El flujo Angular/NestJS de EP1 conserva sus valores demostrativos hasta integrar
+los bloques 2 y 3. La evidencia local Python no sustituye la persistencia PostgreSQL.
+La demo se prevé en el computador Windows de un integrante; la guía incluye PowerShell.
 
 ## Definición del proyecto para EP1
 

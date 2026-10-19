@@ -16,3 +16,15 @@ targetRules = ["generic-api-key"]
 regexes = [
   '''^abc123def456$'''
 ]
+
+[[allowlists]]
+description = "Four public publication identifiers derived with SHA-256; not credentials"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''^docs/ep2/evidencias/bloque-1-calidad\.json$''']
+regexes = [
+  '''^049581a0dfb7aff86683102e9a2c6c9bb2a4f90df8a256cf697ea9a1eb855361$''',
+  '''^084ed48a7f3e981c36865f25802d5e6a49e9afb37d2b2c9c7228eb4454ad2e98$''',
+  '''^0c1439518560f511cc56c67da5892f1877633ec14d53cbed8ef1f70270d48132$''',
+  '''^002abba297c969113955afa803473047f6ad61740512af65f857a0e7ede246b4$'''
+]

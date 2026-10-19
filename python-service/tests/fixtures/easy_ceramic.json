@@ -1,0 +1,933 @@
+{
+  "_fixture_provenance": {
+    "source_url": "https://www.easy.cl/search/ceramica%20piso",
+    "checked_on": "2026-10-18",
+    "context": "Metropolitana / La Florida (13110), tres cookies públicas de ubicación",
+    "records_received": 40,
+    "records_saved": 10,
+    "purpose": "Muestra pública reducida para pruebas; no representa una actualización en vivo."
+  },
+  "pageProps": {
+    "serverProductsResponse": {
+      "productList": [
+        {
+          "productId": "109329",
+          "sku": "1357773",
+          "productName": "Cerámica piso 45x45 cm Mississippi natural 2,23 m2",
+          "brand": "Celima",
+          "categories": [
+            "Pisos/Pisos y Revestimientos/Cerámicas",
+            "Pisos",
+            "Pisos/Pisos y Revestimientos"
+          ],
+          "isMarketplace": false,
+          "sellerName": "",
+          "imageUrl": "https://easycl.vteximg.com.br/arquivos/ids/4928451/1357773-0000-001.jpg?v=638738892858470000",
+          "linkText": "ceramica-piso-45x45-cm-mississippi-natural-223-m2-1357773/p",
+          "prices": {
+            "currency": "CLP",
+            "normalPrice": 19156,
+            "offerPrice": 12243,
+            "brandPrice": null
+          },
+          "pricesM2": {
+            "normalPrice": 8590,
+            "currency": "CLP",
+            "offerPrice": 5490,
+            "brandPrice": null
+          },
+          "availableQuantity": 1,
+          "specifications": [
+            {
+              "name": "Garantía Proveedor",
+              "values": [
+                "5 años"
+              ]
+            },
+            {
+              "name": "Garantía Mínima Legal",
+              "values": [
+                "6 meses, a partir de la entrega del producto"
+              ]
+            },
+            {
+              "name": "Estilo",
+              "values": [
+                "Madera"
+              ]
+            },
+            {
+              "name": "Tono",
+              "values": [
+                "Natural"
+              ]
+            }
+          ],
+          "commercialOffer": {
+            "itemId": "114276",
+            "defaultOffer": {
+              "prices": {
+                "currency": "CLP",
+                "normalPrice": 19156,
+                "offerPrice": 12243,
+                "brandPrice": null
+              },
+              "pricesPerUnit": {
+                "currency": "CLP",
+                "normalPrice": 8590,
+                "offerPrice": 5490,
+                "brandPrice": null,
+                "contentUnit": "m2box"
+              },
+              "cardPromotions": [
+                {
+                  "name": "PF_12242,7 TMP Flooring Missi",
+                  "label": "36%",
+                  "type": "general",
+                  "id": "GENERAL"
+                }
+              ],
+              "ribbons": {
+                "top": [],
+                "bottom": [
+                  {
+                    "id": "cluster",
+                    "type": "custom",
+                    "value": "Cupón - Flooring (todo)",
+                    "returnValue": "Cupón: PISOSYMUROS10",
+                    "background": "#FFE6E6",
+                    "textColor": "#CC1515",
+                    "percentageDiscountValues": []
+                  }
+                ],
+                "delivery": []
+              }
+            },
+            "offerByZone": null
+          }
+        },
+        {
+          "productId": "168367",
+          "sku": "1278234",
+          "productName": "Cerámica piso muro Eucalipto 51x51 cm 2.08 m2",
+          "brand": "Allpa",
+          "categories": [
+            "Pisos",
+            "Pisos/Pisos y Revestimientos",
+            "Pisos/Pisos y Revestimientos/Cerámicas"
+          ],
+          "isMarketplace": false,
+          "sellerName": "",
+          "imageUrl": "https://easycl.vteximg.com.br/arquivos/ids/5073888/1278234-0000-001.jpg?v=638743890501970000",
+          "linkText": "ceramica-piso-muro-eucalipto-51x51-cm-208-m2-1278234/p",
+          "prices": {
+            "currency": "CLP",
+            "normalPrice": 20779,
+            "offerPrice": 11419,
+            "brandPrice": null
+          },
+          "pricesM2": {
+            "normalPrice": 9990,
+            "currency": "CLP",
+            "offerPrice": 5490,
+            "brandPrice": null
+          },
+          "availableQuantity": 1,
+          "specifications": [
+            {
+              "name": "País de Origen",
+              "values": [
+                "Argentina"
+              ]
+            },
+            {
+              "name": "Estilo",
+              "values": [
+                "Madera"
+              ]
+            },
+            {
+              "name": "Tono",
+              "values": [
+                "Café"
+              ]
+            },
+            {
+              "name": "Resistencia al Agua",
+              "values": [
+                "Sí"
+              ]
+            }
+          ],
+          "commercialOffer": {
+            "itemId": "173778",
+            "defaultOffer": {
+              "prices": {
+                "currency": "CLP",
+                "normalPrice": 20779,
+                "offerPrice": 11419,
+                "brandPrice": null
+              },
+              "pricesPerUnit": {
+                "currency": "CLP",
+                "normalPrice": 9990,
+                "offerPrice": 5490,
+                "brandPrice": null,
+                "contentUnit": "m2box"
+              },
+              "cardPromotions": [
+                {
+                  "name": "priceTable",
+                  "label": "45%",
+                  "type": "general",
+                  "id": "GENERAL"
+                }
+              ],
+              "ribbons": {
+                "top": [],
+                "bottom": [
+                  {
+                    "id": "cluster",
+                    "type": "custom",
+                    "value": "Cupón - Flooring (todo)",
+                    "returnValue": "Cupón: PISOSYMUROS10",
+                    "background": "#FFE6E6",
+                    "textColor": "#CC1515",
+                    "percentageDiscountValues": []
+                  }
+                ],
+                "delivery": []
+              }
+            },
+            "offerByZone": null
+          }
+        },
+        {
+          "productId": "183389",
+          "sku": "1430663",
+          "productName": "Cerámica piso muro Padua gris 42.5x42.5 cm 2.17 m2",
+          "brand": "Cañuelas",
+          "categories": [
+            "Pisos",
+            "Pisos/Pisos y Revestimientos",
+            "Pisos/Pisos y Revestimientos/Cerámicas"
+          ],
+          "isMarketplace": false,
+          "sellerName": "",
+          "imageUrl": "https://easycl.vteximg.com.br/arquivos/ids/5115898/1430663-0000-001.jpg?v=638839749735030000",
+          "linkText": "ceramica-piso-muro-padua-gris-425x425-cm-217-m2-1430663/p",
+          "prices": {
+            "currency": "CLP",
+            "normalPrice": 15168,
+            "offerPrice": 11913,
+            "brandPrice": null
+          },
+          "pricesM2": {
+            "normalPrice": 6990,
+            "currency": "CLP",
+            "offerPrice": 5490,
+            "brandPrice": null
+          },
+          "availableQuantity": 1,
+          "specifications": [
+            {
+              "name": "Ancho",
+              "values": [
+                "42.5 cm"
+              ]
+            },
+            {
+              "name": "Peso",
+              "values": [
+                "32.5 kg"
+              ]
+            },
+            {
+              "name": "Largo",
+              "values": [
+                "42.5 cm"
+              ]
+            },
+            {
+              "name": "Espesor",
+              "values": [
+                "79 mm"
+              ]
+            }
+          ],
+          "commercialOffer": {
+            "itemId": "189845",
+            "defaultOffer": {
+              "prices": {
+                "currency": "CLP",
+                "normalPrice": 15168,
+                "offerPrice": 11913,
+                "brandPrice": null
+              },
+              "pricesPerUnit": {
+                "currency": "CLP",
+                "normalPrice": 6990,
+                "offerPrice": 5490,
+                "brandPrice": null,
+                "contentUnit": "m2box"
+              },
+              "cardPromotions": [
+                {
+                  "name": "priceTable",
+                  "label": "21%",
+                  "type": "general",
+                  "id": "GENERAL"
+                }
+              ],
+              "ribbons": {
+                "top": [],
+                "bottom": [
+                  {
+                    "id": "cluster",
+                    "type": "custom",
+                    "value": "Cupón - Flooring (todo)",
+                    "returnValue": "Cupón: PISOSYMUROS10",
+                    "background": "#FFE6E6",
+                    "textColor": "#CC1515",
+                    "percentageDiscountValues": []
+                  }
+                ],
+                "delivery": []
+              }
+            },
+            "offerByZone": null
+          }
+        },
+        {
+          "productId": "183388",
+          "sku": "1159503",
+          "productName": "Cerámica piso muro Bologna gris claro 50x50 cm 2.3 m2",
+          "brand": "Cañuelas",
+          "categories": [
+            "Pisos",
+            "Pisos/Pisos y Revestimientos",
+            "Pisos/Pisos y Revestimientos/Cerámicas"
+          ],
+          "isMarketplace": false,
+          "sellerName": "",
+          "imageUrl": "https://easycl.vteximg.com.br/arquivos/ids/5115213/1159503-0000-001.jpg?v=639154914108770000",
+          "linkText": "ceramica-piso-muro-bologna-gris-claro-50x50-cm-23-m2-1159503/p",
+          "prices": {
+            "currency": "CLP",
+            "normalPrice": 18377,
+            "offerPrice": null,
+            "brandPrice": null
+          },
+          "pricesM2": {
+            "normalPrice": 7990,
+            "currency": "CLP",
+            "offerPrice": null,
+            "brandPrice": null
+          },
+          "availableQuantity": 1,
+          "specifications": [
+            {
+              "name": "Acabado",
+              "values": [
+                "Brillante"
+              ]
+            },
+            {
+              "name": "País de Origen",
+              "values": [
+                "Argentina"
+              ]
+            },
+            {
+              "name": "Resistencia al tráfico",
+              "values": [
+                "Alto Tráfico Residencial / Tráfico medio Comercial"
+              ]
+            },
+            {
+              "name": "Tono",
+              "values": [
+                "Gris claro"
+              ]
+            }
+          ],
+          "commercialOffer": {
+            "itemId": "188816",
+            "defaultOffer": {
+              "prices": {
+                "currency": "CLP",
+                "normalPrice": 18377,
+                "offerPrice": null,
+                "brandPrice": null
+              },
+              "pricesPerUnit": {
+                "currency": "CLP",
+                "normalPrice": 7990,
+                "offerPrice": null,
+                "brandPrice": null,
+                "contentUnit": "m2box"
+              },
+              "cardPromotions": [],
+              "ribbons": {
+                "top": [],
+                "bottom": [
+                  {
+                    "id": "cluster",
+                    "type": "custom",
+                    "value": "Cupón - Flooring (todo)",
+                    "returnValue": "Cupón: PISOSYMUROS10",
+                    "background": "#FFE6E6",
+                    "textColor": "#CC1515",
+                    "percentageDiscountValues": []
+                  }
+                ],
+                "delivery": []
+              }
+            },
+            "offerByZone": null
+          }
+        },
+        {
+          "productId": "138166",
+          "sku": "1392992",
+          "productName": "Cerámica piso 45.1x45.1 cm Piedra Candall 2.23 m2",
+          "brand": "Celima",
+          "categories": [
+            "Pisos/Pisos y Revestimientos/Cerámicas",
+            "Pisos",
+            "Pisos/Pisos y Revestimientos"
+          ],
+          "isMarketplace": false,
+          "sellerName": "",
+          "imageUrl": "https://easycl.vteximg.com.br/arquivos/ids/4905408/1392992-0000-001.jpg?v=638737182742500000",
+          "linkText": "ceramica-piso-451x451-cm-piedra-candall-223-m2-1392992/p",
+          "prices": {
+            "currency": "CLP",
+            "normalPrice": 22278,
+            "offerPrice": null,
+            "brandPrice": null
+          },
+          "pricesM2": {
+            "normalPrice": 9990,
+            "currency": "CLP",
+            "offerPrice": null,
+            "brandPrice": null
+          },
+          "availableQuantity": 1,
+          "specifications": [
+            {
+              "name": "Posiciones",
+              "values": []
+            },
+            {
+              "name": "Tipo de carga",
+              "values": []
+            },
+            {
+              "name": "Caudal",
+              "values": []
+            },
+            {
+              "name": "Terminación",
+              "values": []
+            }
+          ],
+          "commercialOffer": {
+            "itemId": "143131",
+            "defaultOffer": {
+              "prices": {
+                "currency": "CLP",
+                "normalPrice": 22278,
+                "offerPrice": null,
+                "brandPrice": null
+              },
+              "pricesPerUnit": {
+                "currency": "CLP",
+                "normalPrice": 9990,
+                "offerPrice": null,
+                "brandPrice": null,
+                "contentUnit": "m2box"
+              },
+              "cardPromotions": [],
+              "ribbons": {
+                "top": [],
+                "bottom": [
+                  {
+                    "id": "cluster",
+                    "type": "custom",
+                    "value": "Cupón - Flooring (todo)",
+                    "returnValue": "Cupón: PISOSYMUROS10",
+                    "background": "#FFE6E6",
+                    "textColor": "#CC1515",
+                    "percentageDiscountValues": []
+                  }
+                ],
+                "delivery": []
+              }
+            },
+            "offerByZone": null
+          }
+        },
+        {
+          "productId": "206240",
+          "sku": "1266742",
+          "productName": "Cerámica piso muro California gris 36x36 cm 2.68 m2",
+          "brand": "Allpa",
+          "categories": [
+            "Pisos/Pisos y Revestimientos/Cerámicas",
+            "Pisos/Pisos y Revestimientos",
+            "Pisos"
+          ],
+          "isMarketplace": false,
+          "sellerName": "",
+          "imageUrl": "https://easycl.vteximg.com.br/arquivos/ids/5162612/1266742-0000-001.jpg?v=639034161432300000",
+          "linkText": "ceramica-piso-muro-california-gris-36x36-cm-268-m2-1266742/p",
+          "prices": {
+            "currency": "CLP",
+            "normalPrice": 16053,
+            "offerPrice": null,
+            "brandPrice": null
+          },
+          "pricesM2": {
+            "normalPrice": 5990,
+            "currency": "CLP",
+            "offerPrice": null,
+            "brandPrice": null
+          },
+          "availableQuantity": 1,
+          "specifications": [
+            {
+              "name": "Surtido",
+              "values": [
+                "No"
+              ]
+            },
+            {
+              "name": "Textura",
+              "values": [
+                "Cementicio"
+              ]
+            },
+            {
+              "name": "Resistencia al tráfico",
+              "values": [
+                "Uso Residencial"
+              ]
+            },
+            {
+              "name": "Rendimiento",
+              "values": [
+                "2.68 m2"
+              ]
+            }
+          ],
+          "commercialOffer": {
+            "itemId": "213300",
+            "defaultOffer": {
+              "prices": {
+                "currency": "CLP",
+                "normalPrice": 16053,
+                "offerPrice": null,
+                "brandPrice": null
+              },
+              "pricesPerUnit": {
+                "currency": "CLP",
+                "normalPrice": 5990,
+                "offerPrice": null,
+                "brandPrice": null,
+                "contentUnit": "m2box"
+              },
+              "cardPromotions": [],
+              "ribbons": {
+                "top": [],
+                "bottom": [
+                  {
+                    "id": "cluster",
+                    "type": "custom",
+                    "value": "Cupón - Flooring (todo)",
+                    "returnValue": "Cupón: PISOSYMUROS10",
+                    "background": "#FFE6E6",
+                    "textColor": "#CC1515",
+                    "percentageDiscountValues": []
+                  }
+                ],
+                "delivery": []
+              }
+            },
+            "offerByZone": null
+          }
+        },
+        {
+          "productId": "57823",
+          "sku": "1282840",
+          "productName": "Cerámica piso muro Biloba marrón 51x51 cm 2.08 m2",
+          "brand": "Allpa",
+          "categories": [
+            "Pisos/Pisos y Revestimientos/Cerámicas",
+            "Pisos",
+            "Pisos/Pisos y Revestimientos"
+          ],
+          "isMarketplace": false,
+          "sellerName": "",
+          "imageUrl": "https://easycl.vteximg.com.br/arquivos/ids/4898509/1282840-0000-001.jpg?v=638737164635030000",
+          "linkText": "ceramica-piso-muro-biloba-marron-51x51-cm-208-m2-1282840/p",
+          "prices": {
+            "currency": "CLP",
+            "normalPrice": 16619,
+            "offerPrice": 12459,
+            "brandPrice": null
+          },
+          "pricesM2": {
+            "normalPrice": 7990,
+            "currency": "CLP",
+            "offerPrice": 5990,
+            "brandPrice": null
+          },
+          "availableQuantity": 1,
+          "specifications": [
+            {
+              "name": "Voltaje",
+              "values": []
+            },
+            {
+              "name": "Potencia nominal",
+              "values": []
+            },
+            {
+              "name": "Contenido",
+              "values": []
+            },
+            {
+              "name": "Lavable",
+              "values": []
+            }
+          ],
+          "commercialOffer": {
+            "itemId": "59811",
+            "defaultOffer": {
+              "prices": {
+                "currency": "CLP",
+                "normalPrice": 16619,
+                "offerPrice": 12459,
+                "brandPrice": null
+              },
+              "pricesPerUnit": {
+                "currency": "CLP",
+                "normalPrice": 7990,
+                "offerPrice": 5990,
+                "brandPrice": null,
+                "contentUnit": "m2box"
+              },
+              "cardPromotions": [
+                {
+                  "name": "priceTable",
+                  "label": "25%",
+                  "type": "general",
+                  "id": "GENERAL"
+                }
+              ],
+              "ribbons": {
+                "top": [],
+                "bottom": [
+                  {
+                    "id": "cluster",
+                    "type": "custom",
+                    "value": "Cupón - Flooring (todo)",
+                    "returnValue": "Cupón: PISOSYMUROS10",
+                    "background": "#FFE6E6",
+                    "textColor": "#CC1515",
+                    "percentageDiscountValues": []
+                  }
+                ],
+                "delivery": []
+              }
+            },
+            "offerByZone": null
+          }
+        },
+        {
+          "productId": "98876",
+          "sku": "1322096",
+          "productName": "Cerámica piso muro Nápoles gris 50x50 cm 2.3 m2",
+          "brand": "Cañuelas",
+          "categories": [
+            "Pisos",
+            "Pisos/Pisos y Revestimientos/Cerámicas",
+            "Pisos/Pisos y Revestimientos"
+          ],
+          "isMarketplace": false,
+          "sellerName": "",
+          "imageUrl": "https://easycl.vteximg.com.br/arquivos/ids/4926084/1322096-0000-001.jpg?v=638738886879530000",
+          "linkText": "ceramica-piso-muro-napoles-gris-50x50-cm-23-m2-1322096/p",
+          "prices": {
+            "currency": "CLP",
+            "normalPrice": 20677,
+            "offerPrice": 13777,
+            "brandPrice": null
+          },
+          "pricesM2": {
+            "normalPrice": 8990,
+            "currency": "CLP",
+            "offerPrice": 5990,
+            "brandPrice": null
+          },
+          "availableQuantity": 1,
+          "specifications": [
+            {
+              "name": "Rendimiento",
+              "values": [
+                "2,3 m2"
+              ]
+            },
+            {
+              "name": "Textura",
+              "values": [
+                "Marmoleado"
+              ]
+            },
+            {
+              "name": "País de Origen",
+              "values": [
+                "Argentina"
+              ]
+            },
+            {
+              "name": "Aplicación",
+              "values": [
+                "Pisos y muros"
+              ]
+            }
+          ],
+          "commercialOffer": {
+            "itemId": "103486",
+            "defaultOffer": {
+              "prices": {
+                "currency": "CLP",
+                "normalPrice": 20677,
+                "offerPrice": 13777,
+                "brandPrice": null
+              },
+              "pricesPerUnit": {
+                "currency": "CLP",
+                "normalPrice": 8990,
+                "offerPrice": 5990,
+                "brandPrice": null,
+                "contentUnit": "m2box"
+              },
+              "cardPromotions": [
+                {
+                  "name": "priceTable",
+                  "label": "33%",
+                  "type": "general",
+                  "id": "GENERAL"
+                }
+              ],
+              "ribbons": {
+                "top": [],
+                "bottom": [
+                  {
+                    "id": "cluster",
+                    "type": "custom",
+                    "value": "Cupón - Flooring (todo)",
+                    "returnValue": "Cupón: PISOSYMUROS10",
+                    "background": "#FFE6E6",
+                    "textColor": "#CC1515",
+                    "percentageDiscountValues": []
+                  }
+                ],
+                "delivery": []
+              }
+            },
+            "offerByZone": null
+          }
+        },
+        {
+          "productId": "472863",
+          "sku": "1514126",
+          "productName": "Cerámica Piedra Lunar 51x51 cm 2.08 m2",
+          "brand": "Alberdi",
+          "categories": [
+            "Pisos",
+            "Pisos/Pisos y Revestimientos/Cerámicas",
+            "Pisos/Pisos y Revestimientos"
+          ],
+          "isMarketplace": false,
+          "sellerName": "",
+          "imageUrl": "https://easycl.vteximg.com.br/arquivos/ids/5277442/1514126-0000-001.jpg?v=639156365485600000",
+          "linkText": "ceramica-piedra-lunar-51x51-cm-208-m2-1514126/p",
+          "prices": {
+            "currency": "CLP",
+            "normalPrice": 20780,
+            "offerPrice": 12459,
+            "brandPrice": null
+          },
+          "pricesM2": {
+            "normalPrice": 9990,
+            "currency": "CLP",
+            "offerPrice": 5990,
+            "brandPrice": null
+          },
+          "availableQuantity": 1,
+          "specifications": [
+            {
+              "name": "Formato",
+              "values": [
+                "Caja"
+              ]
+            },
+            {
+              "name": "Rendimiento",
+              "values": [
+                "2.08 m2"
+              ]
+            },
+            {
+              "name": "Textura",
+              "values": [
+                "Rústica"
+              ]
+            },
+            {
+              "name": "Antideslizante",
+              "values": [
+                "No"
+              ]
+            }
+          ],
+          "commercialOffer": {
+            "itemId": "492398",
+            "defaultOffer": {
+              "prices": {
+                "currency": "CLP",
+                "normalPrice": 20780,
+                "offerPrice": 12459,
+                "brandPrice": null
+              },
+              "pricesPerUnit": {
+                "currency": "CLP",
+                "normalPrice": 9990,
+                "offerPrice": 5990,
+                "brandPrice": null,
+                "contentUnit": "m2box"
+              },
+              "cardPromotions": [
+                {
+                  "name": "priceTable",
+                  "label": "40%",
+                  "type": "general",
+                  "id": "GENERAL"
+                }
+              ],
+              "ribbons": {
+                "top": [],
+                "bottom": [
+                  {
+                    "id": "cluster",
+                    "type": "custom",
+                    "value": "Cupón - Flooring (todo)",
+                    "returnValue": "Cupón: PISOSYMUROS10",
+                    "background": "#FFE6E6",
+                    "textColor": "#CC1515",
+                    "percentageDiscountValues": []
+                  }
+                ],
+                "delivery": []
+              }
+            },
+            "offerByZone": null
+          }
+        },
+        {
+          "productId": "472864",
+          "sku": "1514125",
+          "productName": "Cerámica Chillan 51x51 cm 2.08 m2",
+          "brand": "Alberdi",
+          "categories": [
+            "Pisos/Pisos y Revestimientos",
+            "Pisos/Pisos y Revestimientos/Cerámicas",
+            "Pisos"
+          ],
+          "isMarketplace": false,
+          "sellerName": "",
+          "imageUrl": "https://easycl.vteximg.com.br/arquivos/ids/5277424/1514125-0000-001.jpg?v=639156359482400000",
+          "linkText": "ceramica-chillan-51x51-cm-208-m2-1514125/p",
+          "prices": {
+            "currency": "CLP",
+            "normalPrice": 20780,
+            "offerPrice": 10379,
+            "brandPrice": null
+          },
+          "pricesM2": {
+            "normalPrice": 9990,
+            "currency": "CLP",
+            "offerPrice": 4990,
+            "brandPrice": null
+          },
+          "availableQuantity": 1,
+          "specifications": [
+            {
+              "name": "Tipo de producto",
+              "values": [
+                "Cerámicas para Pisos y Muros"
+              ]
+            },
+            {
+              "name": "Modelo",
+              "values": [
+                "Chillan"
+              ]
+            },
+            {
+              "name": "Origen",
+              "values": [
+                "Importado"
+              ]
+            },
+            {
+              "name": "Diseño",
+              "values": [
+                "Tipo Madera"
+              ]
+            }
+          ],
+          "commercialOffer": {
+            "itemId": "492411",
+            "defaultOffer": {
+              "prices": {
+                "currency": "CLP",
+                "normalPrice": 20780,
+                "offerPrice": null,
+                "brandPrice": null
+              },
+              "pricesPerUnit": {
+                "currency": "CLP",
+                "normalPrice": 9990,
+                "offerPrice": null,
+                "brandPrice": null,
+                "contentUnit": "m2box"
+              },
+              "cardPromotions": [],
+              "ribbons": {
+                "top": [],
+                "bottom": [
+                  {
+                    "id": "cluster",
+                    "type": "custom",
+                    "value": "Cupón - Flooring (todo)",
+                    "returnValue": "Cupón: PISOSYMUROS10",
+                    "background": "#FFE6E6",
+                    "textColor": "#CC1515",
+                    "percentageDiscountValues": []
+                  }
+                ],
+                "delivery": []
+              }
+            },
+            "offerByZone": null
+          }
+        }
+      ],
+      "recordsFiltered": 315
+    }
+  }
+}

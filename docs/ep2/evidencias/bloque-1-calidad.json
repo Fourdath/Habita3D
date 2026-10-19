@@ -1,0 +1,392 @@
+{
+  "schema_version": "1.0",
+  "origin": "live",
+  "purpose": "Validación del bloque 1; no es una cotización actual ni una integración Angular/NestJS.",
+  "verified_at": "2026-10-18T22:53:33.432888+00:00",
+  "captures": [
+    {
+      "run_id": "bc84cf82-7e80-4700-8989-84c52dd20e92",
+      "started_at": "2026-10-18T22:49:05.053888Z",
+      "finished_at": "2026-10-18T22:49:15.158237Z",
+      "status": "complete",
+      "groups": [
+        {
+          "source": "sodimac",
+          "category": "ceramic",
+          "status": "complete",
+          "metrics": {
+            "retrieved_records": 48,
+            "valid_records": 38,
+            "rejected_records": 0,
+            "excluded_records": 10,
+            "duplicate_records": 0,
+            "comparable_records": 38,
+            "selected_records": 10,
+            "validity_percent": "79.17",
+            "duplicates_percent": "0.00"
+          },
+          "pages": 1,
+          "request_urls": [
+            "https://www.sodimac.cl/s/browse/v1/listing/cl?categoryId=CATG10827&categoryName=Ceramicas&pgid=95&pid=4107aaf9-b3f4-4666-b8d5-bea868c34751&store=so_com&page=1"
+          ],
+          "errors": [],
+          "warnings": [
+            "La comuna no identifica una sucursal; stock no confirmado por el listado."
+          ],
+          "missing_publication_keys": []
+        },
+        {
+          "source": "sodimac",
+          "category": "laminate",
+          "status": "complete",
+          "metrics": {
+            "retrieved_records": 49,
+            "valid_records": 31,
+            "rejected_records": 0,
+            "excluded_records": 18,
+            "duplicate_records": 0,
+            "comparable_records": 31,
+            "selected_records": 10,
+            "validity_percent": "63.27",
+            "duplicates_percent": "0.00"
+          },
+          "pages": 1,
+          "request_urls": [
+            "https://www.sodimac.cl/s/browse/v1/listing/cl?categoryId=CATG10826&categoryName=Pisos-Flotantes&pgid=95&pid=4107aaf9-b3f4-4666-b8d5-bea868c34751&store=so_com&page=1"
+          ],
+          "errors": [],
+          "warnings": [
+            "La comuna no identifica una sucursal; stock no confirmado por el listado."
+          ],
+          "missing_publication_keys": []
+        }
+      ]
+    },
+    {
+      "run_id": "78ce72de-5fd2-452b-87d6-4c3179cc70bb",
+      "started_at": "2026-10-18T22:50:19.565183Z",
+      "finished_at": "2026-10-18T22:50:29.872194Z",
+      "status": "complete",
+      "groups": [
+        {
+          "source": "easy",
+          "category": "ceramic",
+          "status": "complete",
+          "metrics": {
+            "retrieved_records": 40,
+            "valid_records": 30,
+            "rejected_records": 0,
+            "excluded_records": 10,
+            "duplicate_records": 0,
+            "comparable_records": 30,
+            "selected_records": 10,
+            "validity_percent": "75.00",
+            "duplicates_percent": "0.00"
+          },
+          "pages": 1,
+          "request_urls": [
+            "https://www.easy.cl/search/ceramica%20piso"
+          ],
+          "errors": [],
+          "warnings": [
+            "Easy: se envía el contexto público de La Florida; el listado no confirma la comuna en su respuesta ni garantiza inventario físico en una sucursal."
+          ],
+          "missing_publication_keys": []
+        },
+        {
+          "source": "easy",
+          "category": "laminate",
+          "status": "complete",
+          "metrics": {
+            "retrieved_records": 40,
+            "valid_records": 38,
+            "rejected_records": 0,
+            "excluded_records": 2,
+            "duplicate_records": 0,
+            "comparable_records": 38,
+            "selected_records": 10,
+            "validity_percent": "95.00",
+            "duplicates_percent": "0.00"
+          },
+          "pages": 1,
+          "request_urls": [
+            "https://www.easy.cl/search/piso%20flotante"
+          ],
+          "errors": [],
+          "warnings": [
+            "Easy: se envía el contexto público de La Florida; el listado no confirma la comuna en su respuesta ni garantiza inventario físico en una sucursal."
+          ],
+          "missing_publication_keys": []
+        }
+      ]
+    }
+  ],
+  "totals": {
+    "retrieved_records": 177,
+    "valid_records": 137,
+    "rejected_records": 0,
+    "excluded_records": 40,
+    "duplicate_records": 0,
+    "comparable_records": 137,
+    "selected_records": 40,
+    "validity_percent": "77.40",
+    "duplicates_percent": "0.00"
+  },
+  "sample_sha256": "bfc2639281516f64ecd5e86cd843ba041a9c76ab0c83a839217149209374eae8",
+  "publication_examples": [
+    {
+      "publication_key": "049581a0dfb7aff86683102e9a2c6c9bb2a4f90df8a256cf697ea9a1eb855361",
+      "source": "sodimac",
+      "external_id": "139718378",
+      "seller": "Sodimac",
+      "name": "Cerámica 45x45 cm Madera Jona Café 2.29 m2",
+      "category": "ceramic",
+      "product_url": "https://www.sodimac.cl/sodimac-cl/articulo/139718378/ceramica-45x45-cm-madera-jona-cafe-2-29-m2",
+      "currency": "CLP",
+      "price_type": "public",
+      "price_per_box_clp": 17287,
+      "coverage_per_box_m2": "2.29",
+      "price_per_m2_clp": "7548.91",
+      "availability": "unknown",
+      "commune_code": "13110",
+      "checked_at": "2026-10-18T22:49:10.168248Z",
+      "last_checked_display": "18/10/2026 19:49"
+    },
+    {
+      "publication_key": "084ed48a7f3e981c36865f25802d5e6a49e9afb37d2b2c9c7228eb4454ad2e98",
+      "source": "sodimac",
+      "external_id": "110404726",
+      "seller": "Sodimac",
+      "name": "Piso Flotante 8 mm Oak Brown Grey 1.99 m2",
+      "category": "laminate",
+      "product_url": "https://www.sodimac.cl/sodimac-cl/articulo/110404726/piso-flotante-8-mm-oak-brown-grey-1-99-m2",
+      "currency": "CLP",
+      "price_type": "public",
+      "price_per_box_clp": 23794,
+      "coverage_per_box_m2": "1.99",
+      "price_per_m2_clp": "11956.78",
+      "availability": "unknown",
+      "commune_code": "13110",
+      "checked_at": "2026-10-18T22:49:15.156709Z",
+      "last_checked_display": "18/10/2026 19:49"
+    },
+    {
+      "publication_key": "0c1439518560f511cc56c67da5892f1877633ec14d53cbed8ef1f70270d48132",
+      "source": "easy",
+      "external_id": "494013",
+      "seller": "Easy",
+      "name": "Cerámica Tropea gris 50x50 cm 2.3 m2",
+      "category": "ceramic",
+      "product_url": "https://www.easy.cl/ceramica-tropea-gris-50x50-cm-23-m2-1513526/p",
+      "currency": "CLP",
+      "price_type": "public",
+      "price_per_box_clp": 22977,
+      "coverage_per_box_m2": "2.3",
+      "price_per_m2_clp": "9990.00",
+      "availability": "unknown",
+      "commune_code": "13110",
+      "checked_at": "2026-10-18T22:50:24.747712Z",
+      "last_checked_display": "18/10/2026 19:50"
+    },
+    {
+      "publication_key": "002abba297c969113955afa803473047f6ad61740512af65f857a0e7ede246b4",
+      "source": "easy",
+      "external_id": "137925",
+      "seller": "Easy",
+      "name": "Piso flotante Classic touch Aquapro ferrara wildlife 7 mm 3.04 m2",
+      "category": "laminate",
+      "product_url": "https://www.easy.cl/piso-flotante-classic-touch-aquapro-ferrara-wildlife-7-mm-304-m2-1392714/p",
+      "currency": "CLP",
+      "price_type": "public",
+      "price_per_box_clp": 41010,
+      "coverage_per_box_m2": "3.04",
+      "price_per_m2_clp": "13490.13",
+      "availability": "unknown",
+      "commune_code": "13110",
+      "checked_at": "2026-10-18T22:50:29.871089Z",
+      "last_checked_display": "18/10/2026 19:50"
+    }
+  ],
+  "budget_smoke_request": {
+    "rooms": [
+      {
+        "room_id": "sodimac-ceramic",
+        "area_m2": "12",
+        "publication": {
+          "publication_key": "049581a0dfb7aff86683102e9a2c6c9bb2a4f90df8a256cf697ea9a1eb855361",
+          "source": "sodimac",
+          "price_per_box_clp": 17287,
+          "coverage_per_box_m2": "2.29",
+          "currency": "CLP",
+          "checked_at": "2026-10-18T22:49:10.168248Z",
+          "availability": "unknown",
+          "price_type": "public"
+        }
+      },
+      {
+        "room_id": "sodimac-laminate",
+        "area_m2": "12",
+        "publication": {
+          "publication_key": "084ed48a7f3e981c36865f25802d5e6a49e9afb37d2b2c9c7228eb4454ad2e98",
+          "source": "sodimac",
+          "price_per_box_clp": 23794,
+          "coverage_per_box_m2": "1.99",
+          "currency": "CLP",
+          "checked_at": "2026-10-18T22:49:15.156709Z",
+          "availability": "unknown",
+          "price_type": "public"
+        }
+      },
+      {
+        "room_id": "easy-ceramic",
+        "area_m2": "12",
+        "publication": {
+          "publication_key": "0c1439518560f511cc56c67da5892f1877633ec14d53cbed8ef1f70270d48132",
+          "source": "easy",
+          "price_per_box_clp": 22977,
+          "coverage_per_box_m2": "2.3",
+          "currency": "CLP",
+          "checked_at": "2026-10-18T22:50:24.747712Z",
+          "availability": "unknown",
+          "price_type": "public"
+        }
+      },
+      {
+        "room_id": "easy-laminate",
+        "area_m2": "12",
+        "publication": {
+          "publication_key": "002abba297c969113955afa803473047f6ad61740512af65f857a0e7ede246b4",
+          "source": "easy",
+          "price_per_box_clp": 41010,
+          "coverage_per_box_m2": "3.04",
+          "currency": "CLP",
+          "checked_at": "2026-10-18T22:50:29.871089Z",
+          "availability": "unknown",
+          "price_type": "public"
+        }
+      }
+    ],
+    "budget_clp": 1000000
+  },
+  "budget_smoke_response": {
+    "currency": "CLP",
+    "status": "complete",
+    "rooms": [
+      {
+        "room_id": "sodimac-ceramic",
+        "publication_key": "049581a0dfb7aff86683102e9a2c6c9bb2a4f90df8a256cf697ea9a1eb855361",
+        "source": "sodimac",
+        "currency": "CLP",
+        "price_type": "public",
+        "status": "calculated",
+        "reasons": [],
+        "area_m2": "12",
+        "waste_percent": "10",
+        "required_area_m2": "13.2",
+        "coverage_per_box_m2": "2.29",
+        "price_per_box_clp": 17287,
+        "boxes": 6,
+        "purchased_area_m2": "13.74",
+        "cost_clp": 103722,
+        "budget_clp": null,
+        "budget_difference_clp": null,
+        "budget_excess_clp": null,
+        "fits_budget": null,
+        "availability": "unknown",
+        "checked_at": "2026-10-18T22:49:10.168248Z",
+        "last_check_display": "18/10/2026 19:49"
+      },
+      {
+        "room_id": "sodimac-laminate",
+        "publication_key": "084ed48a7f3e981c36865f25802d5e6a49e9afb37d2b2c9c7228eb4454ad2e98",
+        "source": "sodimac",
+        "currency": "CLP",
+        "price_type": "public",
+        "status": "calculated",
+        "reasons": [],
+        "area_m2": "12",
+        "waste_percent": "10",
+        "required_area_m2": "13.2",
+        "coverage_per_box_m2": "1.99",
+        "price_per_box_clp": 23794,
+        "boxes": 7,
+        "purchased_area_m2": "13.93",
+        "cost_clp": 166558,
+        "budget_clp": null,
+        "budget_difference_clp": null,
+        "budget_excess_clp": null,
+        "fits_budget": null,
+        "availability": "unknown",
+        "checked_at": "2026-10-18T22:49:15.156709Z",
+        "last_check_display": "18/10/2026 19:49"
+      },
+      {
+        "room_id": "easy-ceramic",
+        "publication_key": "0c1439518560f511cc56c67da5892f1877633ec14d53cbed8ef1f70270d48132",
+        "source": "easy",
+        "currency": "CLP",
+        "price_type": "public",
+        "status": "calculated",
+        "reasons": [],
+        "area_m2": "12",
+        "waste_percent": "10",
+        "required_area_m2": "13.2",
+        "coverage_per_box_m2": "2.3",
+        "price_per_box_clp": 22977,
+        "boxes": 6,
+        "purchased_area_m2": "13.8",
+        "cost_clp": 137862,
+        "budget_clp": null,
+        "budget_difference_clp": null,
+        "budget_excess_clp": null,
+        "fits_budget": null,
+        "availability": "unknown",
+        "checked_at": "2026-10-18T22:50:24.747712Z",
+        "last_check_display": "18/10/2026 19:50"
+      },
+      {
+        "room_id": "easy-laminate",
+        "publication_key": "002abba297c969113955afa803473047f6ad61740512af65f857a0e7ede246b4",
+        "source": "easy",
+        "currency": "CLP",
+        "price_type": "public",
+        "status": "calculated",
+        "reasons": [],
+        "area_m2": "12",
+        "waste_percent": "10",
+        "required_area_m2": "13.2",
+        "coverage_per_box_m2": "3.04",
+        "price_per_box_clp": 41010,
+        "boxes": 5,
+        "purchased_area_m2": "15.20",
+        "cost_clp": 205050,
+        "budget_clp": null,
+        "budget_difference_clp": null,
+        "budget_excess_clp": null,
+        "fits_budget": null,
+        "availability": "unknown",
+        "checked_at": "2026-10-18T22:50:29.871089Z",
+        "last_check_display": "18/10/2026 19:50"
+      }
+    ],
+    "calculated_rooms": 4,
+    "uncalculable_rooms": 0,
+    "calculable_subtotal_clp": 613192,
+    "total_cost_clp": 613192,
+    "budget_clp": 1000000,
+    "budget_difference_clp": 386808,
+    "budget_excess_clp": 0,
+    "fits_budget": true,
+    "calculation_basis": "supplied_publication_snapshots",
+    "scope": "floor_boxes_only"
+  },
+  "limitations": [
+    "Muestra limitada a las primeras páginas consultadas, no representa todo el catálogo.",
+    "Validez incluye elegibilidad del alcance; los excluidos no son necesariamente datos erróneos.",
+    "No se fusionan productos entre tiendas por nombre; la clave identifica una publicación.",
+    "Disponibilidad física local desconocida; contexto solicitado La Florida no certifica stock.",
+    "Dos ejecuciones manuales separadas por fuente, respetando pausas y robots; no son horarios simulados.",
+    "Los precios corresponden a las fechas de captura reales y pueden cambiar.",
+    "Caché local de evidencia; PostgreSQL y la consulta Angular se integran en bloques posteriores."
+  ]
+}
