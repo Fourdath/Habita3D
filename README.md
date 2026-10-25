@@ -1,24 +1,25 @@
 # Habita3D
 
-Habita3D permite explorar una vivienda en 3D y comparar terminaciones y costos. Esta
-versión de EP1 incluye un visor web adaptable a pantallas móviles, una vista previa que conecta Angular,
-NestJS, FastAPI y PostgreSQL, autenticación básica en la API, CI y un plan de staging
-local con Terraform. Las estimaciones y recomendaciones usan **valores de
-demostración**: todavía no consultan precios ni disponibilidad de tiendas web y no
-constituyen cotizaciones.
+Habita3D permite explorar una vivienda en 3D y comparar pisos y costos. Para EP2
+están implementados **los bloques 1 y 2**: adquisición/procesamiento en Python,
+catálogo e historial en PostgreSQL, proyectos privados por habitación y presupuesto
+calculado con los últimos precios persistidos. **El bloque 3 de Angular/3D sigue
+pendiente**; el recorrido visual EP1 conserva sus datos demostrativos.
 
-## Planificación de la EP2
+## Estado de la EP2
 
-Los [acuerdos y el plan de trabajo de EP2](docs/ep2/README.md) definen la integración
-de datos reales de Sodimac y Easy, los proyectos por habitación, el historial de
-precios y la previsualización orientativa. Incluyen la distribución en tres bloques,
-las tareas de CI/CD y las opciones de staging gratuito sin tarjeta.
+- [Acuerdos y plan de trabajo](docs/ep2/README.md): alcance, reparto y pendientes.
+- [Bloque 1: datos y FastAPI](docs/ep2/bloque-1-datos.md): fuentes reales, normalización,
+  cálculo compartido, métricas y restricciones de acceso.
+- [Bloque 2: backend y APIs](docs/ep2/bloque-2-backend.md): persistencia, catálogo/filtros,
+  historial, autenticación, habitaciones, captura coordinada y observabilidad.
+- [Bloque 2: staging y Windows](docs/ep2/bloque-2-staging.md): ejecución local gratuita,
+  Terraform, CI/CD y configuración del runner que el compañero hará posteriormente.
+- [Validación del bloque 2](docs/ep2/evidencias/bloque-2-validacion.md): pruebas y límites.
 
-El [bloque 1: datos y FastAPI](docs/ep2/bloque-1-datos.md) incorpora capturas reales
-acotadas, normalización, cálculo por cajas, métricas y ejecución programada local.
-El flujo Angular/NestJS de EP1 conserva sus valores demostrativos hasta integrar
-los bloques 2 y 3. La evidencia local Python no sustituye la persistencia PostgreSQL.
-La demo se prevé en el computador Windows de un integrante; la guía incluye PowerShell.
+La demo se ejecutará en el computador Windows del equipo, sin costo ni tarjeta.
+La configuración y primer despliegue de su runner requieren validación allí.
+La interfaz y el cierre integral de EP2 no se dan por terminados con el backend.
 
 ## Definición del proyecto para EP1
 
@@ -44,9 +45,9 @@ La demo se prevé en el computador Windows de un integrante; la guía incluye Po
 | Carpeta | Responsabilidad |
 | --- | --- |
 | `frontend/` | Ionic, Angular, TypeScript y visor 3D; Capacitor está configurado, sin plataformas nativas añadidas. |
-| `backend/` | API NestJS, validación, autenticación básica y persistencia con Prisma. |
-| `python-service/` | FastAPI: salud y comparación demostrativa de terminaciones según superficie y presupuesto. |
-| `infrastructure/terraform/staging/` | Infraestructura preliminar y aislada en Docker local, validada con `terraform plan`. |
+| `backend/` | API NestJS, autorización por propietario, catálogo, captura coordinada y persistencia con Prisma. |
+| `python-service/` | FastAPI: adquisición y normalización de pisos, métricas y presupuestos por cajas; conserva la demo EP1. |
+| `infrastructure/terraform/staging/` | Staging aislado en Docker local, plan validado y despliegue Windows preparado. |
 | `docs/` | Arquitectura, modelo de datos, guía de EP1 y acuerdos/planificación de EP2. |
 | `.github/workflows/ci.yml` | Calidad, seguridad, compilación, integración con Compose y plan Terraform. |
 
@@ -59,7 +60,7 @@ explican los límites y decisiones.
 
 - Docker Desktop o Docker Engine con Docker Compose.
 - Para ejecutar las verificaciones locales: `curl` y Python 3.
-- Para desarrollo sin contenedores: Node.js 24.20.0 (véase `.nvmrc`), npm y Python 3.14.
+- Para desarrollo sin contenedores: Node.js 24.20.0 (véase `.nvmrc`), npm y Python 3.12+ (CI/Docker: 3.14).
 
 Las variables de Compose están documentadas en [.env.example](.env.example):
 
@@ -68,6 +69,9 @@ Las variables de Compose están documentadas en [.env.example](.env.example):
 | `POSTGRES_PASSWORD` | Obligatoria: reemplace el valor de ejemplo por una contraseña local única, apta para una URL. |
 | `POSTGRES_USER`, `POSTGRES_DB` | Opcionales: usuario y base de datos; predeterminado `habita3d`. |
 | `POSTGRES_PORT`, `BACKEND_PORT`, `PYTHON_SERVICE_PORT`, `FRONTEND_PORT` | Puertos del host; predeterminados 5432, 3000, 8000 y 8080. |
+| `MATERIALS_API_TOKEN` | Credencial interna de al menos 24 caracteres para captura/importación; compartida por NestJS y FastAPI. |
+| `MATERIALS_SCHEDULE_ENABLED` | `false` por defecto; activar expresamente para las franjas 08/12/16 de Chile. |
+| `APP_VERSION`, `IMAGE_TAG` | Versión desplegada y etiqueta de imágenes; CI/CD usa el commit. |
 | `NODE_ENV` | Entorno de NestJS; predeterminado `development` en Compose. |
 
 Compose construye `DATABASE_URL` y `PYTHON_SERVICE_URL` para el backend, por lo
@@ -75,7 +79,7 @@ que no hay que agregar esas variables al `.env` de la raíz. En GitHub Actions,
 `STAGING_FRONTEND_PORT` es una **Variable** opcional para el plan Terraform.
 El análisis de secretos usa el `GITHUB_TOKEN` que GitHub entrega al workflow;
 el plan de PR usa una contraseña ficticia y no consume un Secret de staging.
-Un despliegue posterior necesitará un secreto protegido fuera de los jobs de PR.
+El despliegue local usa Secrets del entorno `habita3d-local`; sus nombres y configuración están en el manual de staging. No entran en jobs de PR.
 
 ## Inicio con Docker Compose
 
@@ -83,7 +87,7 @@ Desde la raíz del repositorio:
 
 ```sh
 cp .env.example .env
-# Edite .env y reemplace POSTGRES_PASSWORD por una contraseña local única.
+# Edite .env: reemplace POSTGRES_PASSWORD y MATERIALS_API_TOKEN por valores locales propios.
 docker compose up --build -d --wait --wait-timeout 180
 bash scripts/ep1-smoke.sh
 ```
@@ -125,13 +129,9 @@ estas verificaciones no conectan a esa base de datos.
 La [CI](.github/workflows/ci.yml) ejecuta estos controles, auditorías de dependencias,
 análisis de secretos, construcción de imágenes, arranque de Compose y la prueba de
 humo entre servicios. El job de backend inicia PostgreSQL desechable, aplica
-migraciones y ejecuta pruebas HTTP de la API; las pruebas de autenticación usan
-un sustituto de Prisma, mientras la prueba de humo de Compose comprueba la
-persistencia real.
+migraciones y ejecuta pruebas HTTP y de persistencia real con `RUN_DATABASE_TESTS=true`; usa un especialista HTTP simulado sin tiendas. El smoke de Compose comprueba además el cálculo con FastAPI real. Los datos de prueba están identificados como sintéticos.
 Terraform recibe verificaciones de formato, configuración y plan. La protección
-de `main` y sus checks obligatorios requieren configuración por una persona con
-permisos de administración en GitHub; **siguen pendientes** y no se establecen
-por archivos del repositorio.
+de `main` está activa según la consulta a GitHub del 24/10/2026. Los administradores deben mantener los checks obligatorios del equipo; el nuevo análisis estático también debe exigirse al actualizar esa configuración.
 
 ## Alcance de EP1 y siguientes etapas
 
@@ -140,13 +140,12 @@ por archivos del repositorio.
   guarda el proyecto en PostgreSQL. Una respuesta inválida o un servicio Python
   inaccesible produce un error controlado y no crea el proyecto.
 - La API ofrece registro, inicio de sesión, consulta de sesión y cierre de sesión.
-  Las rutas de proyectos siguen siendo públicas en esta versión; no hay aún cuentas
-  de proyecto, roles ni autorización por propietario.
+  Las rutas EP2 de proyectos y habitaciones requieren sesión y autorizan por propietario; la vista previa demostrativa EP1 continúa pública.
 - El visor, el presupuesto del navegador y la comparación de FastAPI usan datos
-  locales de demostración. Integrar fuentes web autorizadas, precios actuales,
-  disponibilidad y recomendaciones productivas corresponde a una etapa posterior.
+  locales de demostración. La API EP2 ya integra fuentes y precios persistidos; mostrarlos en las pantallas y el visor corresponde al bloque 3. El motor adaptativo completo es posterior.
 - Terraform define un staging local independiente de Compose. Su plan se verifica
-  en CI; **no se ha ejecutado `terraform apply`** ni existe despliegue público.
+  en CI; para EP2 se aplicaron y comprobaron 13 recursos en un staging local aislado.
+  El despliegue del runner Windows y la demo completa siguen pendientes; no hay URL pública.
 - **Figma:** falta incorporar al repositorio el enlace verificable al prototipo del
   equipo antes de la entrega. No se incluye una URL de ejemplo.
 

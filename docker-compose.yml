@@ -1,6 +1,8 @@
 services:
   postgres:
-    image: postgres:18-alpine
+    image: habita3d/postgres:${IMAGE_TAG:-local}
+    build:
+      context: ./infrastructure/docker/postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-habita3d}
@@ -17,6 +19,7 @@ services:
       retries: 10
 
   backend:
+    image: habita3d/backend:${IMAGE_TAG:-local}
     build:
       context: ./backend
     restart: unless-stopped
@@ -25,6 +28,9 @@ services:
       PORT: 3000
       DATABASE_URL: postgresql://${POSTGRES_USER:-habita3d}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-habita3d}
       PYTHON_SERVICE_URL: http://python-service:8000
+      APP_VERSION: ${APP_VERSION:-local}
+      MATERIALS_API_TOKEN: ${MATERIALS_API_TOKEN:?Set MATERIALS_API_TOKEN in .env}
+      MATERIALS_SCHEDULE_ENABLED: ${MATERIALS_SCHEDULE_ENABLED:-false}
     ports:
       - "127.0.0.1:${BACKEND_PORT:-3000}:3000"
     depends_on:
@@ -33,17 +39,22 @@ services:
       python-service:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health/ready').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
       interval: 5s
       timeout: 5s
       retries: 15
 
   python-service:
+    image: habita3d/python-service:${IMAGE_TAG:-local}
     build:
       context: ./python-service
     restart: unless-stopped
     environment:
       PYTHON_SERVICE_PORT: ${PYTHON_SERVICE_PORT:-8000}
+      MATERIALS_API_TOKEN: ${MATERIALS_API_TOKEN:?Set MATERIALS_API_TOKEN in .env}
+      MATERIALS_DATA_DIR: /app/data/materials
+    volumes:
+      - materials-evidence:/app/data/materials
     ports:
       - "127.0.0.1:${PYTHON_SERVICE_PORT:-8000}:8000"
     healthcheck:
@@ -53,6 +64,7 @@ services:
       retries: 10
 
   frontend:
+    image: habita3d/frontend:${IMAGE_TAG:-local}
     build:
       context: ./frontend
     restart: unless-stopped
@@ -71,3 +83,4 @@ services:
 
 volumes:
   postgres-data:
+  materials-evidence:

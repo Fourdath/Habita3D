@@ -6,3 +6,4 @@ src/generated/prisma
 .env
 .env.*
 !.env.example
+*.tsbuildinfo

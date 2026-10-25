@@ -1,4 +1,4 @@
-# Opciones de staging EP2 — validación preliminar
+# Staging EP2: demo local y alternativas históricas
 
 ## Actualización: demo local prevista
 
@@ -8,8 +8,9 @@ cloud ni tarjeta. Visual Studio Code se usa para trabajar con el proyecto y Figm
 para el diseño; los servicios se ejecutan con sus runtimes o Docker.
 
 El [bloque 1](bloque-1-datos.md) documenta Python/FastAPI y su programador local.
-La persistencia, la integración completa, la infraestructura y el despliegue
-automático del bloque 2 siguen pendientes. El computador debe estar encendido,
+El [manual de infraestructura del bloque 2](bloque-2-staging.md) documenta Compose, Terraform,
+variables, scripts Windows, pipeline y despliegue controlado. La preparación del runner y
+la ejecución real en el computador Windows siguen pendientes de validación allí. El computador debe estar encendido,
 con acceso a Internet y sin suspensión durante las capturas; no se prometen
 actualizaciones cuando esté apagado. Las alternativas cloud siguientes quedan
 como investigación histórica opcional, no como dependencias de la demo.

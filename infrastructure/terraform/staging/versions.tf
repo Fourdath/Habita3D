@@ -9,6 +9,7 @@ terraform {
   }
 }
 
-# Uses the active Docker context (or DOCKER_HOST). Staging is an isolated set of
-# resources on that Docker host; the development Compose stack is separate.
+# Uses DOCKER_HOST when set; otherwise the provider uses its default socket.
+# Export the active Docker CLI context endpoint explicitly when required.
+# Staging resources are isolated from the development Compose stack.
 provider "docker" {}

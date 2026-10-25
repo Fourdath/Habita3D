@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, develop, 'feature/**', 'codex/**']
+    branches: [main, develop, 'feature/**', 'feat/**', 'codex/**']
   pull_request:
 
 permissions:
@@ -40,6 +40,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DATABASE_URL: postgresql://habita3d:ep1-ci-only-password@localhost:5432/habita3d
+      RUN_DATABASE_TESTS: 'true'
     services:
       postgres:
         image: postgres:18-alpine
@@ -126,6 +127,15 @@ jobs:
       # Deterministic fixtures only: CI never contacts the retail sites.
       - run: python -m pytest
       - run: python -m app.capture --help
+      - name: Parse Windows operation scripts
+        shell: pwsh
+        run: |
+          Get-ChildItem ../scripts/*.ps1 | ForEach-Object {
+            $parseErrors = $null
+            $tokens = $null
+            [void][System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$tokens, [ref]$parseErrors)
+            if ($parseErrors.Count -gt 0) { throw ($parseErrors | Out-String) }
+          }
 
   terraform-staging:
     name: Terraform staging plan
@@ -141,6 +151,8 @@ jobs:
       # value for this plan-only job; real staging credentials must never
       # enter PR CI.
       TF_VAR_database_password: 'ep1-ci-plan-placeholder'
+      TF_VAR_materials_api_token: 'ep2-ci-only-materials-token-no-access'
+      TF_VAR_materials_schedule_enabled: 'false'
       TF_VAR_frontend_port: ${{ vars.STAGING_FRONTEND_PORT || '18080' }}
       TF_VAR_image_tag: ${{ github.sha }}
 
@@ -187,6 +199,10 @@ jobs:
     env:
       # Disposable local-Compose credential for this isolated CI runner only.
       POSTGRES_PASSWORD: ep1-ci-only-password
+      MATERIALS_API_TOKEN: ep2-ci-only-materials-token-no-access
+      MATERIALS_SCHEDULE_ENABLED: 'false'
+      IMAGE_TAG: ${{ github.sha }}
+      APP_VERSION: ${{ github.sha }}
 
     steps:
       - uses: actions/checkout@v4
@@ -200,8 +216,65 @@ jobs:
       # Build success alone does not prove that migrations or service calls work.
       - run: docker compose up -d --wait --wait-timeout 180
       - run: bash scripts/ep1-smoke.sh
+      - name: Persisted EP2 catalogue and project integration (no retailer network)
+        run: python3 scripts/ep2-smoke.py --disposable-fixtures
+
+      # Scan actual runtime images, including OS and language dependencies.
+      # Pinned to the verified v0.36.0 release commit (not a mutable tag).
+      - name: Critical vulnerabilities - backend image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          version: v0.76.1
+          image-ref: habita3d/backend:${{ github.sha }}
+          severity: CRITICAL
+          exit-code: '1'
+          ignore-unfixed: false
+          format: table
+      - name: Critical vulnerabilities - Python image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          version: v0.76.1
+          image-ref: habita3d/python-service:${{ github.sha }}
+          severity: CRITICAL
+          exit-code: '1'
+          ignore-unfixed: false
+          format: table
+      - name: Critical vulnerabilities - frontend image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          version: v0.76.1
+          image-ref: habita3d/frontend:${{ github.sha }}
+          severity: CRITICAL
+          exit-code: '1'
+          ignore-unfixed: false
+          format: table
+
+      - name: Critical vulnerabilities - PostgreSQL image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          version: v0.76.1
+          image-ref: habita3d/postgres:${{ github.sha }}
+          severity: CRITICAL
+          exit-code: '1'
+          ignore-unfixed: false
+          format: table
 
       - if: failure()
         run: docker compose logs --no-color
       - if: always()
         run: docker compose down -v --remove-orphans
+
+
+  sast:
+    name: Static security analysis (Semgrep)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: python -m pip install semgrep==1.182.1
+      - name: Scan application code with versioned local rules
+        run: semgrep scan --config scripts/security-rules.yml --error --strict --metrics off --disable-version-check backend/src frontend/src python-service/app
+      - name: Demonstrate a blocked unsafe statement
+        run: python scripts/sast-gate-self-test.py

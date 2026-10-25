@@ -31,3 +31,19 @@ output "postgres_volume" {
   description = "Persistent PostgreSQL staging volume; do not remove without a backup."
   value       = docker_volume.postgres.name
 }
+
+
+output "api_readiness_url" {
+  description = "Checks NestJS, PostgreSQL and FastAPI through the same-origin proxy."
+  value       = "http://127.0.0.1:${var.frontend_port}/api/health/ready"
+}
+
+output "capture_status_url" {
+  description = "Redacted state of the persisted capture coordinator; does not start acquisition."
+  value       = "http://127.0.0.1:${var.frontend_port}/api/captures/status"
+}
+
+output "materials_volume" {
+  description = "Persistent source evidence and stable sample; application catalogue is in PostgreSQL."
+  value       = docker_volume.materials.name
+}

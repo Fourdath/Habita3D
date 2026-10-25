@@ -11,6 +11,7 @@ out-tsc/
 .angular/
 .angular/cache/
 coverage/
+*.tsbuildinfo
 
 # Environment variables
 .env

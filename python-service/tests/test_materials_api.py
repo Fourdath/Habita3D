@@ -216,3 +216,36 @@ def test_schedule_does_not_fetch_when_no_slot_is_due(monkeypatch, tmp_path, caps
     args = Namespace(data_dir=str(tmp_path), source=None, category=None, limit=10, output=None)
     assert asyncio.run(cli.run_once(args, due=True)) == 0
     assert "no_pending_slot" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize(
+    "slot", [True, 1234567890, "2026-10-24T08:00:00", "2026-10-24T11:15:00Z"]
+)
+def test_http_schedule_rejects_invalid_slots(api, slot):
+    client, _ = api
+    response = client.post(
+        "/materials/captures",
+        json={"scheduled_for": slot},
+        headers={"X-Materials-Token": "unit-test-token-not-real-credentials"},
+    )
+    assert response.status_code == 422
+
+
+def test_http_schedule_records_slot_and_request_correlation(api):
+    client, store = api
+    response = client.post(
+        "/materials/captures",
+        json={
+            "sources": ["sodimac"], "categories": ["ceramic"],
+            "scheduled_for": "2026-10-24T11:00:00Z",
+        },
+        headers={
+            "X-Materials-Token": "unit-test-token-not-real-credentials",
+            "X-Request-ID": "nest-scheduled-fixture",
+        },
+    )
+    assert response.status_code == 200
+    assert response.json()["trigger"] == "scheduled"
+    assert response.json()["scheduled_for"] == "2026-10-24T11:00:00+00:00"
+    assert response.json()["request_id"] == "nest-scheduled-fixture"
+    assert store.read()["slots"] == ["2026-10-24T11:00:00+00:00"]

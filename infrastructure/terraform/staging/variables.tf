@@ -12,7 +12,7 @@ variable "name_prefix" {
 variable "image_tag" {
   description = "Identifiable version of the application images, preferably a Git commit SHA."
   type        = string
-  default     = "ep1"
+  default     = "ep2"
 
   validation {
     condition     = can(regex("^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$", var.image_tag))
@@ -62,4 +62,22 @@ variable "database_password" {
     condition     = length(var.database_password) >= 16
     error_message = "The staging database password must contain at least 16 characters."
   }
+}
+
+
+variable "materials_api_token" {
+  description = "Shared internal acquisition token. Supply through TF_VAR_materials_api_token, never Git."
+  type        = string
+  sensitive   = true
+
+  validation {
+    condition     = length(var.materials_api_token) >= 24 && !startswith(var.materials_api_token, "replace-")
+    error_message = "Provide at least 24 characters and replace the example token."
+  }
+}
+
+variable "materials_schedule_enabled" {
+  description = "Enable NestJS 08/12/16 America/Santiago acquisition only on the designated host."
+  type        = bool
+  default     = false
 }

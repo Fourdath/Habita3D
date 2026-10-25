@@ -183,7 +183,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CaptureRequest"
+                "$ref": "#/components/schemas/CaptureApiRequest"
               }
             }
           }
@@ -267,7 +267,7 @@
   },
   "components": {
     "schemas": {
-      "CaptureRequest": {
+      "CaptureApiRequest": {
         "properties": {
           "sources": {
             "items": {
@@ -309,11 +309,23 @@
             "minimum": 1.0,
             "title": "Limit Per Category",
             "default": 10
+          },
+          "scheduled_for": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scheduled For"
           }
         },
         "additionalProperties": false,
         "type": "object",
-        "title": "CaptureRequest"
+        "title": "CaptureApiRequest"
       },
       "CaptureResult": {
         "properties": {

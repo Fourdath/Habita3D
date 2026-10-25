@@ -10,8 +10,35 @@ datasource db {
 model Project {
   id        Int      @id @default(autoincrement())
   name      String
+  ownerId   Int?
+  owner     User?    @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  budgetClp BigInt   @default(0)
+  rooms     Room[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([ownerId, createdAt])
+}
+
+model Room {
+  id             String       @id @default(uuid())
+  projectId      Int
+  project        Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name           String
+  areaMode       String
+  areaM2         Decimal?     @db.Decimal(18, 6)
+  lengthM        Decimal?     @db.Decimal(18, 6)
+  widthM         Decimal?     @db.Decimal(18, 6)
+  wastePercent   Decimal      @default(10) @db.Decimal(9, 6)
+  budgetClp      BigInt?
+  publicationKey String?
+  publication    Publication? @relation(fields: [publicationKey], references: [publicationKey], onDelete: Restrict)
+  sceneRoomId    String?
+  createdAt      DateTime     @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @db.Timestamptz(6)
+
+  @@index([projectId])
+  @@index([publicationKey])
 }
 
 model User {
@@ -21,6 +48,7 @@ model User {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   sessions     Session[]
+  projects     Project[]
 }
 
 model Session {
@@ -32,4 +60,93 @@ model Session {
 
   @@index([userId])
   @@index([expiresAt])
+}
+
+model Publication {
+  publicationKey     String             @id
+  source             String
+  externalId         String
+  sku                String?
+  seller             String
+  name               String
+  brand              String?
+  category           String
+  productUrl         String
+  imageUrl           String?
+  currency           String             @default("CLP")
+  priceType          String             @default("public")
+  pricePerBoxClp     Int
+  saleUnit           String
+  coveragePerBoxM2   Decimal?           @db.Decimal(18, 6)
+  pricePerM2Clp      Decimal?           @db.Decimal(20, 2)
+  reportedPriceM2Clp Decimal?           @db.Decimal(20, 6)
+  availability       String
+  communeCode        String             @default("13110")
+  commune            String             @default("La Florida")
+  region             String             @default("Metropolitana")
+  checkedAt          DateTime           @db.Timestamptz(6)
+  promotions         Json
+  evidence           Json
+  extractorVersion   String
+  lastRunId          String
+  lastRun            CaptureRun         @relation(fields: [lastRunId], references: [runId], onDelete: Restrict)
+  observations       PriceObservation[]
+  rooms              Room[]
+  createdAt          DateTime           @default(now()) @db.Timestamptz(6)
+  updatedAt          DateTime           @updatedAt @db.Timestamptz(6)
+
+  @@index([category, source, pricePerM2Clp])
+  @@index([source, category, checkedAt])
+  @@index([checkedAt])
+}
+
+model CaptureRun {
+  runId            String             @id
+  schemaVersion    String
+  origin           String
+  trigger          String
+  scheduledFor     DateTime?          @db.Timestamptz(6)
+  startedAt        DateTime           @db.Timestamptz(6)
+  finishedAt       DateTime           @db.Timestamptz(6)
+  status           String
+  requestId        String
+  groups           Json
+  payloadHash      String
+  publicationCount Int
+  updatedCount     Int
+  retainedCount    Int
+  publications     Publication[]
+  observations     PriceObservation[]
+
+  @@index([finishedAt])
+}
+
+model PriceObservation {
+  id               Int         @id @default(autoincrement())
+  publicationKey   String
+  publication      Publication @relation(fields: [publicationKey], references: [publicationKey], onDelete: Cascade)
+  runId            String
+  run              CaptureRun  @relation(fields: [runId], references: [runId], onDelete: Restrict)
+  observedAt       DateTime    @db.Timestamptz(6)
+  pricePerBoxClp   Int
+  coveragePerBoxM2 Decimal?    @db.Decimal(18, 6)
+  pricePerM2Clp    Decimal?    @db.Decimal(20, 2)
+  saleUnit         String
+  changeType       String
+
+  @@unique([publicationKey, runId])
+  @@index([publicationKey, observedAt])
+}
+
+model CaptureJob {
+  id           String    @id
+  scheduledFor DateTime? @db.Timestamptz(6)
+  status       String
+  startedAt    DateTime  @db.Timestamptz(6)
+  finishedAt   DateTime? @db.Timestamptz(6)
+  runId        String?
+  requestId    String
+  errorCode    String?
+
+  @@index([startedAt])
 }
