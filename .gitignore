@@ -11,6 +11,7 @@ out-tsc/
 .angular/
 .angular/cache/
 coverage/
+*.tsbuildinfo
 
 # Environment variables
 .env
@@ -26,6 +27,7 @@ venv/
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
+python-service/data/
 
 # Terraform
 **/.terraform/

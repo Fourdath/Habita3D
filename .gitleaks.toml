@@ -16,3 +16,34 @@ targetRules = ["generic-api-key"]
 regexes = [
   '''^abc123def456$'''
 ]
+
+[[allowlists]]
+description = "Four public publication identifiers derived with SHA-256; not credentials"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''^docs/ep2/evidencias/bloque-1-calidad\.json$''']
+regexes = [
+  '''^049581a0dfb7aff86683102e9a2c6c9bb2a4f90df8a256cf697ea9a1eb855361$''',
+  '''^084ed48a7f3e981c36865f25802d5e6a49e9afb37d2b2c9c7228eb4454ad2e98$''',
+  '''^0c1439518560f511cc56c67da5892f1877633ec14d53cbed8ef1f70270d48132$''',
+  '''^002abba297c969113955afa803473047f6ad61740512af65f857a0e7ede246b4$'''
+]
+
+
+[[allowlists]]
+description = "Two synthetic publication identifiers derived with SHA-256 for the EP2 contract fixture; not credentials"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['^backend/test/fixtures/ep2-capture\.json$']
+regexes = [
+  '^4eb092692a566fe39fc707afdc0ced1f3b90453f9ff8aa7a87bb2dd746031f28$',
+  '^f53fb94faaf503b4795392675add8beb93f24a990342fda8b5e40493d156bb56$'
+]
+
+
+[[allowlists]]
+description = "Public SHA-256 publication identifier in the recorded live EP2 verification; not a credential"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['^docs/ep2/evidencias/bloque-2-verificacion-real\.json$']
+regexes = ['^002abba297c969113955afa803473047f6ad61740512af65f857a0e7ede246b4$']

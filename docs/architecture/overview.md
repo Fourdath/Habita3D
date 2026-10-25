@@ -1,135 +1,118 @@
-# Arquitectura de Habita3D para EP1
+# Arquitectura de Habita3D
 
-**Estado:** diseño e integración inicial de EP1. El desarrollo integrado se ejecuta
-con Docker Compose. [Terraform](../../infrastructure/terraform/README.md) define
-un staging local preliminar y reproducible, validado con `plan` pero sin `apply`.
+Actualizada para EP2, bloques 1 y 2, el 24/10/2026. El recorrido visual actual
+conserva la demostración EP1; las pantallas de selección con datos reales
+corresponden al bloque 3. El [manual del backend](../ep2/bloque-2-backend.md)
+y el [manual de staging](../ep2/bloque-2-staging.md) permiten preparar esa integración.
 
-## Problema, usuarios y alcance
+## Problema y decisiones
 
-Los clientes de proyectos habitacionales necesitan visualizar una vivienda y sus
-terminaciones antes de construir, comparar alternativas y comprender el efecto en
-el presupuesto. El cliente comprador usa el visor; un operador podrá administrar
-catálogos y proyectos en etapas posteriores. Habita3D apunta a recomendaciones
-basadas en presupuesto, preferencias, necesidades y precios/disponibilidad de
-fuentes web. **EP1 demuestra la arquitectura y un flujo integrado con datos
-ilustrativos; todavía no consulta proveedores web.**
+Los clientes necesitan visualizar una vivienda y elegir terminaciones acordes con
+sus preferencias y presupuesto. Habita3D separa el visor, la coordinación/persistencia
+y el procesamiento de datos para reutilizar la interfaz web en móvil y mantener
+el cálculo de cajas/costos en un único servicio especializado.
 
-La fuente web **considerada** para la siguiente etapa es el
-[catálogo de materiales de construcción de Sodimac Chile](https://www.sodimac.cl/sodimac-cl/lista/CATG10731/Materiales-de-Construccion).
-Es una candidata, no una integración implementada ni una fuente de los valores
-mostrados por EP1. Antes de automatizar su uso se revisarán condiciones de acceso,
-licencia, estructura de datos, cobertura, disponibilidad y frecuencia de cambio.
-La capacidad adaptativa propuesta ordenaría materiales y terminaciones según
-presupuesto, preferencias de estilo y necesidades del cliente, usando ofertas
-actualizadas y explicando los criterios de cada sugerencia. La comparación actual
-solo aplica valores ilustrativos por superficie y presupuesto.
+- Ionic/Angular y el visor existente aportan el cliente; Capacitor sigue configurado
+  sin plataformas nativas añadidas.
+- NestJS valida entradas, autoriza por propietario, consulta PostgreSQL y coordina
+  FastAPI. Es la única aplicación que administra el esquema relacional.
+- FastAPI concentra extracción acotada, normalización, métricas y cálculo decimal.
+  Un caché de evidencia persistente mantiene la muestra; no reemplaza PostgreSQL.
+- PostgreSQL aporta transacciones, claves foráneas, historial y exclusión entre
+  procesos. Las habitaciones conservan selecciones; los presupuestos leen precios actuales.
+- Docker Compose ofrece ejecución de desarrollo/pruebas; Terraform define staging
+  separado sobre el mismo host Docker, con redes y volúmenes propios.
 
-Los objetivos son reutilizar el cliente Angular del navegador en una futura app
-móvil, concentrar reglas y persistencia en una API, aislar el cálculo especializado
-en Python, y poder
-repetir la infraestructura sin introducir credenciales en Git. La elección de
-Ionic/Angular aprovecha el visor y sus activos 3D; NestJS valida y coordina las
-operaciones; FastAPI permite evolucionar hacia tareas de datos sin trasladar ese
-ecosistema al proceso Node; PostgreSQL aporta persistencia relacional. La llamada
-adicional entre NestJS y Python tiene costo y posibles fallos: por eso el backend
-usa tiempo límite, valida la respuesta y devuelve errores controlados. Mantener
-ambos servicios en el mismo repositorio facilita cambios de contrato coordinados.
+Se mantienen cuatro servicios en un repositorio para coordinar contratos y pruebas.
+La llamada REST adicional tiene latencia y posibles fallos: se limita tiempo/tamaño,
+se valida la respuesta y se propaga un identificador de solicitud. No se reemplazan
+errores con precios inventados. Los [ADR](../adr/0003-persistencia-y-actualizacion-ep2.md)
+explican persistencia y programación, junto con las decisiones de redes de EP1.
 
-La EP1 tiene restricciones concretas: no se ha elegido proveedor cloud ni existe
-una cuenta compartida de staging; las estimaciones 3D y la comparación en Python
-usan datos de demostración; Capacitor está configurado pero no se han generado
-plataformas nativas. Para el alcance de las etapas siguientes se deja la selección
-de fuentes web autorizadas, su actualización y validación, permisos por proyecto,
-despliegue público y observabilidad completa.
-
-### Contexto
+## Flujo de contenedores y datos
 
 ```mermaid
 flowchart LR
-    Cliente[Cliente de vivienda] -->|explora, configura y compara| Sistema[Habita3D]
-    Operador[Operador del proyecto] -.->|administra catálogo y proyectos, previsto| Sistema
-    Sistema -.->|precios y disponibilidad, etapa posterior| Fuente[Fuente web autorizada]
+    U[Usuario ficticio de demo] --> FE[Angular y visor 3D]
+    FE -->|EP1 preview| BE[NestJS]
+    FE -.->|APIs EP2 listas; integración visual bloque 3| BE
+    BE -->|Prisma y transacciones| DB[(PostgreSQL)]
+    BE -->|captura protegida y cálculo| PY[FastAPI]
+    PY -->|JSON y solicitudes limitadas| WEB[Sodimac y Easy]
+    PY --> CACHE[(Evidencia local persistente)]
+    S[Programador NestJS 08 12 16 Chile] --> BE
 ```
 
-### Contenedores de software
+### Captura e importación
+
+1. El programador habilitado o una operación manual protegida reserva un trabajo.
+   PostgreSQL evita duplicar franjas y adquirir simultáneamente.
+2. NestJS llama a FastAPI con contexto/categorías, token interno y correlación.
+   No sostiene una transacción mientras espera las fuentes.
+3. Python comprueba restricciones de acceso, limita/espacia solicitudes, valida
+   cerámicas y laminados directos en La Florida y devuelve `CaptureResult`.
+4. NestJS comprueba el contrato e importa en una transacción distinta: deduplicación,
+   fechas monótonas e historial inicial/cambios. Captura fallida conserva precios.
+5. GET de catálogo, historial, proyecto o presupuesto solo consulta datos propios.
+
+### Presupuesto por habitaciones
+
+1. La sesión autoriza acceso al proyecto; los IDs ajenos devuelven 404.
+2. Leer habitaciones, selección y precios bajo `RepeatableRead`.
+3. Terminar la transacción y enviar a `/floors/budget` superficie/dimensiones,
+   margen y snapshots comprobados de las publicaciones.
+4. Validar respuesta y devolver cajas/costos, límites y fecha chilena. Si faltan
+   elecciones o cobertura, mostrar subtotal parcial y no un total ficticio.
+
+El historial es informativo y no congela presupuestos. Las promociones condicionadas
+no se mezclan con el precio público. `unknown` no significa sin stock. Véanse el
+[modelo](data-model.md) y las [condiciones de las fuentes](../ep2/fuentes-web.md).
+
+## Compatibilidad EP1
+
+`POST /api/projects/preview` sigue llamando a `/recommendations/compare` con cifras
+demostrativas y persiste un proyecto heredado sin propietario. El visor del navegador
+sigue usando su recorrido demostrativo hasta el bloque 3. Los proyectos EP2 privados
+usan las nuevas rutas, con presupuesto total y habitaciones; no se atribuyen
+automáticamente los proyectos viejos a una cuenta.
+
+## Despliegue local
 
 ```mermaid
 flowchart LR
-    Usuario[Cliente] --> FE["Ionic + Angular + Capacitor<br/>visor 3D y formulario de EP1"]
-    FE -->|/api: vista previa| BE["NestJS<br/>validación y coordinación"]
-    BE -->|Prisma: proyectos, usuarios, sesiones| DB[(PostgreSQL)]
-    BE -->|REST: comparación de terminaciones| PY["FastAPI<br/>cálculo demostrativo"]
-    PY -.->|extracción futura| WEB[Fuente web]
+    Browser[Navegador del computador] -->|loopback 18080| FE[Nginx y Angular]
+    FE -->|red edge y proxy api| BE[NestJS]
+    BE -->|red services| PY[FastAPI]
+    BE -->|red data interna| DB[(PostgreSQL)]
+    DB --- V[(Volumen de datos)]
+    PY --- E[(Volumen de evidencia)]
+    PY -->|salida web limitada| W[Tiendas]
+    CI[CI aprobada de main] -.->|runner Windows por configurar| TF[Terraform]
+    TF --> FE
+    TF --> BE
 ```
 
-NestJS es la única aplicación que administra PostgreSQL y la entrada principal
-del frontend. El visor construye la escena a partir de un SVG local y calcula su
-presupuesto demostrativo en el navegador. En otra sección de inicio, Angular sí
-solicita una vista previa a NestJS; esa operación conecta las cuatro piezas.
-Las rutas de proyectos son públicas por ahora. La API de autenticación ofrece
-registro, login, consulta de sesión y logout; todavía no asigna proyectos a
-usuarios ni aplica autorización por propietario.
+En staging solo el frontend publica puerto local. PostgreSQL queda en red interna
+con NestJS; Python no accede a la base. Contraseña y token entran como variables
+sensibles, con estado/backups fuera de Git en una carpeta restringida al operador.
+El despliegue verifica el mismo commit aprobado en CI, copia de seguridad previa,
+migración, salud y lectura funcional; no importa fixtures sintéticos en la demo.
 
-## Flujo de una vista previa
+El equipo eligió el computador Windows de un integrante ($0, sin tarjeta). El
+workflow está preparado, pero el compañero registrará el runner posteriormente.
+Las pruebas Linux/Docker/macOS y el plan Terraform no certifican el primer despliegue
+en ese Windows. El host debe estar encendido y sin suspensión para capturar/desplegar.
 
-1. Angular envía `POST /api/projects/preview` con nombre, superficie en m² y
-   presupuesto entero en CLP.
-2. NestJS valida el DTO y llama `POST /recommendations/compare` en FastAPI usando
-   `PYTHON_SERVICE_URL` y un tiempo límite de cinco segundos.
-3. FastAPI compara tres niveles ilustrativos (`basic`, `standard`, `premium`) y
-   responde con costo, diferencia, ajuste al presupuesto, explicación y
-   `source: "demo"`. No usa disponibilidad ni precios de comercio web.
-4. NestJS comprueba el contrato, persiste `Project` con Prisma y devuelve
-   `{ project, recommendation }`. Si Python falla o devuelve datos inesperados,
-   informa 503 o 502 y no crea el proyecto. Entradas inválidas devuelven 400.
+## Seguridad, observabilidad y límites
 
-La [prueba de humo](../../scripts/ep1-smoke.sh) verifica HTTP, recomendación,
-persistencia y rechazo de datos inválidos en Compose. Las pruebas unitarias y el
-control de secretos complementan ese recorrido en CI. La salud `/api/health`
-comprueba que NestJS responde; no inspecciona por sí sola PostgreSQL ni Python.
+Sesiones con tokens guardados como hashes y contraseñas derivadas con scrypt.
+Proyectos/habitaciones aplican propietario en lectura y escritura. Captura/importación
+usan otra credencial, del operador; no se incorpora a Angular. JSON y consultas
+tienen límites, y las operaciones SQL usan parámetros. Liveness, readiness,
+estados de captura y logs JSON con ID/duración permiten diagnosticar el flujo.
 
-## Staging preliminar con Terraform
-
-Terraform usa el proveedor Docker para definir recursos separados de Compose
-sobre un host Docker local:
-
-```mermaid
-flowchart LR
-    Browser[Navegador en el host] -->|127.0.0.1:18080| Nginx[frontend: Nginx + Angular]
-    Nginx -->|/api/ en edge| Nest[backend: NestJS]
-    Nest -->|REST en services| Python[python: FastAPI]
-    Nest -->|Prisma en data| Postgres[(postgres: PostgreSQL)]
-    Postgres --- Volume[(volumen persistente de staging)]
-    Python -.->|fuente web futura| Source[Proveedor externo]
-```
-
-| Zona | Miembros | Acceso |
-| --- | --- | --- |
-| `edge` | Frontend y NestJS | Solo el frontend publica un puerto en el loopback del host. |
-| `services` | NestJS y FastAPI | REST interno; Python no tiene puerto publicado al host. |
-| `data` | NestJS y PostgreSQL | Red Docker interna; PostgreSQL no publica puerto y Python no se une a ella. |
-
-Nginx sirve las rutas Angular y reenvía `/api/` a NestJS en el mismo origen. El
-backend recibe `DATABASE_URL` y `PYTHON_SERVICE_URL` desde Terraform. La contraseña
-de PostgreSQL entra por una variable sensible; tras un `apply` quedaría también
-en el estado local de Terraform, excluido de Git. Un `plan` correcto **no prueba**
-que este staging se haya desplegado. El [ADR 0001](../adr/0001-staging-local-con-terraform.md)
-documenta la elección local; el [ADR 0002](../adr/0002-redes-y-acceso-staging.md)
-explica las redes.
-
-## Seguridad, datos y evolución
-
-Las contraseñas de cuentas se derivan con `scrypt`; los tokens de sesión se
-guardan como hashes y caducan a las 24 horas. La autenticación básica protege
-`/api/auth/me` y `/api/auth/logout`, pero **no** las rutas de proyectos. El
-[modelo de datos](data-model.md) separa las tablas implementadas (`Project`,
-`User`, `Session`) de las entidades futuras de materiales, proveedores, ofertas,
-selecciones y recomendaciones. Antes de extraer información de una fuente web
-habrá que comprobar sus condiciones de uso, licencias, calidad y frecuencia de
-actualización, y guardar procedencia y fecha de cada precio.
-
-La [CI](../../.github/workflows/ci.yml) analiza dependencias y secretos, ejecuta
-pruebas y builds, levanta Compose para la prueba integrada y valida el plan
-Terraform. La protección de `main`, los revisores y las verificaciones obligatorias
-son ajustes de GitHub que deben comprobarse fuera del repositorio. El staging local
-no proporciona TLS, alta disponibilidad ni una URL pública.
+CI conserva lint/tests/builds/auditorías/secret scanning y plan Terraform, y agrega
+análisis estático y escaneo de imágenes con bloqueo de hallazgos críticos. El
+despliegue local se limita a main con CI aprobada y un runner/entorno protegido.
+La protección efectiva de main es configuración de GitHub, no una propiedad del YAML.
+No se añade TLS ni exposición pública a esta demo local.

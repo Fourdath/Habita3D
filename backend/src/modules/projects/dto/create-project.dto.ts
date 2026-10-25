@@ -1,12 +1,24 @@
 import { Transform } from 'class-transformer';
-import { IsNotEmpty, IsString, MaxLength } from 'class-validator';
+import {
+  IsInt,
+  IsNotEmpty,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
+
+import { MAX_BUDGET_CLP, trimmed } from './project-fields.js';
 
 export class CreateProjectDto {
-  @Transform(({ value }: { value: unknown }) =>
-    typeof value === 'string' ? value.trim() : value,
-  )
+  @Transform(trimmed)
   @IsString()
   @IsNotEmpty()
   @MaxLength(120)
   name!: string;
+
+  @IsInt()
+  @Min(0)
+  @Max(MAX_BUDGET_CLP)
+  budgetClp!: number;
 }

@@ -1,11 +1,12 @@
 locals {
+  postgres_image = "habita3d/postgres:${var.image_tag}"
   frontend_image = "habita3d/frontend:${var.image_tag}"
   backend_image  = "habita3d/backend:${var.image_tag}"
   python_image   = "habita3d/python-service:${var.image_tag}"
 
   # PostgreSQL URLs must encode a password before interpolation. The staging
   # secret is provided at runtime, never stored in a tracked .tfvars file.
-  database_url = "postgresql://${var.database_user}:${urlencode(var.database_password)}@postgres:5432/${var.database_name}"
+  database_url = "postgresql://${var.database_user}:${replace(urlencode(var.database_password), "+", "%20")}@postgres:5432/${var.database_name}"
 }
 
 # Three trust zones: only the frontend has a host port; Python cannot reach the
@@ -26,13 +27,21 @@ resource "docker_network" "data" {
   internal = true
 }
 
+resource "docker_volume" "materials" {
+  name = "${var.name_prefix}-materials-evidence"
+}
+
 resource "docker_volume" "postgres" {
   name = "${var.name_prefix}-postgres-data"
 }
 
 resource "docker_image" "postgres" {
-  name         = "postgres:18-alpine"
+  name         = local.postgres_image
   keep_locally = true
+
+  build {
+    context = abspath("${path.module}/../../docker/postgres")
+  }
 }
 
 resource "docker_image" "frontend" {
@@ -63,11 +72,12 @@ resource "docker_image" "python" {
 }
 
 resource "docker_container" "postgres" {
-  name    = "${var.name_prefix}-postgres"
-  image   = docker_image.postgres.image_id
-  restart = "unless-stopped"
-  memory  = 512
-  wait    = true
+  name         = "${var.name_prefix}-postgres"
+  image        = docker_image.postgres.image_id
+  restart      = "unless-stopped"
+  memory       = 512
+  wait         = true
+  wait_timeout = 180
 
   env = [
     "POSTGRES_USER=${var.database_user}",
@@ -96,11 +106,23 @@ resource "docker_container" "postgres" {
 }
 
 resource "docker_container" "python" {
-  name    = "${var.name_prefix}-python"
-  image   = docker_image.python.image_id
-  restart = "unless-stopped"
-  memory  = 512
-  wait    = true
+  name         = "${var.name_prefix}-python"
+  image        = docker_image.python.image_id
+  restart      = "unless-stopped"
+  memory       = 512
+  wait         = true
+  wait_timeout = 180
+
+  env = [
+    "MATERIALS_API_TOKEN=${var.materials_api_token}",
+    "MATERIALS_DATA_DIR=/app/data/materials",
+  ]
+
+  mounts {
+    target = "/app/data/materials"
+    source = docker_volume.materials.name
+    type   = "volume"
+  }
 
   networks_advanced {
     name    = docker_network.services.name
@@ -117,11 +139,12 @@ resource "docker_container" "python" {
 }
 
 resource "docker_container" "backend" {
-  name    = "${var.name_prefix}-backend"
-  image   = docker_image.backend.image_id
-  restart = "unless-stopped"
-  memory  = 512
-  wait    = true
+  name         = "${var.name_prefix}-backend"
+  image        = docker_image.backend.image_id
+  restart      = "unless-stopped"
+  memory       = 512
+  wait         = true
+  wait_timeout = 180
 
   env = [
     "NODE_ENV=production",
@@ -129,6 +152,9 @@ resource "docker_container" "backend" {
     "PORT=3000",
     "DATABASE_URL=${local.database_url}",
     "PYTHON_SERVICE_URL=http://python-service:8000",
+    "APP_VERSION=${var.image_tag}",
+    "MATERIALS_API_TOKEN=${var.materials_api_token}",
+    "MATERIALS_SCHEDULE_ENABLED=${var.materials_schedule_enabled}",
   ]
 
   networks_advanced {
@@ -145,7 +171,7 @@ resource "docker_container" "backend" {
   }
 
   healthcheck {
-    test         = ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+    test         = ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health/ready').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
     interval     = "10s"
     timeout      = "5s"
     retries      = 5
@@ -156,11 +182,12 @@ resource "docker_container" "backend" {
 }
 
 resource "docker_container" "frontend" {
-  name    = "${var.name_prefix}-frontend"
-  image   = docker_image.frontend.image_id
-  restart = "unless-stopped"
-  memory  = 256
-  wait    = true
+  name         = "${var.name_prefix}-frontend"
+  image        = docker_image.frontend.image_id
+  restart      = "unless-stopped"
+  memory       = 256
+  wait         = true
+  wait_timeout = 180
 
   networks_advanced {
     name = docker_network.edge.name

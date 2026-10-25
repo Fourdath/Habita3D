@@ -31,8 +31,8 @@ and the [EP1 demo](docs/ep1-demo.md) for the current implementation and its limi
   `--no-git` / `--skip-git` equivalents; they must stay part of the single root repo.
 - Don't reintroduce `src/assets` in the frontend — the build (`angular.json`) is configured to
   read static assets from `public/`.
-- `health`, `projects` and `auth` contain working backend controllers. Projects are still public;
-  authentication does not yet authorize project ownership. Other modules remain placeholders.
+- `health`, `projects` and `auth` contain working backend controllers. EP2 projects and rooms are owner-scoped and require authentication;
+  only the explicitly fictitious EP1 preview remains public. Other modules remain placeholders.
 - Global API prefix for the backend is `api` (set in `src/main.ts`), so routes are exposed as
   `/api/<module>`, matching `GET /api/health`.
 - The FastAPI service exposes routes without an `/api` prefix (`GET /health`,
@@ -40,6 +40,15 @@ and the [EP1 demo](docs/ep1-demo.md) for the current implementation and its limi
   Don't add a prefix without checking that contract.
 - The preview and 3D budget use demo figures, not current web prices or availability. Keep
   this distinction visible in API responses and UI copy.
+- EP2 block 1 adds `/materials/normalize`, protected `/materials/captures` and `/materials/status`,
+  and `/floors/budget`. These process real retailer data; NestJS integration and PostgreSQL persistence are implemented in block 2; Angular block 3 is pending.
+  The original `/recommendations/compare` remains the compatible EP1 demonstration route.
+- `python -m app.capture` performs standalone bounded acquisition; `--schedule` targets 08/12/16 Chile time.
+  The integrated scheduler is NestJS (`MATERIALS_SCHEDULE_ENABLED=false` by default); do not run two schedulers.
+  `python-service/data/` is an ignored local evidence cache, never the application database.
+  Do not scrape retail sites in CI; use fixtures. Live acquisition respects robots and pacing.
+- Python code supports 3.12+; CI/Docker use 3.14. Keep compatible syntax for Windows installations.
+  Regenerate the checked-in contract with `python -m app.export_contract` after schema changes.
 
 ## Commands
 

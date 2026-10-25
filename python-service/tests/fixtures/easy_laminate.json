@@ -1,0 +1,913 @@
+{
+  "_fixture_provenance": {
+    "source_url": "https://www.easy.cl/search/piso%20flotante",
+    "checked_on": "2026-10-18",
+    "context": "Metropolitana / La Florida (13110), tres cookies públicas de ubicación",
+    "records_received": 40,
+    "records_saved": 10,
+    "purpose": "Muestra pública reducida para pruebas; no representa una actualización en vivo."
+  },
+  "pageProps": {
+    "serverProductsResponse": {
+      "productList": [
+        {
+          "productId": "56102",
+          "sku": "1278769",
+          "productName": "Piso flotante Classic touch roble claro 7 mm 2.67 m2",
+          "brand": "Baldara",
+          "categories": [
+            "Pisos/Pisos y Revestimientos",
+            "Pisos",
+            "Pisos/Pisos y Revestimientos/Pisos Flotantes"
+          ],
+          "isMarketplace": false,
+          "sellerName": "",
+          "imageUrl": "https://easycl.vteximg.com.br/arquivos/ids/5134186/1278769-0000-001.jpg?v=638878533484370000",
+          "linkText": "piso-flotante-classic-touch-roble-claro-7-mm-267-m2-1278769/p",
+          "prices": {
+            "currency": "CLP",
+            "normalPrice": 21333,
+            "offerPrice": null,
+            "brandPrice": null
+          },
+          "pricesM2": {
+            "normalPrice": 7990,
+            "currency": "CLP",
+            "offerPrice": null,
+            "brandPrice": null
+          },
+          "availableQuantity": 1,
+          "specifications": [
+            {
+              "name": "Resistencia al tráfico",
+              "values": [
+                "Tráfico Residencial / Comercial Liviano"
+              ]
+            },
+            {
+              "name": "Resistencia al Agua",
+              "values": [
+                "No"
+              ]
+            },
+            {
+              "name": "Uso",
+              "values": [
+                "Interior"
+              ]
+            },
+            {
+              "name": "Espacio Recomendado",
+              "values": [
+                "Living y Dormitorio"
+              ]
+            }
+          ],
+          "commercialOffer": {
+            "itemId": "58060",
+            "defaultOffer": {
+              "prices": {
+                "currency": "CLP",
+                "normalPrice": 21333,
+                "offerPrice": null,
+                "brandPrice": null
+              },
+              "pricesPerUnit": {
+                "currency": "CLP",
+                "normalPrice": 7990,
+                "offerPrice": null,
+                "brandPrice": null,
+                "contentUnit": "m2box"
+              },
+              "cardPromotions": [],
+              "ribbons": {
+                "top": [],
+                "bottom": [
+                  {
+                    "id": "cluster",
+                    "type": "custom",
+                    "value": "Cupón - Flooring (todo)",
+                    "returnValue": "Cupón: PISOSYMUROS10",
+                    "background": "#FFE6E6",
+                    "textColor": "#CC1515",
+                    "percentageDiscountValues": []
+                  }
+                ],
+                "delivery": []
+              }
+            },
+            "offerByZone": null
+          }
+        },
+        {
+          "productId": "56101",
+          "sku": "1278768",
+          "productName": "Piso flotante Classic touch cherry 6 mm 2.94 m2",
+          "brand": "Baldara",
+          "categories": [
+            "Pisos",
+            "Pisos/Pisos y Revestimientos/Pisos Flotantes",
+            "Pisos/Pisos y Revestimientos"
+          ],
+          "isMarketplace": false,
+          "sellerName": "",
+          "imageUrl": "https://easycl.vteximg.com.br/arquivos/ids/5133658/1278768-0000-001.jpg?v=638877999800970000",
+          "linkText": "piso-flotante-classic-touch-cherry-6-mm-294-m2-1278768/p",
+          "prices": {
+            "currency": "CLP",
+            "normalPrice": 21139,
+            "offerPrice": null,
+            "brandPrice": null
+          },
+          "pricesM2": {
+            "normalPrice": 7190,
+            "currency": "CLP",
+            "offerPrice": null,
+            "brandPrice": null
+          },
+          "availableQuantity": 1,
+          "specifications": [
+            {
+              "name": "Origen",
+              "values": [
+                "Importado"
+              ]
+            },
+            {
+              "name": "Forma",
+              "values": [
+                "Tabla"
+              ]
+            },
+            {
+              "name": "Diseño",
+              "values": [
+                "Tipo Madera"
+              ]
+            },
+            {
+              "name": "Embalaje",
+              "values": [
+                "139x20.1x6.4 cm"
+              ]
+            }
+          ],
+          "commercialOffer": {
+            "itemId": "58059",
+            "defaultOffer": {
+              "prices": {
+                "currency": "CLP",
+                "normalPrice": 21139,
+                "offerPrice": null,
+                "brandPrice": null
+              },
+              "pricesPerUnit": {
+                "currency": "CLP",
+                "normalPrice": 7190,
+                "offerPrice": null,
+                "brandPrice": null,
+                "contentUnit": "m2box"
+              },
+              "cardPromotions": [],
+              "ribbons": {
+                "top": [],
+                "bottom": [
+                  {
+                    "id": "cluster",
+                    "type": "custom",
+                    "value": "Cupón - Flooring (todo)",
+                    "returnValue": "Cupón: PISOSYMUROS10",
+                    "background": "#FFE6E6",
+                    "textColor": "#CC1515",
+                    "percentageDiscountValues": []
+                  }
+                ],
+                "delivery": []
+              }
+            },
+            "offerByZone": null
+          }
+        },
+        {
+          "productId": "161063",
+          "sku": "1424691",
+          "productName": "Piso flotante Classic Touch oak pleno 8 mm 2.40 m2",
+          "brand": "Baldara",
+          "categories": [
+            "Pisos/Pisos y Revestimientos",
+            "Pisos/Pisos y Revestimientos/Pisos Flotantes",
+            "Pisos"
+          ],
+          "isMarketplace": false,
+          "sellerName": "",
+          "imageUrl": "https://easycl.vteximg.com.br/arquivos/ids/5091586/1424691-0000-001.jpg?v=638890635772200000",
+          "linkText": "piso-flotante-classic-touch-oak-pleno-8-mm-240-m2-1424691/p",
+          "prices": {
+            "currency": "CLP",
+            "normalPrice": 23496,
+            "offerPrice": null,
+            "brandPrice": null
+          },
+          "pricesM2": {
+            "normalPrice": 9790,
+            "currency": "CLP",
+            "offerPrice": null,
+            "brandPrice": null
+          },
+          "availableQuantity": 1,
+          "specifications": [
+            {
+              "name": "Modelo",
+              "values": [
+                "Classic Touch"
+              ]
+            },
+            {
+              "name": "Origen",
+              "values": [
+                "Importado"
+              ]
+            },
+            {
+              "name": "Embalaje",
+              "values": [
+                "139x20.1x7   cm"
+              ]
+            },
+            {
+              "name": "Tipo de producto",
+              "values": [
+                "Pisos Flotantes"
+              ]
+            }
+          ],
+          "commercialOffer": {
+            "itemId": "166243",
+            "defaultOffer": {
+              "prices": {
+                "currency": "CLP",
+                "normalPrice": 23496,
+                "offerPrice": null,
+                "brandPrice": null
+              },
+              "pricesPerUnit": {
+                "currency": "CLP",
+                "normalPrice": 9790,
+                "offerPrice": null,
+                "brandPrice": null,
+                "contentUnit": "m2box"
+              },
+              "cardPromotions": [],
+              "ribbons": {
+                "top": [],
+                "bottom": [
+                  {
+                    "id": "cluster",
+                    "type": "custom",
+                    "value": "Cupón - Flooring (todo)",
+                    "returnValue": "Cupón: PISOSYMUROS10",
+                    "background": "#FFE6E6",
+                    "textColor": "#CC1515",
+                    "percentageDiscountValues": []
+                  }
+                ],
+                "delivery": []
+              }
+            },
+            "offerByZone": null
+          }
+        },
+        {
+          "productId": "20392",
+          "sku": "1169390",
+          "productName": "Piso flotante Classic touch roble 7 mm 2.67 m2",
+          "brand": "Kaindl",
+          "categories": [
+            "Pisos/Pisos y Revestimientos",
+            "Pisos",
+            "Pisos/Pisos y Revestimientos/Pisos Flotantes"
+          ],
+          "isMarketplace": false,
+          "sellerName": "",
+          "imageUrl": "https://easycl.vteximg.com.br/arquivos/ids/5073985/1169390-0000-001.jpg?v=638895807418370000",
+          "linkText": "piso-flotante-classic-touch-roble-7-mm-267-m2-1169390/p",
+          "prices": {
+            "currency": "CLP",
+            "normalPrice": 34683,
+            "offerPrice": null,
+            "brandPrice": null
+          },
+          "pricesM2": {
+            "normalPrice": 12990,
+            "currency": "CLP",
+            "offerPrice": null,
+            "brandPrice": null
+          },
+          "availableQuantity": 1,
+          "specifications": [
+            {
+              "name": "Espesor",
+              "values": [
+                "7 mm"
+              ]
+            },
+            {
+              "name": "Largo",
+              "values": [
+                "138.3 cm"
+              ]
+            },
+            {
+              "name": "Peso",
+              "values": [
+                "15.4 kg"
+              ]
+            },
+            {
+              "name": "Ancho",
+              "values": [
+                "19.3 cm"
+              ]
+            }
+          ],
+          "commercialOffer": {
+            "itemId": "21099",
+            "defaultOffer": {
+              "prices": {
+                "currency": "CLP",
+                "normalPrice": 34683,
+                "offerPrice": null,
+                "brandPrice": null
+              },
+              "pricesPerUnit": {
+                "currency": "CLP",
+                "normalPrice": 12990,
+                "offerPrice": null,
+                "brandPrice": null,
+                "contentUnit": "m2box"
+              },
+              "cardPromotions": [],
+              "ribbons": {
+                "top": [],
+                "bottom": [
+                  {
+                    "id": "cluster",
+                    "type": "custom",
+                    "value": "Cupón - Flooring (todo)",
+                    "returnValue": "Cupón: PISOSYMUROS10",
+                    "background": "#FFE6E6",
+                    "textColor": "#CC1515",
+                    "percentageDiscountValues": []
+                  }
+                ],
+                "delivery": []
+              }
+            },
+            "offerByZone": null
+          }
+        },
+        {
+          "productId": "78185",
+          "sku": "1329809",
+          "productName": "Piso flotante Aquapro Natural Touch Hickory Oregón 12mm 1.60m2",
+          "brand": "Kaindl",
+          "categories": [
+            "Pisos",
+            "Pisos/Pisos y Revestimientos",
+            "Pisos/Pisos y Revestimientos/Pisos Flotantes"
+          ],
+          "isMarketplace": false,
+          "sellerName": "",
+          "imageUrl": "https://easycl.vteximg.com.br/arquivos/ids/4845318/1329809-0000-001.jpg?v=639100512222600000",
+          "linkText": "piso-flotante-aquapro-natural-touch-hickory-oregon-12mm-160m2-1329809/p",
+          "prices": {
+            "currency": "CLP",
+            "normalPrice": 39984,
+            "offerPrice": 17584,
+            "brandPrice": null
+          },
+          "pricesM2": {
+            "normalPrice": 24990,
+            "currency": "CLP",
+            "offerPrice": 10990,
+            "brandPrice": null
+          },
+          "availableQuantity": 1,
+          "specifications": [
+            {
+              "name": "Característica Sustentable",
+              "values": [
+                "Madera Certificada"
+              ]
+            },
+            {
+              "name": "Recomendaciones",
+              "values": [
+                "Para la limpieza diaria es suficiente aspirar el suelo o barrer con un cepillo suave. Las huellas de los pies y la suciedad persistente se pueden limpiar fácilmente con un paño húmedo. Sin embargo, utilice únicamente un paño bien escurrido. Bajo ninguna circunstancia debe aplicar un paño húmedo al piso o mojar el piso con un trapeador. Para la limpieza se pueden utilizar todos los productos de limpieza domésticos comunes. Sin embargo, nunca use agentes abrasivos, cera, abrillantador y enceradoras eléctricas"
+              ]
+            },
+            {
+              "name": "Resistencia a Heladas",
+              "values": [
+                "No Aplica"
+              ]
+            },
+            {
+              "name": "Más Información",
+              "values": [
+                "Una nueva generación de pisos flotantes resistentes al agua. Resisten la humedad superficial por derrame de líquidos, salpicaduras y limpieza con mopas humedad sin generar daños"
+              ]
+            }
+          ],
+          "commercialOffer": {
+            "itemId": "81213",
+            "defaultOffer": {
+              "prices": {
+                "currency": "CLP",
+                "normalPrice": 39984,
+                "offerPrice": null,
+                "brandPrice": null
+              },
+              "pricesPerUnit": {
+                "currency": "CLP",
+                "normalPrice": 24990,
+                "offerPrice": null,
+                "brandPrice": null,
+                "contentUnit": "m2box"
+              },
+              "cardPromotions": [],
+              "ribbons": {
+                "top": [],
+                "bottom": [],
+                "delivery": []
+              }
+            },
+            "offerByZone": null
+          }
+        },
+        {
+          "productId": "78186",
+          "sku": "1329488",
+          "productName": "Piso flotante Classic touch multi country 8 mm 2.40 m2",
+          "brand": "Kaindl",
+          "categories": [
+            "Pisos/Pisos y Revestimientos",
+            "Pisos",
+            "Pisos/Pisos y Revestimientos/Pisos Flotantes"
+          ],
+          "isMarketplace": false,
+          "sellerName": "",
+          "imageUrl": "https://easycl.vteximg.com.br/arquivos/ids/4170017/1329488-0000-001.jpg?v=638899296484800000",
+          "linkText": "piso-flotante-classic-touch-multi-country-8-mm-240-m2-1329488/p",
+          "prices": {
+            "currency": "CLP",
+            "normalPrice": 33576,
+            "offerPrice": null,
+            "brandPrice": null
+          },
+          "pricesM2": {
+            "normalPrice": 13990,
+            "currency": "CLP",
+            "offerPrice": null,
+            "brandPrice": null
+          },
+          "availableQuantity": 1,
+          "specifications": [
+            {
+              "name": "Diseño",
+              "values": [
+                "Tipo Madera"
+              ]
+            },
+            {
+              "name": "Forma",
+              "values": [
+                "Tabla"
+              ]
+            },
+            {
+              "name": "Uso",
+              "values": [
+                "Interior"
+              ]
+            },
+            {
+              "name": "Embalaje",
+              "values": [
+                "130x20.1x7.0  cm"
+              ]
+            }
+          ],
+          "commercialOffer": {
+            "itemId": "81214",
+            "defaultOffer": {
+              "prices": {
+                "currency": "CLP",
+                "normalPrice": 33576,
+                "offerPrice": null,
+                "brandPrice": null
+              },
+              "pricesPerUnit": {
+                "currency": "CLP",
+                "normalPrice": 13990,
+                "offerPrice": null,
+                "brandPrice": null,
+                "contentUnit": "m2box"
+              },
+              "cardPromotions": [],
+              "ribbons": {
+                "top": [],
+                "bottom": [
+                  {
+                    "id": "cluster",
+                    "type": "custom",
+                    "value": "Cupón - Flooring (todo)",
+                    "returnValue": "Cupón: PISOSYMUROS10",
+                    "background": "#FFE6E6",
+                    "textColor": "#CC1515",
+                    "percentageDiscountValues": []
+                  }
+                ],
+                "delivery": []
+              }
+            },
+            "offerByZone": null
+          }
+        },
+        {
+          "productId": "56204",
+          "sku": "1279113",
+          "productName": "Piso flotante Classic touch abeto rojo 7 mm 2.67 m2",
+          "brand": "Baldara",
+          "categories": [
+            "Pisos",
+            "Pisos/Pisos y Revestimientos/Pisos Flotantes",
+            "Pisos/Pisos y Revestimientos"
+          ],
+          "isMarketplace": false,
+          "sellerName": "",
+          "imageUrl": "https://easycl.vteximg.com.br/arquivos/ids/5074523/1279113-0000-001.jpg?v=638890635796330000",
+          "linkText": "piso-flotante-classic-touch-abeto-rojo-7-mm-267-m2-1279113/p",
+          "prices": {
+            "currency": "CLP",
+            "normalPrice": 29343,
+            "offerPrice": null,
+            "brandPrice": null
+          },
+          "pricesM2": {
+            "normalPrice": 10990,
+            "currency": "CLP",
+            "offerPrice": null,
+            "brandPrice": null
+          },
+          "availableQuantity": 1,
+          "specifications": [
+            {
+              "name": "Aplicación",
+              "values": [
+                "Pisos"
+              ]
+            },
+            {
+              "name": "Resistencia al Agua",
+              "values": [
+                "No"
+              ]
+            },
+            {
+              "name": "Resistencia al tráfico",
+              "values": [
+                "Tráfico Residencial / Comercial Liviano"
+              ]
+            },
+            {
+              "name": "País de Origen",
+              "values": [
+                "Austria"
+              ]
+            }
+          ],
+          "commercialOffer": {
+            "itemId": "58162",
+            "defaultOffer": {
+              "prices": {
+                "currency": "CLP",
+                "normalPrice": 29343,
+                "offerPrice": null,
+                "brandPrice": null
+              },
+              "pricesPerUnit": {
+                "currency": "CLP",
+                "normalPrice": 10990,
+                "offerPrice": null,
+                "brandPrice": null,
+                "contentUnit": "m2box"
+              },
+              "cardPromotions": [],
+              "ribbons": {
+                "top": [],
+                "bottom": [
+                  {
+                    "id": "cluster",
+                    "type": "custom",
+                    "value": "Cupón - Flooring (todo)",
+                    "returnValue": "Cupón: PISOSYMUROS10",
+                    "background": "#FFE6E6",
+                    "textColor": "#CC1515",
+                    "percentageDiscountValues": []
+                  }
+                ],
+                "delivery": []
+              }
+            },
+            "offerByZone": null
+          }
+        },
+        {
+          "productId": "20398",
+          "sku": "1169398",
+          "productName": "Piso flotante Natural Touch roble 8 mm 2.40 m2",
+          "brand": "Kaindl",
+          "categories": [
+            "Pisos/Pisos y Revestimientos/Pisos Flotantes",
+            "Pisos",
+            "Pisos/Pisos y Revestimientos"
+          ],
+          "isMarketplace": false,
+          "sellerName": "",
+          "imageUrl": "https://easycl.vteximg.com.br/arquivos/ids/5073461/1169398-0000-001.jpg?v=638954460599000000",
+          "linkText": "piso-flotante-natural-touch-roble-8-mm-240-m2-1169398/p",
+          "prices": {
+            "currency": "CLP",
+            "normalPrice": 38376,
+            "offerPrice": 33576,
+            "brandPrice": null
+          },
+          "pricesM2": {
+            "normalPrice": 15990,
+            "currency": "CLP",
+            "offerPrice": 13990,
+            "brandPrice": null
+          },
+          "availableQuantity": 1,
+          "specifications": [
+            {
+              "name": "Forma",
+              "values": [
+                "Tabla"
+              ]
+            },
+            {
+              "name": "Modelo",
+              "values": [
+                "Natural Touch"
+              ]
+            },
+            {
+              "name": "Diseño",
+              "values": [
+                "Tipo Madera"
+              ]
+            },
+            {
+              "name": "Origen",
+              "values": [
+                "Importado"
+              ]
+            }
+          ],
+          "commercialOffer": {
+            "itemId": "21105",
+            "defaultOffer": {
+              "prices": {
+                "currency": "CLP",
+                "normalPrice": 38376,
+                "offerPrice": 33576,
+                "brandPrice": null
+              },
+              "pricesPerUnit": {
+                "currency": "CLP",
+                "normalPrice": 15990,
+                "offerPrice": 13990,
+                "brandPrice": null,
+                "contentUnit": "m2box"
+              },
+              "cardPromotions": [
+                {
+                  "name": "priceTable",
+                  "label": "13%",
+                  "type": "general",
+                  "id": "GENERAL"
+                }
+              ],
+              "ribbons": {
+                "top": [],
+                "bottom": [
+                  {
+                    "id": "cluster",
+                    "type": "custom",
+                    "value": "Cupón - Flooring (todo)",
+                    "returnValue": "Cupón: PISOSYMUROS10",
+                    "background": "#FFE6E6",
+                    "textColor": "#CC1515",
+                    "percentageDiscountValues": []
+                  }
+                ],
+                "delivery": []
+              }
+            },
+            "offerByZone": null
+          }
+        },
+        {
+          "productId": "69798",
+          "sku": "1292933",
+          "productName": "Piso flotante Classic touch  kiefer grizzly 8 mm 2.70 m2",
+          "brand": "Kaindl",
+          "categories": [
+            "Pisos/Pisos y Revestimientos",
+            "Ofertas",
+            "Ofertas/Outlet",
+            "Pisos",
+            "Pisos/Pisos y Revestimientos/Pisos Flotantes"
+          ],
+          "isMarketplace": false,
+          "sellerName": "",
+          "imageUrl": "https://easycl.vteximg.com.br/arquivos/ids/5074225/1292933-0000-001.jpg?v=638896686447430000",
+          "linkText": "piso-flotante-classic-touch-kiefer-grizzly-8-mm-270-m2-1292933/p",
+          "prices": {
+            "currency": "CLP",
+            "normalPrice": 43173,
+            "offerPrice": null,
+            "brandPrice": null
+          },
+          "pricesM2": {
+            "normalPrice": 15990,
+            "currency": "CLP",
+            "offerPrice": null,
+            "brandPrice": null
+          },
+          "availableQuantity": 1,
+          "specifications": [
+            {
+              "name": "Modelo",
+              "values": [
+                "Classic touch"
+              ]
+            },
+            {
+              "name": "Embalaje",
+              "values": [
+                "139x25.2x6.35 cm"
+              ]
+            },
+            {
+              "name": "Origen",
+              "values": [
+                "Importado"
+              ]
+            },
+            {
+              "name": "Uso",
+              "values": [
+                "Interior"
+              ]
+            }
+          ],
+          "commercialOffer": {
+            "itemId": "71955",
+            "defaultOffer": {
+              "prices": {
+                "currency": "CLP",
+                "normalPrice": 43173,
+                "offerPrice": null,
+                "brandPrice": null
+              },
+              "pricesPerUnit": {
+                "currency": "CLP",
+                "normalPrice": 15990,
+                "offerPrice": null,
+                "brandPrice": null,
+                "contentUnit": "m2box"
+              },
+              "cardPromotions": [],
+              "ribbons": {
+                "top": [],
+                "bottom": [
+                  {
+                    "id": "cluster",
+                    "type": "custom",
+                    "value": "Cupón - Flooring (todo)",
+                    "returnValue": "Cupón: PISOSYMUROS10",
+                    "background": "#FFE6E6",
+                    "textColor": "#CC1515",
+                    "percentageDiscountValues": []
+                  }
+                ],
+                "delivery": []
+              }
+            },
+            "offerByZone": null
+          }
+        },
+        {
+          "productId": "8406",
+          "sku": "816635",
+          "productName": "Piso flotante Classic touch roble praga 8 mm 2.40 m2",
+          "brand": "Baldara",
+          "categories": [
+            "Pisos/Pisos y Revestimientos",
+            "Pisos",
+            "Pisos/Pisos y Revestimientos/Pisos Flotantes"
+          ],
+          "isMarketplace": false,
+          "sellerName": "",
+          "imageUrl": "https://easycl.vteximg.com.br/arquivos/ids/5134655/816635-0000-001.jpg?v=638890635635030000",
+          "linkText": "piso-flotante-classic-touch-roble-praga-8-mm-240-m2-816635/p",
+          "prices": {
+            "currency": "CLP",
+            "normalPrice": 28776,
+            "offerPrice": 27576,
+            "brandPrice": null
+          },
+          "pricesM2": {
+            "normalPrice": 11990,
+            "currency": "CLP",
+            "offerPrice": 11490,
+            "brandPrice": null
+          },
+          "availableQuantity": 1,
+          "specifications": [
+            {
+              "name": "Modelo",
+              "values": [
+                "Classic Touch"
+              ]
+            },
+            {
+              "name": "Diseño",
+              "values": [
+                "Tipo Madera"
+              ]
+            },
+            {
+              "name": "Uso",
+              "values": [
+                "Interior"
+              ]
+            },
+            {
+              "name": "Origen",
+              "values": [
+                "Importado"
+              ]
+            }
+          ],
+          "commercialOffer": {
+            "itemId": "8459",
+            "defaultOffer": {
+              "prices": {
+                "currency": "CLP",
+                "normalPrice": 28776,
+                "offerPrice": 27576,
+                "brandPrice": null
+              },
+              "pricesPerUnit": {
+                "currency": "CLP",
+                "normalPrice": 11990,
+                "offerPrice": 11490,
+                "brandPrice": null,
+                "contentUnit": "m2box"
+              },
+              "cardPromotions": [
+                {
+                  "name": "priceTable",
+                  "label": "4%",
+                  "type": "general",
+                  "id": "GENERAL"
+                }
+              ],
+              "ribbons": {
+                "top": [],
+                "bottom": [
+                  {
+                    "id": "cluster",
+                    "type": "custom",
+                    "value": "Cupón - Flooring (todo)",
+                    "returnValue": "Cupón: PISOSYMUROS10",
+                    "background": "#FFE6E6",
+                    "textColor": "#CC1515",
+                    "percentageDiscountValues": []
+                  }
+                ],
+                "delivery": []
+              }
+            },
+            "offerByZone": null
+          }
+        }
+      ],
+      "recordsFiltered": 404
+    }
+  }
+}

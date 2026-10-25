@@ -1,0 +1,1500 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Habita3D Python Service",
+    "version": "2.0.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Get Health",
+        "operationId": "get_health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Get Health Health Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/recommendations/compare": {
+      "post": {
+        "tags": [
+          "recommendations"
+        ],
+        "summary": "Compare Finishes",
+        "operationId": "compare_finishes_recommendations_compare_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompareRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompareResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/floors/budget": {
+      "post": {
+        "tags": [
+          "floors"
+        ],
+        "summary": "Floor Budget",
+        "description": "Calculate whole-box floor purchases using ordinary public CLP box prices.\n\nMissing price or coverage leaves the room uncalculable. An incomplete\nproject exposes an explicit partial subtotal and no final total or budget\nverdict. Availability is passed through, never inferred from a price.\nThe caller declares an ordinary public price; this endpoint does not verify\nits freshness or commercial conditions against the original retailer.",
+        "operationId": "floor_budget_floors_budget_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FloorBudgetRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FloorBudgetResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/materials/normalize": {
+      "post": {
+        "tags": [
+          "materials"
+        ],
+        "summary": "Normalize",
+        "description": "Pure validation of canonical raw records; never calls a retailer or writes a file.",
+        "operationId": "normalize_materials_normalize_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NormalizeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NormalizeResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/materials/captures": {
+      "post": {
+        "tags": [
+          "materials"
+        ],
+        "summary": "Create Capture",
+        "description": "Explicit protected acquisition. Browsing/catalog reads must never call this route.",
+        "operationId": "create_capture_materials_captures_post",
+        "parameters": [
+          {
+            "name": "x-materials-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Materials-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CaptureApiRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaptureResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/materials/status": {
+      "get": {
+        "tags": [
+          "materials"
+        ],
+        "summary": "Capture Status",
+        "description": "Local acquisition evidence only, not the future application's catalogue API.",
+        "operationId": "capture_status_materials_status_get",
+        "parameters": [
+          {
+            "name": "x-materials-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Materials-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Capture Status Materials Status Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CaptureApiRequest": {
+        "properties": {
+          "sources": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "sodimac",
+                "easy"
+              ]
+            },
+            "type": "array",
+            "maxItems": 2,
+            "minItems": 1,
+            "title": "Sources",
+            "default": [
+              "sodimac",
+              "easy"
+            ]
+          },
+          "categories": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "ceramic",
+                "laminate"
+              ]
+            },
+            "type": "array",
+            "maxItems": 2,
+            "minItems": 1,
+            "title": "Categories",
+            "default": [
+              "ceramic",
+              "laminate"
+            ]
+          },
+          "limit_per_category": {
+            "type": "integer",
+            "maximum": 10.0,
+            "minimum": 1.0,
+            "title": "Limit Per Category",
+            "default": 10
+          },
+          "scheduled_for": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scheduled For"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "CaptureApiRequest"
+      },
+      "CaptureResult": {
+        "properties": {
+          "schema_version": {
+            "type": "string",
+            "const": "1.0",
+            "title": "Schema Version",
+            "default": "1.0"
+          },
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "request_id": {
+            "type": "string",
+            "title": "Request Id"
+          },
+          "origin": {
+            "type": "string",
+            "const": "live",
+            "title": "Origin",
+            "default": "live"
+          },
+          "trigger": {
+            "type": "string",
+            "enum": [
+              "manual",
+              "scheduled"
+            ],
+            "title": "Trigger"
+          },
+          "scheduled_for": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scheduled For"
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Started At"
+          },
+          "finished_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Finished At"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "complete",
+              "partial",
+              "failed"
+            ],
+            "title": "Status"
+          },
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/GroupResult"
+            },
+            "type": "array",
+            "title": "Groups"
+          },
+          "publications": {
+            "items": {
+              "$ref": "#/components/schemas/Publication"
+            },
+            "type": "array",
+            "title": "Publications"
+          },
+          "updated_publication_keys": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Updated Publication Keys"
+          },
+          "retained_publication_keys": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Retained Publication Keys"
+          },
+          "storage": {
+            "type": "string",
+            "const": "local_evidence_cache",
+            "title": "Storage",
+            "default": "local_evidence_cache"
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "request_id",
+          "trigger",
+          "scheduled_for",
+          "started_at",
+          "finished_at",
+          "status",
+          "groups",
+          "publications",
+          "updated_publication_keys",
+          "retained_publication_keys"
+        ],
+        "title": "CaptureResult"
+      },
+      "CompareRequest": {
+        "properties": {
+          "area_m2": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Area M2"
+          },
+          "budget_clp": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Budget Clp"
+          }
+        },
+        "type": "object",
+        "required": [
+          "area_m2",
+          "budget_clp"
+        ],
+        "title": "CompareRequest"
+      },
+      "CompareResponse": {
+        "properties": {
+          "recommended_tier": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "standard",
+              "premium"
+            ],
+            "title": "Recommended Tier"
+          },
+          "estimated_cost_clp": {
+            "type": "integer",
+            "title": "Estimated Cost Clp"
+          },
+          "budget_difference_clp": {
+            "type": "integer",
+            "title": "Budget Difference Clp"
+          },
+          "fits_budget": {
+            "type": "boolean",
+            "title": "Fits Budget"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          },
+          "source": {
+            "type": "string",
+            "const": "demo",
+            "title": "Source",
+            "default": "demo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "recommended_tier",
+          "estimated_cost_clp",
+          "budget_difference_clp",
+          "fits_budget",
+          "reason"
+        ],
+        "title": "CompareResponse"
+      },
+      "FloorBudgetRequest": {
+        "properties": {
+          "rooms": {
+            "items": {
+              "$ref": "#/components/schemas/RoomBudgetRequest"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Rooms"
+          },
+          "budget_clp": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 1000000000000000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget Clp"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "rooms"
+        ],
+        "title": "FloorBudgetRequest"
+      },
+      "FloorBudgetResponse": {
+        "properties": {
+          "currency": {
+            "type": "string",
+            "const": "CLP",
+            "title": "Currency",
+            "default": "CLP"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "complete",
+              "partial",
+              "uncalculable"
+            ],
+            "title": "Status"
+          },
+          "rooms": {
+            "items": {
+              "$ref": "#/components/schemas/RoomBudgetResponse"
+            },
+            "type": "array",
+            "title": "Rooms"
+          },
+          "calculated_rooms": {
+            "type": "integer",
+            "title": "Calculated Rooms"
+          },
+          "uncalculable_rooms": {
+            "type": "integer",
+            "title": "Uncalculable Rooms"
+          },
+          "calculable_subtotal_clp": {
+            "type": "integer",
+            "title": "Calculable Subtotal Clp"
+          },
+          "total_cost_clp": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Cost Clp"
+          },
+          "budget_clp": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget Clp"
+          },
+          "budget_difference_clp": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget Difference Clp"
+          },
+          "budget_excess_clp": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget Excess Clp"
+          },
+          "fits_budget": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fits Budget"
+          },
+          "calculation_basis": {
+            "type": "string",
+            "const": "supplied_publication_snapshots",
+            "title": "Calculation Basis",
+            "default": "supplied_publication_snapshots"
+          },
+          "scope": {
+            "type": "string",
+            "const": "floor_boxes_only",
+            "title": "Scope",
+            "default": "floor_boxes_only"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "rooms",
+          "calculated_rooms",
+          "uncalculable_rooms",
+          "calculable_subtotal_clp",
+          "total_cost_clp",
+          "budget_clp",
+          "budget_difference_clp",
+          "budget_excess_clp",
+          "fits_budget"
+        ],
+        "title": "FloorBudgetResponse"
+      },
+      "GroupResult": {
+        "properties": {
+          "source": {
+            "type": "string",
+            "enum": [
+              "sodimac",
+              "easy"
+            ],
+            "title": "Source"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "ceramic",
+              "laminate"
+            ],
+            "title": "Category"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "complete",
+              "partial",
+              "failed"
+            ],
+            "title": "Status"
+          },
+          "metrics": {
+            "$ref": "#/components/schemas/QualityMetrics"
+          },
+          "pages": {
+            "type": "integer",
+            "title": "Pages"
+          },
+          "request_urls": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Request Urls"
+          },
+          "errors": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Errors"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings"
+          },
+          "missing_publication_keys": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Missing Publication Keys"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source",
+          "category",
+          "status",
+          "metrics",
+          "pages",
+          "request_urls",
+          "errors",
+          "warnings",
+          "missing_publication_keys"
+        ],
+        "title": "GroupResult"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "NormalizeRequest": {
+        "properties": {
+          "records": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "maxItems": 200,
+            "minItems": 1,
+            "title": "Records"
+          },
+          "checked_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Checked At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "records",
+          "checked_at"
+        ],
+        "title": "NormalizeRequest"
+      },
+      "NormalizeResult": {
+        "properties": {
+          "publications": {
+            "items": {
+              "$ref": "#/components/schemas/Publication"
+            },
+            "type": "array",
+            "title": "Publications"
+          },
+          "rejected": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Rejected"
+          },
+          "duplicate_records": {
+            "type": "integer",
+            "title": "Duplicate Records"
+          }
+        },
+        "type": "object",
+        "required": [
+          "publications",
+          "rejected",
+          "duplicate_records"
+        ],
+        "title": "NormalizeResult"
+      },
+      "Publication": {
+        "properties": {
+          "publication_key": {
+            "type": "string",
+            "title": "Publication Key"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "sodimac",
+              "easy"
+            ],
+            "title": "Source"
+          },
+          "external_id": {
+            "type": "string",
+            "title": "External Id"
+          },
+          "sku": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sku"
+          },
+          "seller": {
+            "type": "string",
+            "title": "Seller"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "brand": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brand"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "ceramic",
+              "laminate"
+            ],
+            "title": "Category"
+          },
+          "product_url": {
+            "type": "string",
+            "title": "Product Url"
+          },
+          "image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Url"
+          },
+          "currency": {
+            "type": "string",
+            "const": "CLP",
+            "title": "Currency",
+            "default": "CLP"
+          },
+          "price_type": {
+            "type": "string",
+            "const": "public",
+            "title": "Price Type",
+            "default": "public"
+          },
+          "price_per_box_clp": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Price Per Box Clp"
+          },
+          "sale_unit": {
+            "type": "string",
+            "enum": [
+              "box",
+              "unknown"
+            ],
+            "title": "Sale Unit"
+          },
+          "coverage_per_box_m2": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coverage Per Box M2"
+          },
+          "price_per_m2_clp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Per M2 Clp"
+          },
+          "reported_price_m2_clp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reported Price M2 Clp"
+          },
+          "availability": {
+            "type": "string",
+            "enum": [
+              "available",
+              "unavailable",
+              "unknown"
+            ],
+            "title": "Availability",
+            "default": "unknown"
+          },
+          "commune_code": {
+            "type": "string",
+            "const": "13110",
+            "title": "Commune Code",
+            "default": "13110"
+          },
+          "commune": {
+            "type": "string",
+            "const": "La Florida",
+            "title": "Commune",
+            "default": "La Florida"
+          },
+          "region": {
+            "type": "string",
+            "const": "Metropolitana",
+            "title": "Region",
+            "default": "Metropolitana"
+          },
+          "checked_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Checked At"
+          },
+          "last_checked_display": {
+            "type": "string",
+            "title": "Last Checked Display"
+          },
+          "comparable": {
+            "type": "boolean",
+            "title": "Comparable"
+          },
+          "promotions": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Promotions"
+          },
+          "evidence": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Evidence"
+          },
+          "extractor_version": {
+            "type": "string",
+            "const": "ep2-v1",
+            "title": "Extractor Version",
+            "default": "ep2-v1"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "publication_key",
+          "source",
+          "external_id",
+          "seller",
+          "name",
+          "category",
+          "product_url",
+          "price_per_box_clp",
+          "sale_unit",
+          "coverage_per_box_m2",
+          "price_per_m2_clp",
+          "checked_at",
+          "last_checked_display",
+          "comparable"
+        ],
+        "title": "Publication"
+      },
+      "PublicationSnapshot": {
+        "properties": {
+          "publication_key": {
+            "type": "string",
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Publication Key"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "sodimac",
+              "easy"
+            ],
+            "title": "Source"
+          },
+          "price_per_box_clp": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 1000000000000000.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Per Box Clp"
+          },
+          "coverage_per_box_m2": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 10000000000.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coverage Per Box M2"
+          },
+          "currency": {
+            "type": "string",
+            "const": "CLP",
+            "title": "Currency"
+          },
+          "price_type": {
+            "type": "string",
+            "const": "public",
+            "title": "Price Type",
+            "default": "public"
+          },
+          "checked_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Checked At"
+          },
+          "availability": {
+            "type": "string",
+            "enum": [
+              "available",
+              "unavailable",
+              "unknown"
+            ],
+            "title": "Availability",
+            "default": "unknown"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "publication_key",
+          "source",
+          "currency",
+          "checked_at"
+        ],
+        "title": "PublicationSnapshot"
+      },
+      "QualityMetrics": {
+        "properties": {
+          "retrieved_records": {
+            "type": "integer",
+            "title": "Retrieved Records",
+            "default": 0
+          },
+          "valid_records": {
+            "type": "integer",
+            "title": "Valid Records",
+            "default": 0
+          },
+          "rejected_records": {
+            "type": "integer",
+            "title": "Rejected Records",
+            "default": 0
+          },
+          "excluded_records": {
+            "type": "integer",
+            "title": "Excluded Records",
+            "default": 0
+          },
+          "duplicate_records": {
+            "type": "integer",
+            "title": "Duplicate Records",
+            "default": 0
+          },
+          "comparable_records": {
+            "type": "integer",
+            "title": "Comparable Records",
+            "default": 0
+          },
+          "selected_records": {
+            "type": "integer",
+            "title": "Selected Records",
+            "default": 0
+          },
+          "validity_percent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Validity Percent"
+          },
+          "duplicates_percent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duplicates Percent"
+          }
+        },
+        "type": "object",
+        "title": "QualityMetrics"
+      },
+      "RoomBudgetRequest": {
+        "properties": {
+          "room_id": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Room Id"
+          },
+          "area_m2": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 10000000000.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Area M2"
+          },
+          "length_m": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 10000000000.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Length M"
+          },
+          "width_m": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 10000000000.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Width M"
+          },
+          "waste_percent": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Waste Percent",
+            "default": "10"
+          },
+          "budget_clp": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 1000000000000000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget Clp"
+          },
+          "publication": {
+            "$ref": "#/components/schemas/PublicationSnapshot"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "room_id",
+          "publication"
+        ],
+        "title": "RoomBudgetRequest"
+      },
+      "RoomBudgetResponse": {
+        "properties": {
+          "room_id": {
+            "type": "string",
+            "title": "Room Id"
+          },
+          "publication_key": {
+            "type": "string",
+            "title": "Publication Key"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "sodimac",
+              "easy"
+            ],
+            "title": "Source"
+          },
+          "currency": {
+            "type": "string",
+            "const": "CLP",
+            "title": "Currency",
+            "default": "CLP"
+          },
+          "price_type": {
+            "type": "string",
+            "const": "public",
+            "title": "Price Type",
+            "default": "public"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "calculated",
+              "uncalculable"
+            ],
+            "title": "Status"
+          },
+          "reasons": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "missing_price",
+                "missing_coverage"
+              ]
+            },
+            "type": "array",
+            "title": "Reasons"
+          },
+          "area_m2": {
+            "type": "string",
+            "title": "Area M2"
+          },
+          "waste_percent": {
+            "type": "string",
+            "title": "Waste Percent"
+          },
+          "required_area_m2": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Required Area M2"
+          },
+          "coverage_per_box_m2": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coverage Per Box M2"
+          },
+          "price_per_box_clp": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Per Box Clp"
+          },
+          "boxes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Boxes"
+          },
+          "purchased_area_m2": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Purchased Area M2"
+          },
+          "cost_clp": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Clp"
+          },
+          "budget_clp": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget Clp"
+          },
+          "budget_difference_clp": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget Difference Clp"
+          },
+          "budget_excess_clp": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget Excess Clp"
+          },
+          "fits_budget": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fits Budget"
+          },
+          "availability": {
+            "type": "string",
+            "enum": [
+              "available",
+              "unavailable",
+              "unknown"
+            ],
+            "title": "Availability"
+          },
+          "checked_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Checked At"
+          },
+          "last_check_display": {
+            "type": "string",
+            "title": "Last Check Display"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "room_id",
+          "publication_key",
+          "source",
+          "status",
+          "reasons",
+          "area_m2",
+          "waste_percent",
+          "availability",
+          "checked_at",
+          "last_check_display"
+        ],
+        "title": "RoomBudgetResponse"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}

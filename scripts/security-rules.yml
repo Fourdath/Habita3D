@@ -1,0 +1,33 @@
+rules:
+  - id: habita3d-no-js-eval
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: Avoid executing text as JavaScript; parse and validate structured inputs.
+    pattern-either:
+      - pattern: eval(...)
+      - pattern: new Function(...)
+  - id: habita3d-no-unsafe-sql
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: Use parameterized Prisma SQL instead of an Unsafe raw query.
+    pattern-either:
+      - pattern: $DB.$queryRawUnsafe(...)
+      - pattern: $DB.$executeRawUnsafe(...)
+  - id: habita3d-no-python-dynamic-execution
+    languages: [python]
+    severity: ERROR
+    message: Do not execute incoming text or untrusted serialized Python objects.
+    pattern-either:
+      - pattern: eval(...)
+      - pattern: exec(...)
+      - pattern: pickle.loads(...)
+      - pattern: pickle.load(...)
+      - pattern: yaml.unsafe_load(...)
+  - id: habita3d-no-insecure-tls
+    languages: [python]
+    severity: ERROR
+    message: Keep TLS certificate verification enabled for external sources.
+    pattern-either:
+      - pattern: requests.$METHOD(..., verify=False, ...)
+      - pattern: httpx.$METHOD(..., verify=False, ...)
+      - pattern: httpx.AsyncClient(..., verify=False, ...)
