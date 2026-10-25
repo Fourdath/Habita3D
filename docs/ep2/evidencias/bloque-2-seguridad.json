@@ -1,0 +1,74 @@
+{
+  "scanner": {
+    "name": "Trivy",
+    "version": "0.76.1",
+    "binary_sha256_archive": "11a9b6cd2752011b54f01ea4bd0dbfa9f0c41dc6538d5a3f9d23955f471bf4e5",
+    "release": "https://github.com/aquasecurity/trivy/releases/tag/v0.76.1",
+    "severity": "CRITICAL",
+    "ignore_unfixed": false,
+    "architecture": "linux/arm64",
+    "database": {
+      "Version": 2,
+      "NextUpdate": "2026-10-25T19:09:13.779511598Z",
+      "UpdatedAt": "2026-10-24T19:09:13.779511838Z",
+      "DownloadedAt": "2026-10-25T00:07:20.001506Z"
+    }
+  },
+  "images": {
+    "frontend": {
+      "artifact": "habita3d/frontend:local",
+      "image_id": "sha256:f395a5ec4d18eb4cc6e2bfc92b1cdad008e87b9407d31459fa00f2ae71fa4478",
+      "critical_count": 0
+    },
+    "backend": {
+      "artifact": "habita3d/backend:local",
+      "image_id": "sha256:161fd5e148f7f8ba4747cc522c26542a63e99d803e453b428e625c41aedfd0a4",
+      "critical_count": 0
+    },
+    "python": {
+      "artifact": "habita3d/python-service:local",
+      "image_id": "sha256:5f601c772a335a335f42f6d8890073d0f5e18b35397927d4fc2c74d55616d075",
+      "critical_count": 0
+    },
+    "postgres-fixed": {
+      "artifact": "habita3d/postgres:local",
+      "image_id": "sha256:ea0cd730b8aac316f948899391b1c08f8f3c81010e4e4e6d93d2e6d15179f844",
+      "critical_count": 0
+    }
+  },
+  "npm_audit": {
+    "backend": {
+      "info": 0,
+      "low": 2,
+      "moderate": 8,
+      "high": 13,
+      "critical": 0,
+      "total": 23
+    },
+    "frontend": {
+      "info": 0,
+      "low": 2,
+      "moderate": 13,
+      "high": 13,
+      "critical": 0,
+      "total": 28
+    }
+  },
+  "changes": [
+    "frontend runtime base nginx:1.27-alpine to nginx:1.30.6-alpine; initial libcrypto3/libssl3 CVE-2026-31789 findings removed",
+    "derive postgres:18-alpine with Alpine su-exec and replace two privilege-drop calls; remove gosu Go binary instead of ignoring CVE-2025-68121"
+  ],
+  "postgres_functional_test": {
+    "fresh_tmpfs_cluster": true,
+    "network": "none",
+    "pg_isready": true,
+    "sql_current_user": "postgres",
+    "version": "18.6"
+  },
+  "limitations": [
+    "Only CRITICAL severity counted; this is not a claim of no vulnerabilities",
+    "Local Linux arm64 images tested; CI rebuilds Linux amd64 and must pass separately",
+    "Scanning date/report database freshness affects results"
+  ],
+  "note": "Escaneos locales de las imágenes runtime del desarrollo; CI reconstruye y vuelve a escanear el commit completo."
+}

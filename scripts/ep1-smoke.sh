@@ -36,8 +36,14 @@ assert recommendation["estimated_cost_clp"] == 13000000
 assert recommendation["fits_budget"] is True
 '
 
-curl --fail --silent --show-error "${base_url}/api/projects" |
-  python3 -c 'import json,sys; assert any(p["name"] == "EP1 smoke test" for p in json.load(sys.stdin))'
+owned="$(curl --fail-with-body --silent --show-error \
+  --header 'content-type: application/json' --header "Authorization: Bearer ${token}" \
+  --data '{"name":"EP1 owned smoke test","budgetClp":13000000}' "${base_url}/api/projects")"
+project_id="$(printf '%s' "$owned" | python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])')"
+curl --fail --silent --show-error --header "Authorization: Bearer ${token}" "${base_url}/api/projects" |
+  python3 -c 'import json,sys; assert any(p["name"] == "EP1 owned smoke test" for p in json.load(sys.stdin))'
+curl --fail --silent --show-error --output /dev/null --request DELETE \
+  --header "Authorization: Bearer ${token}" "${base_url}/api/projects/${project_id}"
 
 status="$(curl --silent --output /dev/null --write-out '%{http_code}' \
   --header 'content-type: application/json' \

@@ -39,3 +39,11 @@ regexes = [
   '^4eb092692a566fe39fc707afdc0ced1f3b90453f9ff8aa7a87bb2dd746031f28$',
   '^f53fb94faaf503b4795392675add8beb93f24a990342fda8b5e40493d156bb56$'
 ]
+
+
+[[allowlists]]
+description = "Public SHA-256 publication identifier in the recorded live EP2 verification; not a credential"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['^docs/ep2/evidencias/bloque-2-verificacion-real\.json$']
+regexes = ['^002abba297c969113955afa803473047f6ad61740512af65f857a0e7ede246b4$']

@@ -1,8 +1,8 @@
 # Plan definitivo de trabajo para la Entrega Parcial 2 de Habita3D
 
-Fecha de revisión: 18 de octubre de 2026.
+Fecha de revisión: 24 de octubre de 2026.
 
-Estado: **bloque 1 de datos/FastAPI implementado**. Los bloques 2 y 3 continúan pendientes. El [manual del bloque 1](bloque-1-datos.md) registra los contratos, la ejecución y las limitaciones; las casillas siguientes distinguen avances verificados de integración pendiente. Esto no certifica toda la EP2.
+Estado: **bloque 1 de datos/FastAPI implementado**. El bloque 2 está implementado y probado localmente; el bloque 3 y el primer despliegue en el Windows del compañero siguen pendientes. Véanse el [manual de backend](bloque-2-backend.md), [staging](bloque-2-staging.md) y [evidencias](evidencias/bloque-2-validacion.md). El [manual del bloque 1](bloque-1-datos.md) registra los contratos, la ejecución y las limitaciones; las casillas siguientes distinguen avances verificados de integración pendiente. Esto no certifica toda la EP2.
 
 ## Alcance acordado
 
@@ -71,6 +71,8 @@ La asignación se expresa como Integrante 1/2/3 para que el equipo distribuya re
 | **1. Datos y Python/FastAPI** | Integrante 1 | Adaptadores de las dos fuentes/categorías, normalización, cálculos compartidos, manejo de errores, capturas, métricas de calidad y pruebas Python. Colabora en la ejecución programada y documenta acceso/procedencia. |
 | **2. Backend, persistencia e infraestructura** | Integrante 2 | Prisma/migraciones, NestJS, importación idempotente, catálogo/filtros/historial, proyectos y habitaciones; coordinación de Terraform, CI/CD, staging, variables/secrets y salud del despliegue. |
 | **3. Angular y experiencia 3D** | Integrante 3, idealmente quien ya trabaja en el visor | Pantallas/prototipo, catálogo y tres filtros, habitaciones y presupuestos, selecciones, vista 3D orientativa, historial y comprobación; pruebas del recorrido y demo. |
+
+**Actualización 24/10/2026:** bloques 1 y 2 implementados; interfaz bloque 3 pendiente. Runner Windows por instalar según confirmación del equipo. Las pruebas locales no sustituyen esa validación externa.
 
 Cada integrante mantiene las pruebas, Dockerfile, documentación, controles de seguridad y logs de su componente. Bloque 2 coordina CI/despliegue y la verificación final; bloque 1 participa en cron y métricas; bloque 3 aporta los flujos de aceptación. Correlación de solicitudes e integración se acuerdan entre los tres. Esta distribución puede ajustarse dentro del equipo sin cambiar el alcance.
 
@@ -164,18 +166,18 @@ Aceptación: una fuente real proporciona una muestra utilizable con procedencia,
 - [x] **EP2-07 — Implementar adquisición automatizada.** Adaptador para el método elegido, paginación cuando aplique, límites de solicitudes y tiempo de espera. Preferir una API oficial adecuada cuando exista. Usar navegador automatizado solo si los datos realmente lo requieren.
 - [x] **EP2-08 — Limpiar y validar.** Nombres, categorías, formatos numéricos, moneda, medidas y unidades; registros incompletos y precios inválidos. Conservar el dato original o evidencia permitida suficiente para explicar la transformación.
 - [x] **EP2-09 — Normalizar costos comparables.** Distinguir caja, pieza, litro y m². Calcular precio por unidad comparable solo cuando exista cobertura/rendimiento verificable. Para un piso por habitación: superficie de compra = superficie × (1 + margen/100); cajas = techo(superficie de compra/cobertura por caja); costo = cajas × precio por caja. El margen inicial acordado es 10 %, editable por habitación. Marcar como no comparable el registro sin cobertura necesaria.
-- [ ] **EP2-10 — Deduplicar, actualizar y conservar historial.** Clave estable para una publicación, considerando fuente, identificador externo, vendedor y contexto. Repetición idempotente sin duplicar productos. No fusionar productos distintos solo por nombre. Conservar el precio inicial y los cambios de precio comparable con sus fechas; actualizar la última comprobación exitosa sin crear un cambio duplicado cuando el valor siga igual. Los presupuestos usan los últimos precios disponibles; el historial se consulta como información adicional.
+- [x] **EP2-10 — Deduplicar, actualizar y conservar historial.** Clave estable para una publicación, considerando fuente, identificador externo, vendedor y contexto. Repetición idempotente sin duplicar productos. No fusionar productos distintos solo por nombre. Conservar el precio inicial y los cambios de precio comparable con sus fechas; actualizar la última comprobación exitosa sin crear un cambio duplicado cuando el valor siga igual. Los presupuestos usan los últimos precios disponibles; el historial se consulta como información adicional.
 - [x] **EP2-11 — Manejar fallos.** Timeout, reintentos limitados y seguros, fuente caída, datos inválidos o cambio de formato. Conservar la última captura válida si esa es la estrategia elegida y mostrar su fecha; no reemplazarla silenciosamente con precios ficticios.
-- [ ] **EP2-12 — Exponer el procesamiento en FastAPI.** Endpoints y modelos de entrada/salida documentados para procesar/normalizar información real. Python terminado: `/materials/*` y `/floors/budget` con procedencia real; el endpoint demostrativo EP1 se conserva compatible. La integración NestJS queda pendiente para el bloque 2.
+- [x] **EP2-12 — Exponer el procesamiento en FastAPI.** Endpoints y modelos de entrada/salida documentados para procesar/normalizar información real. Python terminado: `/materials/*` y `/floors/budget` con procedencia real; el endpoint demostrativo EP1 se conserva compatible. La integración NestJS, validación de contratos y persistencia están implementadas en el bloque 2.
 
 Aceptación: la aplicación inicia un proceso automático que obtiene y transforma información real; una segunda ejecución no duplica datos y una fuente caída produce un error comprensible o una respuesta degradada explícita.
 
 ### D. Modelo, persistencia y consultas NestJS
 
-- [ ] **EP2-13 — Extender el modelo Prisma y crear migraciones.** Entidades para fuentes/publicaciones/ofertas, historial de precios y ejecuciones; extender proyectos y añadir habitaciones con superficie o dimensiones, margen, presupuesto opcional y piso elegido. Relacionar las selecciones con las publicaciones persistidas. Los nombres y la cantidad de tablas no son imposiciones de la pauta.
-- [ ] **EP2-14 — Guardar datos y procedencia.** Identificador externo, URL, fuente/proveedor, nombre/categoría, precio decimal y moneda, unidad de venta, cobertura si existe, disponibilidad observada, fecha/hora, método/versión del extractor y estado de la ejecución. Añadir restricciones únicas, claves foráneas e índices adecuados.
-- [ ] **EP2-15 — Persistir sin duplicar y conservar contexto del proyecto.** Upsert/transacciones según el caso. Guardar superficie/presupuesto/selección o resultado necesario para relacionar datos externos con propios y reconstruir una comparación. NestJS sigue siendo el administrador principal de PostgreSQL; Python devuelve datos procesados y no escribe directamente esas tablas salvo decisión técnica justificada.
-- [ ] **EP2-16 — Exponer consultas útiles.** Endpoints NestJS para catálogo/ofertas y resultados, con DTO, filtros, orden y paginación. Documentar los contratos y proteger las operaciones de actualización/importación para evitar que cualquier usuario dispare extracciones o modificaciones.
+- [x] **EP2-13 — Extender el modelo Prisma y crear migraciones.** Entidades para fuentes/publicaciones/ofertas, historial de precios y ejecuciones; extender proyectos y añadir habitaciones con superficie o dimensiones, margen, presupuesto opcional y piso elegido. Relacionar las selecciones con las publicaciones persistidas. Los nombres y la cantidad de tablas no son imposiciones de la pauta.
+- [x] **EP2-14 — Guardar datos y procedencia.** Identificador externo, URL, fuente/proveedor, nombre/categoría, precio decimal y moneda, unidad de venta, cobertura si existe, disponibilidad observada, fecha/hora, método/versión del extractor y estado de la ejecución. Añadir restricciones únicas, claves foráneas e índices adecuados.
+- [x] **EP2-15 — Persistir sin duplicar y conservar contexto del proyecto.** Upsert/transacciones según el caso. Guardar superficie/presupuesto/selección o resultado necesario para relacionar datos externos con propios y reconstruir una comparación. NestJS sigue siendo el administrador principal de PostgreSQL; Python devuelve datos procesados y no escribe directamente esas tablas salvo decisión técnica justificada.
+- [x] **EP2-16 — Exponer consultas útiles.** Endpoints NestJS para catálogo/ofertas y resultados, con DTO, filtros, orden y paginación. Documentar los contratos y proteger las operaciones de actualización/importación para evitar que cualquier usuario dispare extracciones o modificaciones.
 
 Aceptación: tras reiniciar la aplicación, los datos recuperados pueden consultarse por NestJS y usarse dentro de un proyecto. Se puede reconstruir su fuente y fecha.
 
@@ -239,6 +241,12 @@ Aceptación: un tercero puede seguir los enlaces e instrucciones y reproducir la
 Aplicar los tres bloques definidos arriba: datos/Python; backend/persistencia e infraestructura; Angular/3D. Cada componente aporta pruebas, seguridad, logs y documentación; el bloque 2 coordina la integración y el despliegue.
 
 Tu área anterior de Terraform/staging puede continuar con EP2-26…29: elegir host, hacer la infraestructura reproducible, configurar el acceso seguro del pipeline y demostrar despliegue automático con salud y rollback. Requiere acordar contratos de ejecución y variables con backend/Python/frontend.
+
+## Estado verificado al completar el bloque 2
+
+- Implementados: EP2-10, EP2-12 y EP2-13…16; las APIs cubren los tres filtros de EP2-19.
+- Aportado a EP2-24/25/27…32: contratos/persistencia, SAST/imágenes, Terraform, variables, despliegue protegido, salud, logs y manuales. Las casillas globales siguen abiertas donde falta el equipo Windows, Angular o el cierre de la entrega.
+- El compañero configurará posteriormente el runner. Faltan su primer despliegue verificable, pantallas/3D EP2 y la demostración/versionado final; no se marca toda EP2 como completada.
 
 ## Demostración de aceptación completa
 

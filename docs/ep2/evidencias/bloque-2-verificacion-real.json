@@ -1,0 +1,188 @@
+{
+  "verification": "actual local Terraform deployment and bounded live source acquisition",
+  "environment": "Docker Desktop Linux arm64; native Windows runner pending",
+  "recorded_at": "2026-10-25T04:19:56.698430+00:00",
+  "readiness": {
+    "status": "ok",
+    "version": "ep2-tfcheck",
+    "services": {
+      "postgres": "ok",
+      "python": "ok"
+    },
+    "timestamp": "2026-10-25T04:19:56.713Z"
+  },
+  "capture_import": {
+    "jobId": "80b05a89-ffb7-4d30-ab1c-f8f9ed795a68",
+    "runId": "0931f560-8abd-422d-9239-e416cde2acbd",
+    "status": "complete",
+    "replayed": false,
+    "updatedCount": 40,
+    "retainedCount": 0,
+    "staleKeys": []
+  },
+  "publication_count": 40,
+  "groups": [
+    {
+      "source": "sodimac",
+      "category": "ceramic",
+      "status": "complete",
+      "runId": "0931f560-8abd-422d-9239-e416cde2acbd",
+      "finishedAt": "2026-10-25T04:20:20.056Z",
+      "metrics": {
+        "valid_records": 38,
+        "excluded_records": 10,
+        "rejected_records": 0,
+        "selected_records": 10,
+        "validity_percent": "79.17",
+        "duplicate_records": 0,
+        "retrieved_records": 48,
+        "comparable_records": 38,
+        "duplicates_percent": "0.00"
+      },
+      "errors": [],
+      "warnings": [
+        "La comuna no identifica una sucursal; stock no confirmado por el listado."
+      ],
+      "missingPublicationKeys": []
+    },
+    {
+      "source": "sodimac",
+      "category": "laminate",
+      "status": "complete",
+      "runId": "0931f560-8abd-422d-9239-e416cde2acbd",
+      "finishedAt": "2026-10-25T04:20:20.056Z",
+      "metrics": {
+        "valid_records": 33,
+        "excluded_records": 16,
+        "rejected_records": 0,
+        "selected_records": 10,
+        "validity_percent": "67.35",
+        "duplicate_records": 0,
+        "retrieved_records": 49,
+        "comparable_records": 33,
+        "duplicates_percent": "0.00"
+      },
+      "errors": [],
+      "warnings": [
+        "La comuna no identifica una sucursal; stock no confirmado por el listado."
+      ],
+      "missingPublicationKeys": []
+    },
+    {
+      "source": "easy",
+      "category": "ceramic",
+      "status": "complete",
+      "runId": "0931f560-8abd-422d-9239-e416cde2acbd",
+      "finishedAt": "2026-10-25T04:20:20.056Z",
+      "metrics": {
+        "valid_records": 30,
+        "excluded_records": 10,
+        "rejected_records": 0,
+        "selected_records": 10,
+        "validity_percent": "75.00",
+        "duplicate_records": 0,
+        "retrieved_records": 40,
+        "comparable_records": 30,
+        "duplicates_percent": "0.00"
+      },
+      "errors": [],
+      "warnings": [
+        "Easy: se envía el contexto público de La Florida; el listado no confirma la comuna en su respuesta ni garantiza inventario físico en una sucursal."
+      ],
+      "missingPublicationKeys": []
+    },
+    {
+      "source": "easy",
+      "category": "laminate",
+      "status": "complete",
+      "runId": "0931f560-8abd-422d-9239-e416cde2acbd",
+      "finishedAt": "2026-10-25T04:20:20.056Z",
+      "metrics": {
+        "valid_records": 38,
+        "excluded_records": 2,
+        "rejected_records": 0,
+        "selected_records": 10,
+        "validity_percent": "95.00",
+        "duplicate_records": 0,
+        "retrieved_records": 40,
+        "comparable_records": 38,
+        "duplicates_percent": "0.00"
+      },
+      "errors": [],
+      "warnings": [
+        "Easy: se envía el contexto público de La Florida; el listado no confirma la comuna en su respuesta ni garantiza inventario físico en una sucursal."
+      ],
+      "missingPublicationKeys": []
+    }
+  ],
+  "latest_job": {
+    "id": "80b05a89-ffb7-4d30-ab1c-f8f9ed795a68",
+    "scheduledFor": null,
+    "status": "complete",
+    "startedAt": "2026-10-25T04:19:56.736Z",
+    "finishedAt": "2026-10-25T04:20:20.170Z",
+    "runId": "0931f560-8abd-422d-9239-e416cde2acbd",
+    "errorCode": null
+  },
+  "unknown_availability_count": 40,
+  "budget": {
+    "status": "complete",
+    "calculation_basis": "latest_persisted_publications",
+    "total_cost_clp": 164040,
+    "budget_clp": 500000,
+    "fits_budget": true,
+    "scope": "floor_boxes_only",
+    "rooms": [
+      {
+        "room_id": "bd04045e-6ce1-4e85-8327-e40de0ee678f",
+        "publication_key": "002abba297c969113955afa803473047f6ad61740512af65f857a0e7ede246b4",
+        "source": "easy",
+        "currency": "CLP",
+        "price_type": "public",
+        "status": "calculated",
+        "reasons": [],
+        "area_m2": "10",
+        "waste_percent": "10",
+        "required_area_m2": "11.0",
+        "coverage_per_box_m2": "3.04",
+        "price_per_box_clp": 41010,
+        "boxes": 4,
+        "purchased_area_m2": "12.16",
+        "cost_clp": 164040,
+        "budget_clp": null,
+        "budget_difference_clp": null,
+        "budget_excess_clp": null,
+        "fits_budget": null,
+        "availability": "unknown",
+        "checked_at": "2026-10-25T04:20:20.054000Z",
+        "last_check_display": "25/10/2026 01:20"
+      }
+    ],
+    "project_id": 1
+  },
+  "selected_source": {
+    "source": "easy",
+    "product_url": "https://www.easy.cl/piso-flotante-classic-touch-aquapro-ferrara-wildlife-7-mm-304-m2-1392714/p",
+    "category": "laminate",
+    "checked_at": "2026-10-25T04:20:20.054Z"
+  },
+  "initial_history_count": 1,
+  "replay_import": {
+    "runId": "0931f560-8abd-422d-9239-e416cde2acbd",
+    "status": "complete",
+    "replayed": true,
+    "updatedCount": 40,
+    "retainedCount": 0
+  },
+  "database_counts_after_replay": {
+    "publications": 40,
+    "price_observations": 40,
+    "capture_runs": 1
+  },
+  "restart": {
+    "readiness": "ok",
+    "persisted_publication_count": 40
+  },
+  "core_commit": "47893106e828073f9345236f782e6044eaf5259b",
+  "source_access_note": "Captura limitada mediante los adaptadores del bloque 1; no prueba stock físico ni permiso general de reutilización."
+}

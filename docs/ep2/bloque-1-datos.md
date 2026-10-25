@@ -4,6 +4,11 @@ Este manual explica cómo ejecutar el bloque de datos en el computador Windows q
 para la demostración. Las decisiones funcionales están en [los acuerdos EP2](acuerdos.md).
 La implementación está en [`python-service/`](../../python-service).
 
+**Actualización 25/10/2026:** la integración NestJS/PostgreSQL del bloque 2 ya está
+implementada; consultar el [manual de backend](bloque-2-backend.md). Las referencias
+a ese trabajo en el texto original describen su responsabilidad; la interfaz del
+bloque 3 y la puesta en marcha en el Windows del compañero siguen pendientes.
+
 ## 1. Alcance y relación con la aplicación
 
 El bloque incluye adaptadores de **Sodimac y Easy**, normalización y deduplicación, una muestra
