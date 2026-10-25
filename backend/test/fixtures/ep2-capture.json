@@ -1,0 +1,131 @@
+{
+  "schema_version": "1.0",
+  "run_id": "ep2-synthetic-fixture-initial",
+  "request_id": "ep2-fixture",
+  "origin": "live",
+  "trigger": "manual",
+  "scheduled_for": null,
+  "started_at": "2026-10-24T11:59:59Z",
+  "finished_at": "2026-10-24T12:00:01Z",
+  "status": "complete",
+  "groups": [
+    {
+      "source": "sodimac",
+      "category": "ceramic",
+      "status": "complete",
+      "metrics": {
+        "retrieved_records": 1,
+        "valid_records": 1,
+        "rejected_records": 0,
+        "excluded_records": 0,
+        "duplicate_records": 0,
+        "comparable_records": 1,
+        "selected_records": 1,
+        "validity_percent": "100.00",
+        "duplicates_percent": "0.00"
+      },
+      "pages": 1,
+      "request_urls": [
+        "https://www.sodimac.cl/ep2-fixture-ceramic"
+      ],
+      "errors": [],
+      "warnings": [],
+      "missing_publication_keys": []
+    },
+    {
+      "source": "easy",
+      "category": "laminate",
+      "status": "complete",
+      "metrics": {
+        "retrieved_records": 1,
+        "valid_records": 1,
+        "rejected_records": 0,
+        "excluded_records": 0,
+        "duplicate_records": 0,
+        "comparable_records": 1,
+        "selected_records": 1,
+        "validity_percent": "100.00",
+        "duplicates_percent": "0.00"
+      },
+      "pages": 1,
+      "request_urls": [
+        "https://www.easy.cl/ep2-fixture-laminate"
+      ],
+      "errors": [],
+      "warnings": [],
+      "missing_publication_keys": []
+    }
+  ],
+  "publications": [
+    {
+      "publication_key": "4eb092692a566fe39fc707afdc0ced1f3b90453f9ff8aa7a87bb2dd746031f28",
+      "source": "sodimac",
+      "external_id": "ep2-fixture-sodimac-ceramic",
+      "sku": "fixture-ceramic",
+      "seller": "Sodimac",
+      "name": "Piso ficticio de prueba ceramic",
+      "brand": null,
+      "category": "ceramic",
+      "product_url": "https://www.sodimac.cl/ep2-fixture-ceramic",
+      "image_url": null,
+      "currency": "CLP",
+      "price_type": "public",
+      "price_per_box_clp": 10000,
+      "sale_unit": "box",
+      "coverage_per_box_m2": "2",
+      "price_per_m2_clp": "5000.00",
+      "reported_price_m2_clp": null,
+      "availability": "unknown",
+      "commune_code": "13110",
+      "commune": "La Florida",
+      "region": "Metropolitana",
+      "checked_at": "2026-10-24T12:00:00Z",
+      "last_checked_display": "24/10/2026 09:00",
+      "comparable": true,
+      "promotions": [],
+      "evidence": {
+        "test_fixture": true,
+        "notice": "Datos sintéticos para pruebas; no son una captura real de las tiendas."
+      },
+      "extractor_version": "ep2-v1"
+    },
+    {
+      "publication_key": "f53fb94faaf503b4795392675add8beb93f24a990342fda8b5e40493d156bb56",
+      "source": "easy",
+      "external_id": "ep2-fixture-easy-laminate",
+      "sku": "fixture-laminate",
+      "seller": "Easy",
+      "name": "Piso ficticio de prueba laminate",
+      "brand": null,
+      "category": "laminate",
+      "product_url": "https://www.easy.cl/ep2-fixture-laminate",
+      "image_url": null,
+      "currency": "CLP",
+      "price_type": "public",
+      "price_per_box_clp": 18000,
+      "sale_unit": "box",
+      "coverage_per_box_m2": "3",
+      "price_per_m2_clp": "6000.00",
+      "reported_price_m2_clp": null,
+      "availability": "unknown",
+      "commune_code": "13110",
+      "commune": "La Florida",
+      "region": "Metropolitana",
+      "checked_at": "2026-10-24T12:00:00Z",
+      "last_checked_display": "24/10/2026 09:00",
+      "comparable": true,
+      "promotions": [],
+      "evidence": {
+        "test_fixture": true,
+        "notice": "Datos sintéticos para pruebas; no son una captura real de las tiendas."
+      },
+      "extractor_version": "ep2-v1"
+    }
+  ],
+  "updated_publication_keys": [
+    "4eb092692a566fe39fc707afdc0ced1f3b90453f9ff8aa7a87bb2dd746031f28",
+    "f53fb94faaf503b4795392675add8beb93f24a990342fda8b5e40493d156bb56"
+  ],
+  "retained_publication_keys": [],
+  "storage": "local_evidence_cache"
+}

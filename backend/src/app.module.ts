@@ -7,10 +7,11 @@ import { ProjectsModule } from './modules/projects/projects.module.js';
 import { ScenesModule } from './modules/scenes/scenes.module.js';
 import { MaterialsModule } from './modules/materials/materials.module.js';
 import { RecommendationsModule } from './modules/recommendations/recommendations.module.js';
+import { CapturesModule } from './modules/captures/captures.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 
 @Module({
-  imports: [AuthModule, UsersModule, ProjectsModule, ScenesModule, MaterialsModule, RecommendationsModule, HealthModule],
+  imports: [CapturesModule, AuthModule, UsersModule, ProjectsModule, ScenesModule, MaterialsModule, RecommendationsModule, HealthModule],
   controllers: [AppController],
   providers: [AppService],
 })

@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { BadGatewayException, ServiceUnavailableException } from '@nestjs/common';
+import {
+  BadGatewayException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 
 import { ProjectPreviewService } from './project-preview.service.js';
 import { ProjectsService } from './projects.service.js';
@@ -22,7 +25,9 @@ afterEach(() => {
 describe('ProjectPreviewService', () => {
   const setup = () => {
     const create = vi.fn().mockResolvedValue({ id: 7, name: dto.name });
-    const service = new ProjectPreviewService({ create } as unknown as ProjectsService);
+    const service = new ProjectPreviewService({
+      create,
+    } as unknown as ProjectsService);
     return { service, create };
   };
 
@@ -34,7 +39,10 @@ describe('ProjectPreviewService', () => {
 
     const result = await service.create(dto);
 
-    expect(result).toEqual({ project: { id: 7, name: dto.name }, recommendation });
+    expect(result).toEqual({
+      project: { id: 7, name: dto.name },
+      recommendation,
+    });
     expect(create).toHaveBeenCalledWith(dto.name);
     expect(upstream).toHaveBeenCalledWith(
       new URL('http://python-service:8000/recommendations/compare'),
@@ -46,26 +54,41 @@ describe('ProjectPreviewService', () => {
   });
 
   it('does not save a project when Python is unavailable', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('connection refused')));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockRejectedValue(new Error('connection refused')),
+    );
     const { service, create } = setup();
 
-    await expect(service.create(dto)).rejects.toBeInstanceOf(ServiceUnavailableException);
+    await expect(service.create(dto)).rejects.toBeInstanceOf(
+      ServiceUnavailableException,
+    );
     expect(create).not.toHaveBeenCalled();
   });
 
   it('does not save a project on an upstream error', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('error', { status: 500 })));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(new Response('error', { status: 500 })),
+    );
     const { service, create } = setup();
 
-    await expect(service.create(dto)).rejects.toBeInstanceOf(BadGatewayException);
+    await expect(service.create(dto)).rejects.toBeInstanceOf(
+      BadGatewayException,
+    );
     expect(create).not.toHaveBeenCalled();
   });
 
   it('rejects an invalid upstream contract before persisting', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json({ source: 'demo' })));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(Response.json({ source: 'demo' })),
+    );
     const { service, create } = setup();
 
-    await expect(service.create(dto)).rejects.toBeInstanceOf(BadGatewayException);
+    await expect(service.create(dto)).rejects.toBeInstanceOf(
+      BadGatewayException,
+    );
     expect(create).not.toHaveBeenCalled();
   });
 });

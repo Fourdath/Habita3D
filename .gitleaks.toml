@@ -28,3 +28,14 @@ regexes = [
   '''^0c1439518560f511cc56c67da5892f1877633ec14d53cbed8ef1f70270d48132$''',
   '''^002abba297c969113955afa803473047f6ad61740512af65f857a0e7ede246b4$'''
 ]
+
+
+[[allowlists]]
+description = "Two synthetic publication identifiers derived with SHA-256 for the EP2 contract fixture; not credentials"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['^backend/test/fixtures/ep2-capture\.json$']
+regexes = [
+  '^4eb092692a566fe39fc707afdc0ced1f3b90453f9ff8aa7a87bb2dd746031f28$',
+  '^f53fb94faaf503b4795392675add8beb93f24a990342fda8b5e40493d156bb56$'
+]

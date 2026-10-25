@@ -5,6 +5,7 @@ import secrets
 from datetime import datetime
 from pathlib import Path
 from typing import Annotated, Any
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator
@@ -41,6 +42,28 @@ def get_source_client():
     from app.sources.client import SafeSourceClient
 
     return SafeSourceClient()
+
+
+class CaptureApiRequest(CaptureRequest):
+    scheduled_for: AwareDatetime | None = None
+
+    @field_validator("scheduled_for", mode="before")
+    @classmethod
+    def scheduled_date(cls, value):
+        if value is not None and not isinstance(value, (str, datetime)):
+            raise ValueError("scheduled_for debe ser una fecha ISO con zona horaria")
+        return value
+
+    @field_validator("scheduled_for")
+    @classmethod
+    def exact_chile_slot(cls, value):
+        if value is not None:
+            local = value.astimezone(ZoneInfo("America/Santiago"))
+            if local.hour not in (8, 12, 16) or local.minute or local.second or local.microsecond:
+                raise ValueError(
+                    "scheduled_for debe identificar una franja de las 08, 12 o 16 en Chile"
+                )
+        return value
 
 
 class NormalizeRequest(BaseModel):
@@ -87,7 +110,7 @@ def normalize(request: NormalizeRequest) -> NormalizeResult:
     "/captures", response_model=CaptureResult, dependencies=[Depends(require_capture_token)]
 )
 async def create_capture(
-    request: CaptureRequest,
+    request: CaptureApiRequest,
     http_request: Request,
     store: CaptureStore = Depends(get_store),
     adapters=Depends(get_adapters),
@@ -97,7 +120,8 @@ async def create_capture(
     try:
         async with client:
             return await capture(
-                request, client, adapters, store, request_id=http_request.state.request_id
+                request, client, adapters, store, request_id=http_request.state.request_id,
+                slot=request.scheduled_for.isoformat() if request.scheduled_for else None
             )
     except CaptureBusyError as exc:
         raise HTTPException(409, str(exc)) from exc
