@@ -31,12 +31,14 @@ export class PointerLockLookInput {
   private readonly handlePointerLockError = (): void => {
     this.locked = false;
     this.onLockChange(false);
+    this.onError?.();
   };
 
   constructor(
     private readonly element: HTMLElement,
     private readonly camera: THREE.PerspectiveCamera,
     private readonly onLockChange: (locked: boolean) => void,
+    private readonly onError?: () => void,
   ) {
     this.camera.rotation.order = 'YXZ';
     document.addEventListener('mousemove', this.handleMouseMove);
@@ -49,7 +51,11 @@ export class PointerLockLookInput {
   }
 
   requestLock(): void {
-    this.element.requestPointerLock();
+    try {
+      void this.element.requestPointerLock()?.catch(() => this.handlePointerLockError());
+    } catch {
+      this.handlePointerLockError();
+    }
   }
 
   dispose(): void {

@@ -1,65 +1,113 @@
 <ion-content [fullscreen]="true" [scrollY]="false">
-  <div class="viewer-3d">
-    <div #canvasHost class="viewer-3d__canvas-host"></div>
+  <div class="studio" [class.studio--walk]="viewMode() === 'walk'">
+    <header class="studio__header">
+      <a routerLink="/landing" class="studio__brand" aria-label="Habita3D, volver al inicio"><app-brand-mark /></a>
+      <div class="studio__project"><span>ESTUDIO 3D</span><strong>{{ modelName() }}</strong></div>
+      <a routerLink="/landing" class="studio__home">← <span>Volver al inicio</span></a>
+    </header>
 
-    @if (status() === 'loading') {
-      <div class="viewer-3d__overlay">
-        <ion-spinner name="crescent" color="light"></ion-spinner>
-        <p>Cargando escenario...</p>
-      </div>
-    }
+    <div class="studio__workspace">
+      <main class="viewer-3d" aria-label="Modelo interactivo de la vivienda">
+        <div #canvasHost class="viewer-3d__canvas-host"></div>
 
-    @if (status() === 'error') {
-      <div class="viewer-3d__overlay">
-        <p class="viewer-3d__overlay-title">No se pudo cargar el visor 3D</p>
-        <p class="viewer-3d__overlay-detail">{{ errorMessage() }}</p>
-      </div>
-    }
-
-    @if (status() === 'ready' && viewMode() === 'walk' && !pointerLocked()) {
-      <button type="button" class="viewer-3d__overlay viewer-3d__overlay--interactive" (click)="onStartClick()">
-        <p class="viewer-3d__overlay-title">Haz clic para comenzar</p>
-        <ul class="viewer-3d__instructions">
-          <li>WASD para moverte</li>
-          <li>Mouse para mirar alrededor</li>
-          <li>Espacio para saltar</li>
-          <li>Escape para liberar el mouse</li>
-        </ul>
-      </button>
-    }
-
-    @if (status() === 'ready') {
-      <nav class="viewer-3d__views" aria-label="Vista de la vivienda">
-        <button type="button" [attr.aria-pressed]="viewMode() === 'walk'" (click)="onViewModeChange('walk')">Recorrer</button>
-        <button type="button" [attr.aria-pressed]="viewMode() === 'overview'" (click)="onViewModeChange('overview')">Vista general</button>
-        @if (viewMode() === 'overview') {
-          <button type="button" (click)="onFrameOverview(true)">Desde arriba</button>
-          <button type="button" (click)="onFrameOverview()">Centrar</button>
-          <p>Arrastra para girar · Rueda para acercar o alejar · Botón derecho para desplazar</p>
+        @if (status() === 'loading') {
+          <div class="viewer-3d__overlay" role="status">
+            <ion-spinner name="crescent"></ion-spinner>
+            <h1>Preparando tu vivienda</h1><p>Estamos construyendo la vista general.</p>
+          </div>
         }
-      </nav>
-      <div class="viewer-3d__floorplan-picker">
-        <label class="viewer-3d__floorplan-picker-button">
-          Cargar plano SVG
-          <input type="file" accept=".svg" [disabled]="loadingFloorplan()" (change)="onFloorplanFileSelected($event)" hidden />
-        </label>
-
-        @if (floorplanError()) {
-          <p class="viewer-3d__floorplan-picker-error">{{ floorplanError() }}</p>
+        @if (status() === 'error') {
+          <div class="viewer-3d__overlay" role="alert">
+            <h1>No se pudo cargar el visor 3D</h1><p>{{ errorMessage() }}</p>
+            <a routerLink="/landing">Volver al inicio</a>
+          </div>
         }
-      </div>
-    }
 
-    @if (status() === 'ready') {
-      <div class="viewer-3d__style-panel">
-        <app-interior-style-panel
-          [styleId]="interiorStyleId()"
-          [loading]="interiorStyleLoading()"
-          [errorMessage]="interiorStyleError()"
-          [budget]="budget()"
-          (styleChange)="onInteriorStyleChange($event)"
-        />
-      </div>
-    }
+        @if (status() === 'ready') {
+          <div class="viewer-3d__heading">
+            <span class="studio__eyebrow">{{ viewMode() === 'overview' ? 'EXPLORA A TU RITMO' : 'DENTRO DE TU VIVIENDA' }}</span>
+            <h1>{{ viewMode() === 'overview' ? 'Una nueva perspectiva.' : 'Siente el espacio.' }}</h1>
+            <p>{{ viewMode() === 'overview' ? 'Conoce la distribución antes de entrar.' : 'Presiona Esc para pausar el recorrido.' }}</p>
+          </div>
+
+          <nav class="viewer-3d__views" aria-label="Vista de la vivienda">
+            <button type="button" [attr.aria-pressed]="viewMode() === 'overview' && !topView()" (click)="onViewModeChange('overview'); onFrameOverview()">Vista general</button>
+            @if (viewMode() === 'overview') {
+              <button type="button" [attr.aria-pressed]="topView()" (click)="onFrameOverview(true)">Desde arriba</button>
+            }
+          </nav>
+
+          @if (viewMode() === 'overview') {
+            <div class="viewer-3d__tools" role="group" aria-label="Controles del modelo">
+              <button type="button" aria-label="Acercar" title="Acercar" (click)="onZoom(0.8)">+</button>
+              <button type="button" aria-label="Alejar" title="Alejar" (click)="onZoom(1.25)">−</button>
+              <span></span>
+              <button type="button" aria-label="Centrar la vivienda" title="Centrar la vivienda" (click)="onFrameOverview(topView())">⌖</button>
+            </div>
+            <div class="viewer-3d__help"><span aria-hidden="true">↔</span> Arrastra para girar <i>·</i> Rueda o pellizca para acercar</div>
+            <span class="viewer-3d__scale">MODELO 3D / {{ topView() ? 'VISTA SUPERIOR' : 'PERSPECTIVA' }}</span>
+          } @else {
+            @if (!pointerLocked()) {
+              <div class="viewer-3d__pause">
+                <span class="studio__eyebrow">RECORRIDO INTERIOR</span>
+                <h2>Entra y hazlo tuyo.</h2>
+                <p>Explora cada espacio a tu propio ritmo.</p>
+                <div class="viewer-3d__keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><span>para moverte</span></div>
+                <p class="viewer-3d__small">Mouse para mirar · Espacio para saltar · Esc para pausar</p>
+                <button type="button" class="studio__primary" [disabled]="!pointerLockSupported" (click)="onStartClick()">Comenzar recorrido <span aria-hidden="true">→</span></button>
+                @if (walkError()) { <p class="viewer-3d__small" role="alert">{{ walkError() }}</p> }
+                @if (!pointerLockSupported) { <p class="viewer-3d__small">Para recorrer, abre el visor en un computador con teclado y mouse.</p> }
+                <button type="button" class="studio__back" (click)="onViewModeChange('overview')">Volver a la vista general</button>
+              </div>
+            } @else {
+              <span class="viewer-3d__crosshair" aria-hidden="true">+</span>
+              <div class="viewer-3d__help">WASD para moverte <i>·</i> Mouse para mirar <i>·</i> Esc para pausar</div>
+            }
+          }
+        }
+      </main>
+
+      @if (viewMode() === 'overview') {
+        <aside class="studio__sidebar" aria-label="Personaliza tu vivienda">
+          <div class="studio__sidebar-content">
+          <div class="studio__intro">
+            <span class="studio__eyebrow">TU ESPACIO, TUS IDEAS</span>
+            <h2>Imagina cómo<br> quieres vivir.</h2>
+            <p>Observa tu casa desde fuera, prueba terminaciones y luego entra a recorrerla.</p>
+          </div>
+          <div class="studio__model">
+            <span class="studio__model-icon" aria-hidden="true">⌂</span>
+            <div><strong>{{ modelName() }}</strong><span>{{ status() === 'ready' ? 'Modelo listo para explorar' : 'Preparando modelo…' }}</span></div>
+            <span class="studio__dot" [class.studio__dot--ready]="status() === 'ready'"></span>
+          </div>
+          @if (status() === 'ready') {
+            <div class="studio__facts">
+              <div><strong>{{ modelSummary().roomCount }}</strong><span>espacios en el plano</span></div>
+              <div><strong>{{ modelSummary().areaM2.toFixed(1) }} <small>m²</small></strong><span>superficie de recintos</span></div>
+            </div>
+            <app-interior-style-panel
+              [styleId]="interiorStyleId()"
+              [loading]="interiorStyleLoading() || loadingFloorplan()"
+              [errorMessage]="interiorStyleError()"
+              [budget]="budget()"
+              (styleChange)="onInteriorStyleChange($event)"
+            />
+            <div class="studio__floorplan">
+              <label class="studio__upload" [class.studio__upload--busy]="loadingFloorplan() || interiorStyleLoading()">
+                <span aria-hidden="true">↥</span> {{ loadingFloorplan() ? 'Cargando plano…' : 'Cargar mi plano SVG' }}
+                <input type="file" accept=".svg" aria-label="Cargar mi plano SVG" [disabled]="loadingFloorplan() || interiorStyleLoading()" (change)="onFloorplanFileSelected($event)" />
+              </label>
+              <p>Tu plano se procesa en este dispositivo.</p>
+              @if (floorplanError()) { <p class="studio__error" role="alert">{{ floorplanError() }}</p> }
+            </div>
+          }
+          </div>
+          <div class="studio__enter">
+            <button type="button" class="studio__primary" [disabled]="status() !== 'ready' || loadingFloorplan() || interiorStyleLoading()" (click)="pointerLockSupported ? onStartClick() : onViewModeChange('walk')">Recorrer la casa <span aria-hidden="true">→</span></button>
+            <p>Descubre el interior en primera persona.</p>
+          </div>
+        </aside>
+      }
+    </div>
   </div>
 </ion-content>

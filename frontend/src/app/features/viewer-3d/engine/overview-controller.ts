@@ -56,6 +56,14 @@ export class OverviewController {
     this.camera.updateProjectionMatrix();
   }
 
+  zoom(factor: number): void {
+    if (!this.active) return;
+    const offset = this.camera.position.clone().sub(this.controls.target);
+    const distance = THREE.MathUtils.clamp(offset.length() * factor, this.controls.minDistance, this.controls.maxDistance);
+    this.camera.position.copy(this.controls.target).add(offset.setLength(distance));
+    this.controls.update();
+  }
+
   update(): void { if (this.active) this.controls.update(); }
 
   dispose(): void {

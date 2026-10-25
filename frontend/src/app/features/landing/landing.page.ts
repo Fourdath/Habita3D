@@ -2,17 +2,33 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { IonButton, IonContent } from '@ionic/angular';
+import { IonContent } from '@ionic/angular';
 import { firstValueFrom } from 'rxjs';
 
 import { ProjectPreviewService } from '../../core/projects/project-preview.service';
 import { ProjectPreviewResponse } from '../../core/projects/project-preview.types';
+import { HomeFooterComponent } from './components/home-footer/home-footer.component';
+import { HomeHeaderComponent } from './components/home-header/home-header.component';
+import { HomeHeroComponent } from './components/home-hero/home-hero.component';
+import { HomeProcessComponent } from './components/home-process/home-process.component';
+import { HomeToolsComponent } from './components/home-tools/home-tools.component';
+import { RevealDirective } from './reveal.directive';
 
 @Component({
   selector: 'app-landing',
   templateUrl: 'landing.page.html',
   styleUrls: ['landing.page.scss'],
-  imports: [IonContent, IonButton, RouterLink, ReactiveFormsModule],
+  imports: [
+    IonContent,
+    RouterLink,
+    ReactiveFormsModule,
+    HomeHeaderComponent,
+    HomeHeroComponent,
+    HomeProcessComponent,
+    HomeToolsComponent,
+    HomeFooterComponent,
+    RevealDirective,
+  ],
 })
 export class LandingPage {
   private readonly projectPreviewService = inject(ProjectPreviewService);

@@ -1,0 +1,135 @@
+:host {
+  display: block;
+}
+
+.footer {
+  padding: 56px 0 28px;
+  background: var(--h3d-forest-deep);
+  color: rgba(255, 255, 255, 0.82);
+}
+
+// Title-block layout: ruled cells like the cartouche of a drawing sheet.
+.block {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.cell {
+  padding: 24px;
+
+  & + & {
+    border-left: 1px solid rgba(255, 255, 255, 0.18);
+  }
+
+  p {
+    margin: 0;
+    line-height: 1.6;
+  }
+}
+
+.brand {
+  color: var(--h3d-white);
+
+  p {
+    max-width: 34ch;
+    margin-top: 14px;
+    color: rgba(255, 255, 255, 0.72);
+  }
+}
+
+.cell .label {
+  margin-bottom: 14px;
+  color: var(--h3d-sage);
+  font: 500 0.6875rem var(--h3d-font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+a {
+  color: var(--h3d-white);
+  text-decoration: none;
+  border-radius: 2px;
+
+  &:hover {
+    text-decoration: underline;
+    text-underline-offset: 4px;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--h3d-white);
+    outline-offset: 3px;
+  }
+}
+
+dl {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+
+  div {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+  }
+}
+
+dt {
+  color: rgba(255, 255, 255, 0.65);
+}
+
+dd {
+  margin: 0;
+  color: var(--h3d-white);
+  font-family: var(--h3d-font-mono);
+  font-size: 0.8125rem;
+  text-align: right;
+}
+
+.legal {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px 24px;
+  padding-top: 20px;
+  color: rgba(255, 255, 255, 0.65);
+  font: 0.75rem var(--h3d-font-mono);
+}
+
+// Tablet: brand on its own row, navigation and status side by side.
+@media (max-width: 960px) {
+  .block {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .brand {
+    grid-column: 1 / -1;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+  }
+
+  .brand + .cell {
+    border-left: 0;
+  }
+}
+
+@media (max-width: 600px) {
+  .block {
+    grid-template-columns: 1fr;
+  }
+
+  .cell + .cell {
+    border-left: 0;
+  }
+
+  .cell + .cell + .cell {
+    border-top: 1px solid rgba(255, 255, 255, 0.18);
+  }
+}

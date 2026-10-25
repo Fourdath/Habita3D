@@ -1,0 +1,34 @@
+<footer class="footer">
+  <div class="h3d-container">
+    <div class="block">
+      <div class="cell brand">
+        <app-brand-mark />
+        <p>Visualización arquitectónica y desarrollo de proyectos residenciales.</p>
+      </div>
+
+      <nav class="cell" aria-label="Pie de página">
+        <p class="label">Navegación</p>
+        <ul>
+          @for (item of navItems; track item.id) {
+            <li><a [href]="'#' + item.id" (click)="goTo(item.id, $event)">{{ item.label }}</a></li>
+          }
+          <li><a routerLink="/viewer-3d">Visor 3D</a></li>
+        </ul>
+      </nav>
+
+      <div class="cell">
+        <p class="label">Estado del proyecto</p>
+        <dl>
+          <div><dt>Etapa</dt><dd>En desarrollo</dd></div>
+          <div><dt>Planos</dt><dd>SVG · CubiCasa5K</dd></div>
+          <div><dt>Precios</dt><dd>Demostrativos</dd></div>
+        </dl>
+      </div>
+    </div>
+
+    <div class="legal">
+      <span>© {{ year }} Habita3D</span>
+      <span>Texturas CC0 · Poly Haven</span>
+    </div>
+  </div>
+</footer>

@@ -1,0 +1,90 @@
+<section class="tools" id="herramientas" tabindex="-1" data-h3d-section aria-labelledby="tools-title">
+  <div class="h3d-container">
+    <header class="head" appReveal>
+      <p class="h3d-eyebrow">02 — Herramientas</p>
+      <h2 class="h3d-title" id="tools-title">Lo que ya puedes hacer en Habita3D.</h2>
+    </header>
+
+    <div class="bento">
+      <article class="tool viz" appReveal="0" aria-labelledby="tool-viz">
+        <div class="viz-copy">
+          <p class="kicker">Visor 3D</p>
+          <h3 id="tool-viz">Visualización arquitectónica 3D</h3>
+          <p>
+            El visor genera muros, vanos, recintos y mobiliario fijo a partir del plano,
+            en escala real. Recórrelo en primera persona o gira el modelo en vista general.
+          </p>
+          <ul class="specs">
+            <li>Primera persona · WASD + mouse</li>
+            <li>Vista general · órbita y planta</li>
+            <li>Vivienda de ejemplo incluida</li>
+          </ul>
+          <a class="h3d-btn h3d-btn--light" routerLink="/viewer-3d">
+            Abrir el visor <span class="h3d-arrow" aria-hidden="true">→</span>
+          </a>
+        </div>
+
+        <svg class="viz-art" viewBox="0 0 320 240" aria-hidden="true" focusable="false">
+          <path class="slab" d="M160 196L40 136l120-60 120 60z" />
+          <path class="face" d="M40 136V92l120-60v44z" />
+          <path class="face face--dim" d="M160 76V32l120 60v44z" />
+          <path class="cut" d="M40 92l120-60 120 60" />
+          <path class="grid" d="M70 151l120-60M100 166l120-60M130 181l120-60M70 121l120 60M100 106l120 60M130 91l120 60" />
+          <path class="orbit" d="M28 186c40 34 224 34 264 0" />
+          <path class="cut" d="M286 178l6 8-10 2" />
+          <circle class="eye" cx="150" cy="150" r="5" />
+          <path class="ray" d="M150 150l44-20M150 150l40 4" />
+        </svg>
+      </article>
+
+      <article class="tool mat" appReveal="120" aria-labelledby="tool-mat">
+        <p class="kicker">Catálogo</p>
+        <h3 id="tool-mat">Materiales y terminaciones</h3>
+        <p>
+          Elige un estilo interior —Nórdico o Industrial— y observa pisos, muros, fachada,
+          ventanas e iluminación con texturas realistas.
+        </p>
+        <ul class="swatches">
+          @for (swatch of swatches; track swatch.name) {
+            <li>
+              <img [src]="swatch.image" alt="" width="160" height="160" loading="lazy" decoding="async" />
+              <span class="sw-name">{{ swatch.name }}</span>
+              <span class="sw-use">{{ swatch.use }}</span>
+            </li>
+          }
+        </ul>
+      </article>
+
+      <article class="tool budget" appReveal="200" aria-labelledby="tool-budget">
+        <div class="budget-head">
+          <p class="kicker">Estimación</p>
+          <span class="chip">Precios de demostración</span>
+        </div>
+        <h3 id="tool-budget">Presupuestos orientativos</h3>
+        <p>
+          Las cantidades salen de las superficies del modelo: m² de piso, muros y cielo,
+          metros de guardapolvo, puertas y ventanas.
+        </p>
+        <table>
+          <caption>Ejemplo ilustrativo: vivienda de 70 m² con estilo Nórdico</caption>
+          <tbody>
+            @for (line of sampleBudget; track line.label) {
+              <tr>
+                <th scope="row">{{ line.label }}</th>
+                <td>{{ line.quantity }}</td>
+                <td>{{ line.subtotal }}</td>
+              </tr>
+            }
+          </tbody>
+          <tfoot>
+            <tr>
+              <th scope="row" colspan="2">Total parcial (CLP)</th>
+              <td>{{ sampleTotal }}</td>
+            </tr>
+          </tfoot>
+        </table>
+        <p class="fine">Valores ilustrativos. No constituyen una cotización ni reflejan precios de tiendas.</p>
+      </article>
+    </div>
+  </div>
+</section>

@@ -1,0 +1,28 @@
+<section class="hero" id="inicio" aria-labelledby="hero-title">
+  <div class="h3d-container grid">
+    <div class="copy">
+      <p class="h3d-eyebrow">Arquitectura · Visualización 3D · Proyecto</p>
+
+      <h1 id="hero-title">De un plano a un espacio que puedes recorrer.</h1>
+
+      <p class="lead">
+        Importa un plano compatible, explora tu vivienda en 3D y personaliza
+        materiales antes de construir.
+      </p>
+
+      <div class="actions">
+        <a class="h3d-btn" href="#comenzar" (click)="startProject($event)">
+          Comenzar mi proyecto <span class="h3d-arrow" aria-hidden="true">→</span>
+        </a>
+        <a class="h3d-btn h3d-btn--ghost" routerLink="/viewer-3d">Ver demostración</a>
+      </div>
+
+      <p class="note">
+        <span class="dot" aria-hidden="true"></span>
+        Compatible hoy con planos SVG en formato CubiCasa5K.
+      </p>
+    </div>
+
+    <app-plan-model class="visual" />
+  </div>
+</section>

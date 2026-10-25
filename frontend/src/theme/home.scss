@@ -1,0 +1,238 @@
+/*
+ * Habita3D home — shared brand tokens and primitives.
+ * Section components only hold their own layout; buttons, eyebrows and the
+ * scroll-reveal state live here so each component stays under the 4 kB
+ * anyComponentStyle budget in angular.json.
+ */
+
+:root {
+  --h3d-paper: #faf8f3;
+  --h3d-paper-2: #f2efe7;
+  --h3d-white: #ffffff;
+  --h3d-forest: #245442;
+  --h3d-forest-deep: #183b2e;
+  --h3d-sage: #9db39a;
+  --h3d-sage-soft: #e3eadf;
+  --h3d-ink: #1d2621;
+  --h3d-muted: #5a625d;
+  --h3d-line: #e3dfd5;
+  --h3d-line-strong: #cbc5b8;
+
+  --h3d-font-display: 'Familjen Grotesk', 'Helvetica Neue', Arial, sans-serif;
+  --h3d-font-body: 'Instrument Sans', 'Helvetica Neue', Arial, sans-serif;
+  --h3d-font-mono: 'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace;
+
+  --h3d-gutter: clamp(20px, 5vw, 64px);
+  --h3d-max: 1240px;
+  --h3d-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.h3d-container {
+  width: 100%;
+  max-width: calc(var(--h3d-max) + 2 * var(--h3d-gutter));
+  margin: 0 auto;
+  padding: 0 var(--h3d-gutter);
+}
+
+.h3d-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 20px;
+  color: var(--h3d-forest);
+  font-family: var(--h3d-font-mono);
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+
+  &::before {
+    content: '';
+    width: 22px;
+    height: 1px;
+    background: currentColor;
+  }
+}
+
+.h3d-title {
+  margin: 0;
+  color: var(--h3d-ink);
+  font-family: var(--h3d-font-display);
+  font-size: clamp(2rem, 3.6vw, 3.1rem);
+  font-weight: 600;
+  line-height: 1.06;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+}
+
+.h3d-lead {
+  margin: 18px 0 0;
+  max-width: 56ch;
+  color: var(--h3d-muted);
+  font-size: 1.0625rem;
+  line-height: 1.65;
+}
+
+.h3d-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 0 22px;
+  border: 1px solid var(--h3d-forest);
+  border-radius: 6px;
+  background: var(--h3d-forest);
+  color: var(--h3d-white);
+  font-family: var(--h3d-font-body);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.2;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 0.2s var(--h3d-ease), border-color 0.2s var(--h3d-ease), color 0.2s var(--h3d-ease);
+
+  &:hover {
+    border-color: var(--h3d-forest-deep);
+    background: var(--h3d-forest-deep);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--h3d-forest);
+    outline-offset: 3px;
+  }
+
+  &[disabled] {
+    opacity: 0.6;
+    cursor: progress;
+  }
+
+  .h3d-arrow {
+    transition: transform 0.2s var(--h3d-ease);
+  }
+
+  &:hover .h3d-arrow {
+    transform: translateX(3px);
+  }
+}
+
+.h3d-btn--ghost {
+  border-color: rgba(36, 84, 66, 0.35);
+  background: transparent;
+  color: var(--h3d-forest);
+
+  &:hover {
+    border-color: var(--h3d-forest);
+    background: var(--h3d-sage-soft);
+  }
+}
+
+.h3d-btn--light {
+  border-color: var(--h3d-white);
+  background: var(--h3d-white);
+  color: var(--h3d-forest);
+
+  &:hover {
+    border-color: var(--h3d-sage-soft);
+    background: var(--h3d-sage-soft);
+  }
+
+  &:focus-visible {
+    outline-color: var(--h3d-white);
+  }
+}
+
+.h3d-link {
+  color: var(--h3d-forest);
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+
+  &:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+}
+
+/* Segmented control (e.g. the hero's Plano 2D / Modelo 3D switch) */
+.h3d-segmented {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid var(--h3d-line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.85);
+
+  button {
+    min-height: 34px;
+    padding: 0 12px;
+    border-radius: 5px;
+    background: transparent;
+    color: var(--h3d-muted);
+    font: 500 0.75rem var(--h3d-font-mono);
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    transition: background-color 0.2s, color 0.2s;
+  }
+
+  button[aria-pressed='true'] {
+    background: var(--h3d-forest);
+    color: var(--h3d-white);
+  }
+
+  button:focus-visible {
+    outline: 2px solid var(--h3d-forest);
+    outline-offset: 2px;
+  }
+}
+
+/* Drawing annotations: sheet caption and north marker */
+.h3d-caption {
+  margin: 4px 0 0;
+  color: var(--h3d-muted);
+  font: 0.6875rem var(--h3d-font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.h3d-north {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--h3d-line-strong);
+  border-radius: 50%;
+  color: var(--h3d-forest);
+  font: 500 0.6875rem var(--h3d-font-mono);
+}
+
+/* Programmatic focus targets (sections reached from the nav) */
+[data-h3d-section]:focus {
+  outline: none;
+}
+
+/* Scroll reveal — only applied by RevealDirective once IntersectionObserver exists */
+.h3d-reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 0.7s var(--h3d-ease), transform 0.7s var(--h3d-ease);
+  transition-delay: var(--h3d-reveal-delay, 0ms);
+}
+
+.h3d-reveal.is-revealed {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .h3d-reveal {
+    transform: none;
+    transition: opacity 0.2s linear;
+  }
+
+  .h3d-btn,
+  .h3d-btn .h3d-arrow {
+    transition: none;
+  }
+}

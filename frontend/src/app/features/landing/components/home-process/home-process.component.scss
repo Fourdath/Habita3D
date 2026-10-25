@@ -1,0 +1,180 @@
+:host {
+  display: block;
+}
+
+.process {
+  padding: clamp(72px, 10vw, 128px) 0;
+  scroll-margin-top: 68px;
+}
+
+.head {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  align-items: end;
+  gap: 24px 64px;
+  margin-bottom: clamp(40px, 6vw, 72px);
+
+  .h3d-lead {
+    margin: 0;
+  }
+}
+
+.steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--h3d-line-strong);
+  list-style: none;
+}
+
+.step {
+  position: relative;
+  padding: 36px clamp(20px, 3vw, 40px) 8px;
+
+  & + & {
+    border-left: 1px solid var(--h3d-line);
+  }
+
+  // Registration tick sitting on the top rule.
+  &::before {
+    content: '';
+    position: absolute;
+    top: -4px;
+    left: clamp(20px, 3vw, 40px);
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--h3d-forest);
+  }
+
+  h3 {
+    margin: 10px 0 10px;
+    color: var(--h3d-ink);
+    font-family: var(--h3d-font-display);
+    font-size: 1.375rem;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+  }
+
+  p {
+    margin: 0;
+    color: var(--h3d-muted);
+    line-height: 1.6;
+  }
+}
+
+.num {
+  color: var(--h3d-forest);
+  font: 500 0.75rem var(--h3d-font-mono);
+  letter-spacing: 0.12em;
+}
+
+.art {
+  display: block;
+  width: 100%;
+  max-width: 240px;
+  height: auto;
+  margin-bottom: 24px;
+  fill: none;
+  stroke-linejoin: round;
+
+  .paper {
+    fill: var(--h3d-white);
+    stroke: var(--h3d-line-strong);
+  }
+
+  .thin,
+  .hair {
+    stroke: var(--h3d-muted);
+    stroke-width: 1.2;
+  }
+
+  .hair {
+    stroke: var(--h3d-line-strong);
+    stroke-width: 3;
+    stroke-linecap: round;
+  }
+
+  .cut {
+    stroke: var(--h3d-forest);
+    stroke-width: 3;
+  }
+
+  .tag {
+    fill: var(--h3d-forest);
+  }
+
+  text {
+    fill: var(--h3d-white);
+    font: 500 10px var(--h3d-font-mono);
+    letter-spacing: 0.08em;
+    text-anchor: middle;
+  }
+
+  .small {
+    fill: var(--h3d-muted);
+  }
+
+  .wall {
+    fill: #f2efe8;
+    stroke: var(--h3d-line-strong);
+  }
+
+  .wall--dark {
+    fill: #e2ddd2;
+  }
+
+  .path {
+    stroke: var(--h3d-forest);
+    stroke-width: 1.6;
+    stroke-dasharray: 2 5;
+    stroke-linecap: round;
+  }
+
+  .cone {
+    fill: var(--h3d-sage);
+    opacity: 0.45;
+  }
+
+  .me {
+    fill: var(--h3d-forest);
+  }
+
+  .sw {
+    stroke: var(--h3d-white);
+    stroke-width: 3;
+  }
+
+  .sw--wood { fill: #b98b5f; }
+  .sw--stucco { fill: #ece8e0; }
+  .sw--concrete { fill: #a7a59f; }
+}
+
+@media (max-width: 900px) {
+  .head {
+    grid-template-columns: 1fr;
+  }
+
+  .steps {
+    grid-template-columns: 1fr;
+    border-top: 0;
+  }
+
+  .step {
+    padding: 32px 0 24px;
+    border-top: 1px solid var(--h3d-line-strong);
+
+    & + & {
+      border-left: 0;
+    }
+
+    &::before {
+      left: 0;
+    }
+  }
+
+  .art {
+    max-width: 200px;
+  }
+}

@@ -1,19 +1,21 @@
-import { AfterViewInit, Component, ElementRef, OnDestroy, ViewChild, signal } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, OnDestroy, ViewChild, inject, signal } from '@angular/core';
 import { IonContent, IonSpinner } from '@ionic/angular';
+import { RouterLink } from '@angular/router';
 
 import type { ConstructionBudgetSummary } from '../../core/budget/budget.types';
 import type { InteriorStyleId } from '../../core/interior-style/interior-style.types';
 import { readFloorplanFile } from '../../core/floorplan/floorplan-file';
 
-import { Viewer3DEngine } from './engine/viewer-3d-engine';
+import { VIEWER_ENGINE_FACTORY, type ViewerEngine } from './engine/viewer-engine.factory';
 import type { ViewerStatus } from './engine/viewer-3d.types';
 import { InteriorStylePanelComponent } from './interior-style-panel.component';
+import { BrandMarkComponent } from '../landing/components/brand-mark.component';
 
 @Component({
   selector: 'app-viewer-3d',
   templateUrl: 'viewer-3d.page.html',
   styleUrls: ['viewer-3d.page.scss'],
-  imports: [IonContent, IonSpinner, InteriorStylePanelComponent],
+  imports: [IonContent, IonSpinner, InteriorStylePanelComponent, RouterLink, BrandMarkComponent],
 })
 export class Viewer3DPage implements AfterViewInit, OnDestroy {
   @ViewChild('canvasHost', { static: true })
@@ -21,7 +23,12 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
 
   readonly status = signal<ViewerStatus>('loading');
   readonly pointerLocked = signal(false);
-  readonly viewMode = signal<'walk' | 'overview'>('walk');
+  readonly walkError = signal<string | null>(null);
+  readonly viewMode = signal<'walk' | 'overview'>('overview');
+  readonly topView = signal(false);
+  readonly modelName = signal('Vivienda de demostración');
+  readonly modelSummary = signal({ roomCount: 0, areaM2: 0 });
+  readonly pointerLockSupported = typeof HTMLElement.prototype.requestPointerLock === 'function';
   readonly errorMessage = signal('');
 
   readonly loadingFloorplan = signal(false);
@@ -38,17 +45,19 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
     requiresStructuralSpecification: false,
   });
 
-  private engine: Viewer3DEngine | null = null;
+  private readonly createEngine = inject(VIEWER_ENGINE_FACTORY);
+  private engine: ViewerEngine | null = null;
 
   ngAfterViewInit(): void {
     try {
-      this.engine = new Viewer3DEngine(this.canvasHostRef.nativeElement, {
+      this.engine = this.createEngine(this.canvasHostRef.nativeElement, {
         onReady: () => {
           this.status.set('ready');
           this.refreshStyleState();
         },
         onError: (error) => this.handleError(error),
         onPointerLockChange: (locked) => this.pointerLocked.set(locked),
+        onPointerLockError: () => this.walkError.set('El navegador no permitió controlar el mouse. Intenta de nuevo desde «Comenzar recorrido» o abre el visor en tu navegador habitual.'),
       });
     } catch (error) {
       this.handleError(error);
@@ -60,7 +69,19 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
     this.engine = null;
   }
 
+  // Ionic can retain the page between visits; each entry starts with the model.
+  ionViewWillEnter(): void {
+    this.onViewModeChange('overview');
+  }
+
+  ionViewWillLeave(): void {
+    this.onViewModeChange('overview');
+  }
+
   onStartClick(): void {
+    if (this.status() !== 'ready' || this.loadingFloorplan() || this.interiorStyleLoading() || !this.pointerLockSupported) return;
+    this.walkError.set(null);
+    this.onViewModeChange('walk');
     this.engine?.requestPointerLock();
   }
 
@@ -70,7 +91,12 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
   }
 
   onFrameOverview(top = false): void {
+    this.topView.set(top);
     this.engine?.frameOverview(top);
+  }
+
+  onZoom(factor: number): void {
+    this.engine?.zoomOverview(factor);
   }
 
   /**
@@ -91,6 +117,9 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
     try {
       const svgText = await readFloorplanFile(file);
       await this.engine?.loadFloorplanFromSvgText(svgText);
+      this.modelName.set(file.name.replace(/\.svg$/i, ''));
+      this.onViewModeChange('overview');
+      this.onFrameOverview();
       this.floorplanError.set(null);
       this.refreshStyleState();
     } catch (error) {
@@ -119,6 +148,7 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
       return;
     }
     this.budget.set(this.engine.getBudget());
+    this.modelSummary.set(this.engine.getModelSummary());
   }
 
   private handleError(error: unknown): void {

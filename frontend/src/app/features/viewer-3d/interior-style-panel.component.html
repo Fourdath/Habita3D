@@ -1,61 +1,30 @@
-<div
-  class="style-panel"
-  (keydown)="$event.stopPropagation()"
-  (keyup)="$event.stopPropagation()"
-  (click)="$event.stopPropagation()"
->
-  <h2 class="style-panel__title">Diseño interior</h2>
-
+<div class="style-panel" (keydown)="$event.stopPropagation()" (keyup)="$event.stopPropagation()" (click)="$event.stopPropagation()">
+  <h2 class="style-panel__title">Dale tu estilo <span>01 / TERMINACIONES</span></h2>
+  <p class="style-panel__description">Una misma casa, distintas posibilidades.</p>
   <fieldset class="style-panel__options" [disabled]="loading()">
+    <legend class="style-panel__legend">Elige un estilo de terminaciones</legend>
     @for (style of styles; track style.id) {
-      <label class="style-panel__option">
-        <input
-          type="radio"
-          name="interior-style"
-          [value]="style.id"
-          [checked]="styleId() === style.id"
-          (change)="onSelectStyle(style.id)"
-        />
-        {{ style.name }}
+      <label class="style-panel__option" [class.style-panel__option--selected]="styleId() === style.id">
+        <input type="radio" name="interior-style" [value]="style.id" [checked]="styleId() === style.id" (change)="onSelectStyle(style.id)" />
+        <span class="style-panel__palette" [class.style-panel__palette--nordic]="style.id === 'nordic'" [class.style-panel__palette--industrial]="style.id === 'industrial'" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span class="style-panel__name">{{ style.id === 'none' ? 'Original' : style.name }}</span>
       </label>
     }
   </fieldset>
-
-  @if (loading()) {
-    <div class="style-panel__status">
-      <ion-spinner name="crescent"></ion-spinner>
-      <span>Aplicando estilo...</span>
-    </div>
-  }
-
-  @if (errorMessage()) {
-    <p class="style-panel__error">{{ errorMessage() }}</p>
-  }
-
+  @if (loading()) { <div class="style-panel__status" role="status"><ion-spinner name="crescent"></ion-spinner><span>Actualizando vivienda…</span></div> }
+  @if (errorMessage()) { <p class="style-panel__error" role="alert">{{ errorMessage() }}</p> }
   @if (styleId() !== 'none') {
-    <p class="style-panel__hint">Estilo aplicado a superficies, terminaciones, ventanas e iluminación.</p>
-  }
-
-  @if (styleId() !== 'none') {
-    <button type="button" class="style-panel__budget-toggle" (click)="toggleBudget()">
-      {{ showBudget() ? 'Ocultar presupuesto' : 'Ver presupuesto' }}
-    </button>
-
+    <p class="style-panel__hint">Aplicado a pisos, muros, marcos e iluminación.</p>
+    <button type="button" class="style-panel__budget-toggle" [attr.aria-expanded]="showBudget()" (click)="toggleBudget()">{{ showBudget() ? 'Ocultar presupuesto' : 'Ver presupuesto estimado' }} <span aria-hidden="true">{{ showBudget() ? '−' : '+' }}</span></button>
     @if (showBudget()) {
       <div class="style-panel__budget">
-        <p class="style-panel__budget-label">Precios demostrativos</p>
+        <p class="style-panel__budget-label">Precios demostrativos · CLP</p>
         <ul class="style-panel__budget-items">
           @for (item of budget().items; track item.id) {
             <li class="style-panel__budget-item">
               <span class="style-panel__budget-item-name">{{ item.description }}</span>
-              <span class="style-panel__budget-item-detail">
-                {{ item.purchaseQuantity }} {{ item.unit }} × {{ formatClp(item.unitPriceClp) }} = {{ formatClp(item.subtotalClp) }}
-              </span>
-              @if (item.waste) {
-                <span class="style-panel__budget-item-detail">
-                  Desperdicio: {{ item.waste.waste.toFixed(2) }} {{ item.waste.unit }} · uso {{ item.waste.utilizationPercent.toFixed(1) }}%
-                </span>
-              }
+              <span class="style-panel__budget-item-detail">{{ item.purchaseQuantity }} {{ item.unit }} × {{ formatClp(item.unitPriceClp) }} = {{ formatClp(item.subtotalClp) }}</span>
+              @if (item.waste) { <span class="style-panel__budget-item-detail">Desperdicio: {{ item.waste.waste.toFixed(2) }} {{ item.waste.unit }} · uso {{ item.waste.utilizationPercent.toFixed(1) }}%</span> }
             </li>
           }
         </ul>

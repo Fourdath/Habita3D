@@ -4,6 +4,7 @@ export interface Viewer3DEngineCallbacks {
   onReady?(): void;
   onError?(error: unknown): void;
   onPointerLockChange?(locked: boolean): void;
+  onPointerLockError?(): void;
 }
 
 /**

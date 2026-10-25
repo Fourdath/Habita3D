@@ -1,0 +1,230 @@
+// Orthographic CSS 3D: the scene lies in the XY plane and +Z is "up".
+// Standing planes rotate 90° about their top edge, so local Y becomes height.
+// Furniture faces live in model-box.component.scss.
+
+:host {
+  position: relative;
+  display: block;
+}
+
+.stage {
+  position: relative;
+  container-type: inline-size;
+  aspect-ratio: 1.42;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 30% 12% 4%;
+    border-radius: 50%;
+    background: rgba(36, 84, 66, 0.16);
+    filter: blur(32px);
+    opacity: 0;
+    transition: opacity 1.2s var(--h3d-ease) 0.6s;
+  }
+}
+
+.scene {
+  --m: calc(100cqi / 14.8);
+  --H: 1.5;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: calc(10 * var(--m));
+  height: calc(7 * var(--m));
+  margin: calc(-3.5 * var(--m)) 0 0 calc(-5 * var(--m));
+  transform-style: preserve-3d;
+  transition: transform 1.5s var(--h3d-ease);
+}
+
+.p {
+  position: absolute;
+  top: calc(var(--y) * var(--m));
+  left: calc(var(--x) * var(--m));
+  width: calc(var(--w) * var(--m));
+  height: calc(var(--d) * var(--m));
+}
+
+.base {
+  position: absolute;
+  inset: calc(-0.6 * var(--m)) calc(-0.6 * var(--m)) calc(-1.1 * var(--m));
+  transform-style: preserve-3d;
+  transition: background-color 0.8s;
+}
+
+.b-s,
+.b-w {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  height: calc(0.35 * var(--m));
+  background: #d6cfc1;
+  transform-origin: 0 0;
+  transform: rotateX(-90deg);
+}
+
+.b-w {
+  top: 0;
+  width: calc(8.7 * var(--m));
+  background: #c8c0b1;
+  transform: rotateZ(90deg) rotateX(-90deg);
+}
+
+.floor {
+  background: var(--h3d-white);
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    background-size: calc(2.4 * var(--m));
+    transition: opacity 0.9s 0.5s;
+  }
+}
+
+.floor--oak::after {
+  background-image: url('/assets/home/materials/oak_wood_planks.webp');
+}
+
+.floor--laminate::after {
+  background-image: url('/assets/home/materials/laminate_floor_02.webp');
+  filter: saturate(0.7) brightness(1.15);
+}
+
+.floor--tile::after {
+  background-color: #ebe8e2;
+  background-image: linear-gradient(#d3cec4 1px, transparent 1px), linear-gradient(90deg, #d3cec4 1px, transparent 1px);
+  background-size: calc(0.4 * var(--m)) calc(0.4 * var(--m));
+}
+
+.rug {
+  border: 1px dashed rgba(29, 38, 33, 0.35);
+  transform: translateZ(1px);
+  transition: background-color 0.8s 0.6s, border-color 0.8s;
+}
+
+.lines {
+  position: absolute;
+  top: calc(-1 * var(--m));
+  left: calc(-1 * var(--m));
+  width: calc(12 * var(--m));
+  height: calc(9 * var(--m));
+  overflow: visible;
+  transform: translateZ(2px);
+  fill: none;
+  stroke-linecap: square;
+
+  .cut {
+    stroke: var(--h3d-forest);
+    stroke-width: 0.16;
+  }
+
+  .glass {
+    stroke: var(--h3d-sage);
+    stroke-width: 0.1;
+  }
+
+  .swing,
+  .dims path {
+    stroke: rgba(29, 38, 33, 0.5);
+    stroke-width: 0.025;
+  }
+
+  text {
+    fill: var(--h3d-ink);
+    font-family: var(--h3d-font-mono);
+    font-size: 0.24px;
+    letter-spacing: 0.04em;
+    text-anchor: middle;
+  }
+
+  .area {
+    fill: var(--h3d-muted);
+  }
+}
+
+.dims,
+.labels {
+  transition: opacity 0.4s;
+}
+
+.wall {
+  --wall: #f7f4ee;
+  width: calc(var(--l) * var(--m));
+  height: calc(var(--H) * var(--m));
+  border-bottom: 3px solid var(--h3d-forest);
+  background: var(--wall);
+  transform-origin: 0 0;
+  transform: rotateX(90deg) scaleY(0.001);
+  transition: transform 0.7s var(--h3d-ease);
+}
+
+.wall--v {
+  --wall: #e4dfd4;
+  transform: rotateZ(90deg) rotateX(90deg) scaleY(0.001);
+}
+
+.wall--w {
+  background: linear-gradient(var(--wall) 0 60%, rgba(157, 179, 154, 0.55) 60%);
+}
+
+.h3d-segmented {
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  left: 0;
+}
+
+.h3d-north {
+  position: absolute;
+  top: 4%;
+  right: 3%;
+}
+
+// ---- Model state ---------------------------------------------------------
+.is-model {
+  &::before {
+    opacity: 1;
+  }
+
+  .scene {
+    transform: translateY(calc(0.9 * var(--m))) rotateX(54deg) rotateZ(-36deg);
+  }
+
+  .base {
+    background: #ece7dc;
+  }
+
+  .floor::after {
+    opacity: 1;
+  }
+
+  .rug {
+    border-color: transparent;
+    background: #d9e1d4;
+  }
+
+  .dims,
+  .labels {
+    opacity: 0;
+  }
+
+  .wall {
+    transform: rotateX(90deg);
+    transition-delay: calc(650ms + var(--i) * 22ms);
+  }
+
+  .wall--v {
+    transform: rotateZ(90deg) rotateX(90deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stage *,
+  .stage::before {
+    transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
+  }
+}
