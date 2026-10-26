@@ -15,6 +15,7 @@
   @if (errorMessage()) { <p class="style-panel__error" role="alert">{{ errorMessage() }}</p> }
   @if (styleId() !== 'none') {
     <p class="style-panel__hint">Aplicado a pisos, muros, marcos e iluminación.</p>
+    @if (showDemoBudget()) {
     <button type="button" class="style-panel__budget-toggle" [attr.aria-expanded]="showBudget()" (click)="toggleBudget()">{{ showBudget() ? 'Ocultar presupuesto' : 'Ver presupuesto estimado' }} <span aria-hidden="true">{{ showBudget() ? '−' : '+' }}</span></button>
     @if (showBudget()) {
       <div class="style-panel__budget">
@@ -30,6 +31,7 @@
         </ul>
         <p class="style-panel__budget-total">Total: {{ formattedTotal() }}</p>
       </div>
+    }
     }
   }
 </div>

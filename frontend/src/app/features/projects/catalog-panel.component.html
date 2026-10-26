@@ -1,0 +1,62 @@
+<section class="ep2-card" aria-labelledby="catalog-title">
+  <div class="ep2-section-head"><div><span class="ep2-eyebrow">SODIMAC + EASY · LA FLORIDA</span><h2 id="catalog-title">Elige el piso de tu espacio</h2></div><button type="button" (click)="refresh()" [disabled]="loading()">Consultar catálogo guardado</button></div>
+  <p class="ep2-hint">{{ roomName() ? 'Seleccionando para: ' + roomName() : 'Selecciona primero una habitación para guardar un piso.' }}</p>
+  @if (updateFailed()) { <p role="status" class="ep2-notice">La última actualización fue incompleta o falló. Se conservan los últimos precios válidos y sus fechas; no son precios comprobados ahora.</p> }
+  @if (statusError()) { <p role="status" class="ep2-notice">{{ statusError() }}</p> }
+  @if (status(); as state) {
+    <p class="ep2-hint">{{ state.publicationCount }} publicaciones guardadas · Última captura importada: {{ chileDate(state.latestRun?.finishedAt ?? null) }}.</p>
+    <p class="ep2-hint">Programación {{ state.schedule.enabled ? 'habilitada' : 'desactivada' }} · objetivos 08:00 / 12:00 / 16:00, hora de Chile. Navegar no inicia capturas.</p>
+  }
+  <form class="ep2-filters" [formGroup]="filters" (ngSubmit)="applyFilters()" aria-label="Filtros del catálogo">
+    <label>Tipo de piso<select formControlName="category"><option value="">Todos</option><option value="ceramic">Cerámica para piso</option><option value="laminate">Flotante laminado</option></select></label>
+    <label>Tienda<select formControlName="source"><option value="">Todas</option><option value="sodimac">Sodimac</option><option value="easy">Easy</option></select></label>
+    <label>Mínimo CLP/m²<input formControlName="minPricePerM2" inputmode="decimal" placeholder="Sin mínimo" /></label><label>Máximo CLP/m²<input formControlName="maxPricePerM2" inputmode="decimal" placeholder="Sin máximo" /></label>
+    <button type="submit" class="ep2-primary" [disabled]="loading()">Aplicar filtros</button>
+  </form>
+  @if (error()) { <p role="alert" class="ep2-error">{{ error() }} Los resultados visibles corresponden a la última consulta válida.</p> }
+  @if (loading()) { <p role="status">Consultando publicaciones…</p> }
+  @if (!loading() && !error() && !catalog().items.length) { <p class="ep2-notice">No hay publicaciones para esta consulta. Si es una instalación nueva, el operador debe realizar la primera captura protegida. No se han añadido productos ficticios.</p> }
+  <div class="ep2-products" [attr.aria-busy]="loading()">
+    @for (item of catalog().items; track item.publicationKey) {
+      <article class="ep2-product" [class.ep2-product--selected]="selectedKey() === item.publicationKey">
+        <div class="ep2-product-image">
+          @if (safeUrl(item.imageUrl) && !failedImages().has(item.publicationKey)) { <img [src]="safeUrl(item.imageUrl)" [alt]="item.name" loading="lazy" referrerpolicy="no-referrer" (error)="imageFailed(item.publicationKey)" /> }
+          @else { <span>Fotografía no disponible</span> }
+          <span class="ep2-source">{{ item.source === 'easy' ? 'Easy' : 'Sodimac' }}</span>
+        </div>
+        <div class="ep2-product-body">
+          <small>{{ item.category === 'ceramic' ? 'CERÁMICA PARA PISO' : 'FLOTANTE LAMINADO' }}</small><h3>{{ item.name }}</h3>
+          <p>Vendido por {{ item.seller }}{{ item.brand ? ' · ' + item.brand : '' }}</p>
+          <strong class="ep2-product-price">{{ item.pricePerM2Clp === null ? 'Precio por m² desconocido' : money(item.pricePerM2Clp) + ' / m²' }}</strong>
+          <p>{{ money(item.pricePerBoxClp) }} / {{ item.saleUnit === 'box' ? 'caja' : 'unidad de venta desconocida' }} · {{ item.coveragePerBoxM2 === null ? 'Cobertura desconocida' : item.coveragePerBoxM2 + ' m² por caja' }}</p>
+          <p>{{ availability(item.availability) }}</p><p>Última comprobación: {{ item.lastCheckedDisplay }}</p>
+          @if (item.lastAttempt && ['failed', 'partial'].includes(item.lastAttempt.status)) { <p class="ep2-notice">Actualización del grupo fallida o incompleta; dato anterior conservado.</p> }
+          <div class="ep2-actions"><button type="button" class="ep2-primary" [disabled]="!roomName() || busy() || loading() || selectedKey() === item.publicationKey" (click)="choose.emit(item)">{{ selectedKey() === item.publicationKey ? 'Piso guardado' : 'Elegir para esta habitación' }}</button>
+            @if (safeUrl(item.productUrl)) { <a [href]="safeUrl(item.productUrl)" target="_blank" rel="noopener noreferrer">Ver publicación ↗</a> }
+          </div>
+          <button type="button" class="ep2-link" (click)="showHistory(item)">Ver historial de precios</button>
+        </div>
+      </article>
+    }
+  </div>
+  @if (catalog().total > catalog().limit) {
+    <nav class="ep2-actions ep2-pagination" aria-label="Páginas del catálogo"><button type="button" [disabled]="loading() || catalog().page <= 1" (click)="loadPage(catalog().page - 1)">Anterior</button><span>Página {{ catalog().page }} · {{ catalog().total }} resultados</span><button type="button" [disabled]="loading() || catalog().page * catalog().limit >= catalog().total" (click)="loadPage(catalog().page + 1)">Siguiente</button></nav>
+  }
+  @if (historyProduct(); as product) {
+    <section class="ep2-history" aria-label="Historial de precios" aria-live="polite">
+      <div class="ep2-section-head"><h3>Historial · {{ product.name }}</h3><button type="button" (click)="closeHistory()">Cerrar historial</button></div>
+      <p class="ep2-hint">Observación inicial y cambios guardados de esta publicación · {{ product.seller }} · La Florida · CLP · precio público. Los cambios de cobertura o unidad se muestran por separado. El historial no congela tu presupuesto.</p>
+      @if (historyLoading()) { <p role="status">Consultando historial…</p> }
+      @if (historyError()) { <p role="alert" class="ep2-error">{{ historyError() }}</p> }
+      @if (history(); as rows) {
+        @if (!rows.items.length) { <p>Aún no hay observaciones guardadas para esta publicación.</p> }
+        @else {
+          <div class="ep2-table-scroll"><table><caption>Precios efectivamente observados</caption><thead><tr><th>Fecha (Chile)</th><th>Precio</th><th>Unidad</th><th>Cobertura</th><th>Precio/m²</th></tr></thead><tbody>
+            @for (row of rows.items; track row.id) { <tr><td>{{ row.observedDisplay }}</td><td>{{ money(row.pricePerBoxClp) }}</td><td>{{ row.saleUnit === 'box' ? 'Caja' : 'Desconocida' }}</td><td>{{ row.coveragePerBoxM2 === null ? 'Desconocida' : row.coveragePerBoxM2 + ' m²' }}</td><td>{{ row.pricePerM2Clp === null ? 'Desconocido' : money(row.pricePerM2Clp) }}</td></tr> }
+          </tbody></table></div>
+          <div class="ep2-actions"><button type="button" [disabled]="rows.page <= 1" (click)="showHistory(product, rows.page - 1)">Anterior</button><span>{{ rows.total }} observaciones · página {{ rows.page }}</span><button type="button" [disabled]="rows.page * rows.limit >= rows.total" (click)="showHistory(product, rows.page + 1)">Siguiente</button></div>
+        }
+      }
+    </section>
+  }
+</section>

@@ -3,6 +3,7 @@
     <header class="studio__header">
       <a routerLink="/landing" class="studio__brand" aria-label="Habita3D, volver al inicio"><app-brand-mark /></a>
       <div class="studio__project"><span>ESTUDIO 3D</span><strong>{{ modelName() }}</strong></div>
+      <a routerLink="/projects" class="studio__home">Mis proyectos</a>
       <a routerLink="/landing" class="studio__home">← <span>Volver al inicio</span></a>
     </header>
 
@@ -72,9 +73,39 @@
           <div class="studio__sidebar-content">
           <div class="studio__intro">
             <span class="studio__eyebrow">TU ESPACIO, TUS IDEAS</span>
-            <h2>Imagina cómo<br> quieres vivir.</h2>
-            <p>Observa tu casa desde fuera, prueba terminaciones y luego entra a recorrerla.</p>
+            <h2>{{ projectMode() ? 'Tu proyecto, en 3D.' : 'Imagina cómo quieres vivir.' }}</h2>
+            <p>{{ projectMode() ? 'Pisos guardados por habitación. Apariencia orientativa; no reproduce la textura exacta del producto.' : 'Observa tu casa desde fuera, prueba terminaciones y luego entra a recorrerla.' }}</p>
           </div>
+          @if (projectMode()) {
+            <section class="studio__project-floor" aria-label="Selección de pisos del proyecto">
+              <a routerLink="/projects" [queryParams]="{ project: projectId(), room: selectedProjectRoom()?.id }">← Administrar habitaciones y pisos</a>
+              @if (projectLoading()) { <p role="status">Recuperando pisos guardados…</p> }
+              @if (captureWarning()) { <p role="status">{{ captureWarning() }}</p> }
+              @if (projectError()) { <p role="alert">{{ projectError() }}</p><button type="button" (click)="loadActiveProject()">Reintentar</button> }
+              @if (project(); as saved) {
+                <label for="project-room">Habitación del proyecto</label>
+                <select id="project-room" (change)="selectProjectRoom($event)">
+                  @for (room of saved.rooms; track room.id) { <option [value]="room.id" [selected]="selectedProjectRoom()?.id === room.id">{{ room.name }}</option> }
+                </select>
+                @if (unmappedRooms().length) { <p>Sin vínculo en este plano: {{ unmappedRooms().join(', ') }}. Vincula sus espacios desde Mis proyectos.</p> }
+                @if (selectedProjectRoom(); as room) {
+                  <h3>{{ room.name }}</h3>
+                  @if (room.publication; as floor) {
+                    @if (floor.imageUrl) { <img [src]="floor.imageUrl" [alt]="floor.name" referrerpolicy="no-referrer" /> }
+                    <strong>{{ floor.name }}</strong><p>{{ floor.seller }} · {{ floor.category === 'ceramic' ? 'Cerámica' : 'Flotante laminado' }}</p>
+                    <p>{{ money(floor.pricePerBoxClp) }} por {{ floor.saleUnit === 'box' ? 'caja' : 'unidad desconocida' }} · {{ floor.coveragePerBoxM2 === null ? 'Cobertura desconocida' : floor.coveragePerBoxM2 + ' m² por caja' }}</p>
+                    <p>Precio por m²: {{ floor.pricePerM2Clp === null ? 'Desconocido' : money(floor.pricePerM2Clp) }}</p>
+                    <p>Última comprobación: {{ floor.lastCheckedDisplay }}</p>
+                    <p>{{ floor.availability === 'unknown' ? 'Disponibilidad desconocida' : floor.availability === 'available' ? 'Disponible según la fuente' : 'No disponible según la fuente' }}</p>
+                    <a [href]="floor.productUrl" target="_blank" rel="noopener noreferrer">Ver publicación real ↗</a>
+                    @if (selectedRoomBudget(); as cost) { <p>Cajas: {{ cost.boxes ?? 'Pendiente' }} · Costo: {{ money(cost.cost_clp) }}</p> }
+                  } @else { <p>Esta habitación aún no tiene un piso elegido.</p> }
+                }
+                @if (projectBudget(); as costs) { <p><strong>Total de pisos: {{ money(costs.total_cost_clp) }}</strong></p>@if (costs.total_cost_clp === null) { <p>Presupuesto parcial. Hay selecciones o datos pendientes.</p> }<p>Solo compra de pisos; no incluye instalación.</p> }
+                @if (projectBudgetError()) { <p role="alert">{{ projectBudgetError() }}</p> }
+              }
+            </section>
+          }
           <div class="studio__model">
             <span class="studio__model-icon" aria-hidden="true">⌂</span>
             <div><strong>{{ modelName() }}</strong><span>{{ status() === 'ready' ? 'Modelo listo para explorar' : 'Preparando modelo…' }}</span></div>
@@ -86,12 +117,14 @@
               <div><strong>{{ modelSummary().areaM2.toFixed(1) }} <small>m²</small></strong><span>superficie de recintos</span></div>
             </div>
             <app-interior-style-panel
+              [showDemoBudget]="!projectMode()"
               [styleId]="interiorStyleId()"
               [loading]="interiorStyleLoading() || loadingFloorplan()"
               [errorMessage]="interiorStyleError()"
               [budget]="budget()"
               (styleChange)="onInteriorStyleChange($event)"
             />
+            @if (!projectMode()) {
             <div class="studio__floorplan">
               <label class="studio__upload" [class.studio__upload--busy]="loadingFloorplan() || interiorStyleLoading()">
                 <span aria-hidden="true">↥</span> {{ loadingFloorplan() ? 'Cargando plano…' : 'Cargar mi plano SVG' }}
@@ -100,10 +133,11 @@
               <p>Tu plano se procesa en este dispositivo.</p>
               @if (floorplanError()) { <p class="studio__error" role="alert">{{ floorplanError() }}</p> }
             </div>
+            } @else { <p class="studio__plan-note">Proyecto vinculado al plano de ejemplo. Los planos SVG cargados en modo libre no se guardan en este proyecto.</p> }
           }
           </div>
           <div class="studio__enter">
-            <button type="button" class="studio__primary" [disabled]="status() !== 'ready' || loadingFloorplan() || interiorStyleLoading()" (click)="pointerLockSupported ? onStartClick() : onViewModeChange('walk')">Recorrer la casa <span aria-hidden="true">→</span></button>
+            <button type="button" class="studio__primary" [disabled]="status() !== 'ready' || loadingFloorplan() || interiorStyleLoading() || projectLoading()" (click)="pointerLockSupported ? onStartClick() : onViewModeChange('walk')">Recorrer la casa <span aria-hidden="true">→</span></button>
             <p>Descubre el interior en primera persona.</p>
           </div>
         </aside>

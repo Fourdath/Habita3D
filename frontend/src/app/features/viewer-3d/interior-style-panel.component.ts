@@ -27,6 +27,7 @@ import type { InteriorStyleId } from '../../core/interior-style/interior-style.t
 export class InteriorStylePanelComponent {
   readonly styleId = input.required<InteriorStyleId>();
   readonly loading = input(false);
+  readonly showDemoBudget = input(true);
   readonly errorMessage = input<string | null>(null);
   readonly budget = input.required<ConstructionBudgetSummary>();
   readonly styleChange = output<InteriorStyleId>();

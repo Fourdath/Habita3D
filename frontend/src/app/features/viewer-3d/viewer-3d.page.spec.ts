@@ -1,14 +1,18 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 import type { Viewer3DEngineCallbacks } from './engine/viewer-3d.types';
 import { Viewer3DPage } from './viewer-3d.page';
 import { VIEWER_ENGINE_FACTORY } from './engine/viewer-engine.factory';
+import { TEST_PROJECT, TEST_PUBLICATION } from '../../core/ep2/ep2.fixtures';
 
 const engine = {
   fail: false,
   callbacks: {} as Viewer3DEngineCallbacks,
   setViewMode: vi.fn(), frameOverview: vi.fn(), zoomOverview: vi.fn(), requestPointerLock: vi.fn(),
   loadFloorplanFromSvgText: vi.fn(), applyInteriorStyle: vi.fn(), dispose: vi.fn(),
+  getSceneRooms: vi.fn(() => []), setRoomFloorSelections: vi.fn().mockResolvedValue(undefined),
 };
 
 describe('Viewer3DPage', () => {
@@ -19,7 +23,7 @@ describe('Viewer3DPage', () => {
     engine.fail = false;
     engine.loadFloorplanFromSvgText.mockResolvedValue(undefined);
     engine.applyInteriorStyle.mockResolvedValue(undefined);
-    TestBed.configureTestingModule({ providers: [provideRouter([]), {
+    TestBed.configureTestingModule({ providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(), {
       provide: VIEWER_ENGINE_FACTORY,
       useValue: (_container: HTMLElement, callbacks: Viewer3DEngineCallbacks) => {
         if (engine.fail) throw new Error('WebGL no disponible');
@@ -58,6 +62,20 @@ describe('Viewer3DPage', () => {
     expect(button('Recorrer la casa →').disabled).toBe(false);
     expect(engine.requestPointerLock).not.toHaveBeenCalled();
     expect(host.textContent).toContain('84.5');
+  });
+  it('restores the requested room in the asynchronous select and hides EP1 demo costs for a private project', () => {
+    component.status.set('ready');
+    component.projectMode.set(true);
+    component.projectId.set(TEST_PROJECT.id);
+    component.projectRoomId.set('second-room');
+    component.interiorStyleId.set('nordic');
+    component.project.set({ ...TEST_PROJECT, rooms: [...TEST_PROJECT.rooms, { ...TEST_PROJECT.rooms[0], id: 'second-room', name: 'Segunda habitación', publicationKey: TEST_PUBLICATION.publicationKey, publication: TEST_PUBLICATION }] });
+    fixture.detectChanges();
+    const host = fixture.nativeElement as HTMLElement;
+    expect(host.querySelector<HTMLSelectElement>('#project-room')?.value).toBe('second-room');
+    expect(host.textContent).toContain(TEST_PUBLICATION.name);
+    expect(host.textContent).not.toContain('Ver presupuesto estimado');
+    expect(host.querySelector('input[type="file"]')).toBeNull();
   });
   it('enters the existing walkthrough only after an explicit action and returns to overview', () => {
     ready();

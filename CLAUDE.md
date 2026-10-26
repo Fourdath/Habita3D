@@ -41,7 +41,9 @@ and the [EP1 demo](docs/ep1-demo.md) for the current implementation and its limi
 - The preview and 3D budget use demo figures, not current web prices or availability. Keep
   this distinction visible in API responses and UI copy.
 - EP2 block 1 adds `/materials/normalize`, protected `/materials/captures` and `/materials/status`,
-  and `/floors/budget`. These process real retailer data; NestJS integration and PostgreSQL persistence are implemented in block 2; Angular block 3 is pending.
+  and `/floors/budget`. These process real retailer data; NestJS integration and PostgreSQL persistence are implemented in block 2.
+  Angular block 3 consumes them through `/api` in `/projects`; see `docs/ep2/bloque-3-interfaz.md`.
+  Saved `sceneRoomId`/`publicationKey` pairs affect only room-floor meshes. Keep the EP1 demonstration budget separate from EP2 server calculations.
   The original `/recommendations/compare` remains the compatible EP1 demonstration route.
 - `python -m app.capture` performs standalone bounded acquisition; `--schedule` targets 08/12/16 Chile time.
   The integrated scheduler is NestJS (`MATERIALS_SCHEDULE_ENABLED=false` by default); do not run two schedulers.

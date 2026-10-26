@@ -4,7 +4,7 @@ import type { Viewer3DEngineCallbacks } from './viewer-3d.types';
 
 export type ViewerEngine = Pick<Viewer3DEngine,
   'dispose' | 'setViewMode' | 'requestPointerLock' | 'frameOverview' | 'zoomOverview' |
-  'loadFloorplanFromSvgText' | 'applyInteriorStyle' | 'getBudget' | 'getModelSummary'>;
+  'loadFloorplanFromSvgText' | 'applyInteriorStyle' | 'getBudget' | 'getModelSummary' | 'getSceneRooms' | 'setRoomFloorSelections'>;
 
 /** Angular boundary: the page can be exercised without a WebGL context. */
 export const VIEWER_ENGINE_FACTORY = new InjectionToken<

@@ -3,8 +3,9 @@
 Habita3D permite explorar una vivienda en 3D y comparar pisos y costos. Para EP2
 están implementados **los bloques 1 y 2**: adquisición/procesamiento en Python,
 catálogo e historial en PostgreSQL, proyectos privados por habitación y presupuesto
-calculado con los últimos precios persistidos. **El bloque 3 de Angular/3D sigue
-pendiente**; el recorrido visual EP1 conserva sus datos demostrativos.
+calculado con los últimos precios persistidos. El **bloque 3 de Angular/3D** integra
+sesión, proyectos, habitaciones, catálogo, historial y suelos orientativos por habitación.
+La demo libre EP1 conserva sus datos demostrativos, separados del presupuesto EP2.
 
 ## Estado de la EP2
 
@@ -16,10 +17,13 @@ pendiente**; el recorrido visual EP1 conserva sus datos demostrativos.
 - [Bloque 2: staging y Windows](docs/ep2/bloque-2-staging.md): ejecución local gratuita,
   Terraform, CI/CD y configuración del runner que el compañero hará posteriormente.
 - [Validación del bloque 2](docs/ep2/evidencias/bloque-2-validacion.md): pruebas y límites.
+- [Bloque 3: interfaz integrada y revisión antes del push](docs/ep2/bloque-3-interfaz.md):
+  rutas, selección persistida, visor por habitación y comprobación local en Windows.
 
 La demo se ejecutará en el computador Windows del equipo, sin costo ni tarjeta.
 La configuración y primer despliegue de su runner requieren validación allí.
-La interfaz y el cierre integral de EP2 no se dan por terminados con el backend.
+El cierre integral de EP2 requiere además la CI de la rama y los pendientes operativos
+del equipo; el ensayo local no sustituye el primer despliegue automático del runner.
 
 ## Definición del proyecto para EP1
 

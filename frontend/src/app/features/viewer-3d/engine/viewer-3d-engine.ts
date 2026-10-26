@@ -18,6 +18,8 @@ import { MaterialRegistry } from './materials/material-registry';
 import { PlayerController } from './player-controller';
 import { PointerLockLookInput } from './pointer-lock-look-input';
 import { OverviewController } from './overview-controller';
+import { applyRoomFloorSelections, type RoomFloorSelection } from './room-floor-selection';
+import type { SceneRoom } from '../../../core/ep2/ep2.types';
 import { disposeObject3D } from './three-object-disposal';
 import {
   CAMERA_FAR,
@@ -64,6 +66,8 @@ export class Viewer3DEngine {
 
   private currentFloorplan: Floorplan | null = null;
   private disposed = false;
+  private roomFloorSelections: readonly RoomFloorSelection[] = [];
+  private roomFloorRequest = 0;
 
   constructor(
     private readonly container: HTMLElement,
@@ -181,6 +185,7 @@ export class Viewer3DEngine {
     this.rebuildCollisions();
     this.player.respawn(resolveFloorplanSpawn(floorplan, PLAYER_CAPSULE_RADIUS));
     this.overview.setHouse(this.floorplanScene.currentGroup);
+    await this.applyRoomFloors();
   }
 
   /**
@@ -194,6 +199,22 @@ export class Viewer3DEngine {
       this.floorplanScene.currentGroup,
       this.renderer.capabilities.getMaxAnisotropy(),
     );
+    await this.applyRoomFloors();
+  }
+
+  getSceneRooms(): SceneRoom[] {
+    return this.currentFloorplan?.rooms.map(room => ({ id: room.id, name: room.name || room.id, areaM2: polygonArea(room.polygon) })) ?? [];
+  }
+
+  async setRoomFloorSelections(selections: readonly RoomFloorSelection[]): Promise<void> {
+    this.roomFloorSelections = [...selections];
+    await this.applyRoomFloors();
+  }
+
+  private async applyRoomFloors(): Promise<void> {
+    const request = ++this.roomFloorRequest;
+    await applyRoomFloorSelections(this.floorplanScene.currentGroup, this.roomFloorSelections, this.interiorStyle.currentStyle, this.materialRegistry,
+      () => !this.disposed && request === this.roomFloorRequest);
   }
 
   /** Applies explicit side-specific accents while preserving the current geometry. */

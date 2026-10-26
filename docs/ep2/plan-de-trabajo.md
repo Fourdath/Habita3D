@@ -1,8 +1,8 @@
 # Plan definitivo de trabajo para la Entrega Parcial 2 de Habita3D
 
-Fecha de revisión: 24 de octubre de 2026.
+Fecha de revisión: 25 de octubre de 2026.
 
-Estado: **bloque 1 de datos/FastAPI implementado**. El bloque 2 está implementado y probado localmente; el bloque 3 y el primer despliegue en el Windows del compañero siguen pendientes. Véanse el [manual de backend](bloque-2-backend.md), [staging](bloque-2-staging.md) y [evidencias](evidencias/bloque-2-validacion.md). El [manual del bloque 1](bloque-1-datos.md) registra los contratos, la ejecución y las limitaciones; las casillas siguientes distinguen avances verificados de integración pendiente. Esto no certifica toda la EP2.
+Estado: **bloques 1 y 2 implementados**; el [bloque 3 Angular/3D](bloque-3-interfaz.md) integra sesión, proyectos, catálogo, presupuesto y suelos por habitación, con un ensayo manual en Windows. El primer despliegue automático desde el runner y los entregables de cierre del equipo siguen pendientes. Véanse el [manual de backend](bloque-2-backend.md), [staging](bloque-2-staging.md) y [evidencias](evidencias/bloque-2-validacion.md). Esto no certifica por sí solo toda la EP2.
 
 ## Alcance acordado
 
@@ -183,9 +183,9 @@ Aceptación: tras reiniciar la aplicación, los datos recuperados pueden consult
 
 ### E. Frontend e integración del producto
 
-- [ ] **EP2-17 — Mostrar materiales reales e historial en Angular.** Precio y unidad, cobertura cuando exista, disponibilidad conocida/desconocida, proveedor, enlace de origen y Última comprobación en DD/MM/AAAA HH:MM, hora de Chile. Añadir estados de carga, vacío, error y datos antiguos. Incluir la opción adicional Ver historial de precios, con tabla/gráfico de las observaciones guardadas, consultando NestJS sin disparar extracciones de las tiendas.
-- [ ] **EP2-18 — Dar utilidad a los datos.** Seleccionar/comparar cerámica o laminado por habitación, con superficie, presupuesto, cobertura y margen adicional; reflejar costo por habitación y total. Guardar las selecciones en el proyecto. Implementar la previsualización 3D orientativa aprobada, actualizando solo el suelo de la habitación elegida y vinculándolo al producto real. Identificar la apariencia aproximada y mostrar fotografía, datos y precio reales; no prometer reproducción visual exacta de cada SKU.
-- [ ] **EP2-19 — Implementar filtros y consultas indexadas.** Alcance aprobado: tipo de piso, tienda y precio por m². Validar los parámetros, aplicar un orden estable y documentar índices/consultas. No añadir como requisitos de EP2 buscador textual ni filtros por marca, color o formato.
+- [x] **EP2-17 — Mostrar materiales reales e historial en Angular.** Precio y unidad, cobertura cuando exista, disponibilidad conocida/desconocida, proveedor, enlace de origen y Última comprobación en DD/MM/AAAA HH:MM, hora de Chile. Añadir estados de carga, vacío, error y datos antiguos. Incluir la opción adicional Ver historial de precios, con tabla/gráfico de las observaciones guardadas, consultando NestJS sin disparar extracciones de las tiendas.
+- [x] **EP2-18 — Dar utilidad a los datos.** Seleccionar/comparar cerámica o laminado por habitación, con superficie, presupuesto, cobertura y margen adicional; reflejar costo por habitación y total. Guardar las selecciones en el proyecto. Implementar la previsualización 3D orientativa aprobada, actualizando solo el suelo de la habitación elegida y vinculándolo al producto real. Identificar la apariencia aproximada y mostrar fotografía, datos y precio reales; no prometer reproducción visual exacta de cada SKU.
+- [x] **EP2-19 — Implementar filtros y consultas indexadas.** Alcance aprobado: tipo de piso, tienda y precio por m². Validar los parámetros, aplicar un orden estable y documentar índices/consultas. No añadir como requisitos de EP2 buscador textual ni filtros por marca, color o formato.
 
 Aceptación: el usuario encuentra y utiliza datos reales persistidos desde Angular, pasando por NestJS. No basta con mostrar una respuesta de FastAPI en Swagger o ejecutar un script aislado.
 
@@ -246,7 +246,7 @@ Tu área anterior de Terraform/staging puede continuar con EP2-26…29: elegir h
 
 - Implementados: EP2-10, EP2-12 y EP2-13…16; las APIs cubren los tres filtros de EP2-19.
 - Aportado a EP2-24/25/27…32: contratos/persistencia, SAST/imágenes, Terraform, variables, despliegue protegido, salud, logs y manuales. Las casillas globales siguen abiertas donde falta el equipo Windows, Angular o el cierre de la entrega.
-- El compañero configurará posteriormente el runner. Faltan su primer despliegue verificable, pantallas/3D EP2 y la demostración/versionado final; no se marca toda EP2 como completada.
+- El compañero configurará posteriormente el runner. Faltan su primer despliegue automático verificable y la demostración/versionado final. Las pantallas/3D EP2 y el ensayo manual en Windows se documentan en el [bloque 3](bloque-3-interfaz.md); no se marca toda EP2 como completada.
 
 ## Demostración de aceptación completa
 

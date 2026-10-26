@@ -1,0 +1,52 @@
+<ion-content [fullscreen]="true">
+  <div class="ep2">
+    <header class="ep2-header"><a routerLink="/landing" aria-label="Habita3D, inicio"><app-brand-mark /></a><nav aria-label="Proyecto"><a routerLink="/landing">Inicio</a><a routerLink="/viewer-3d">Visor de ejemplo</a>@if (session.user()) { <button type="button" (click)="logout()" [disabled]="busy()">Cerrar sesión</button> }</nav></header>
+    <main class="ep2-main">
+      <div class="ep2-title"><span class="ep2-eyebrow">TU PROYECTO · HABITACIÓN POR HABITACIÓN</span><h1>Un piso para cada idea.</h1><p>Crea tus espacios, compara pisos de las tiendas y revisa cuánto necesitas comprar.</p></div>
+      @if (error()) { <p class="ep2-error" role="alert">{{ error() }}</p> }
+      @if (notice()) { <p class="ep2-success" role="status">{{ notice() }}</p> }
+      @if (loading()) { <p role="status">Recuperando tu sesión…</p> }
+      @else if (!session.user()) {
+        <section class="ep2-card ep2-auth"><span class="ep2-eyebrow">DEMO ACADÉMICA · USA UNA CUENTA FICTICIA</span><h2>{{ authMode() === 'login' ? 'Vuelve a tu proyecto' : 'Crea tu cuenta de demostración' }}</h2><p>Tu sesión protege tus proyectos, habitaciones y selecciones.</p>
+          <form class="ep2-form" [formGroup]="authForm" (ngSubmit)="authenticate()">
+            <label>Correo de demostración<input formControlName="email" type="email" autocomplete="username" maxlength="254" required /></label>
+            <label>Contraseña<input formControlName="password" type="password" [attr.autocomplete]="authMode() === 'register' ? 'new-password' : 'current-password'" minlength="12" maxlength="128" required /></label><p class="ep2-hint">Entre 12 y 128 caracteres.</p>
+            <button class="ep2-primary" type="submit" [disabled]="busy()">{{ busy() ? 'Conectando…' : authMode() === 'login' ? 'Iniciar sesión' : 'Crear cuenta' }}</button>
+          </form><button class="ep2-link" type="button" [disabled]="busy()" (click)="authMode.set(authMode() === 'login' ? 'register' : 'login'); error.set('')">{{ authMode() === 'login' ? 'Crear una cuenta ficticia' : 'Ya tengo una cuenta' }}</button>
+        </section>
+      } @else {
+        <div class="ep2-section-head"><p class="ep2-hint">Sesión: {{ session.user()?.email }}</p><button class="ep2-primary" type="button" [disabled]="busy()" (click)="newProject()">+ Nuevo proyecto</button></div>
+        @if (showProjectForm()) {
+          <form class="ep2-card ep2-form" [formGroup]="projectForm" (ngSubmit)="saveProject()"><h2>{{ editingProjectId() ? 'Editar proyecto' : 'Nuevo proyecto' }}</h2><div class="ep2-row"><label>Nombre del proyecto<input formControlName="name" maxlength="120" required /></label><label>Presupuesto de pisos (CLP)<input type="number" formControlName="budgetClp" min="0" max="1000000000000000" step="1" required /></label></div><div class="ep2-actions"><button class="ep2-primary" type="submit" [disabled]="busy()">Guardar proyecto</button><button type="button" [disabled]="busy()" (click)="showProjectForm.set(false)">Cancelar</button></div></form>
+        }
+        <nav class="ep2-projects" aria-label="Mis proyectos">
+          @for (item of projects(); track item.id) { <button type="button" class="ep2-project-tile" [class.ep2-project-tile--active]="project()?.id === item.id" [attr.aria-pressed]="project()?.id === item.id" [disabled]="busy()" (click)="selectProject(item.id)"><span>PROYECTO {{ item.id }}</span><strong>{{ item.name }}</strong><small>{{ money(item.budgetClp) }} de presupuesto</small></button> }
+        </nav>
+        @if (!projects().length) { <p class="ep2-notice">Todavía no tienes proyectos EP2. Crea uno para añadir habitaciones y elegir sus pisos. Las estimaciones públicas EP1 no se asignan automáticamente a tu cuenta.</p> }
+        @if (projectLoading()) { <p role="status">Cargando proyecto y presupuesto…</p> }
+        @if (project(); as active) {
+          <section class="ep2-card">
+            <div class="ep2-section-head"><div><span class="ep2-eyebrow">DISTRIBUCIÓN Y SUPERFICIES</span><h2>{{ active.name }}</h2></div><div class="ep2-actions"><button type="button" [disabled]="busy()" (click)="editProject()">Editar proyecto</button><button type="button" [disabled]="busy()" (click)="confirmDelete.set('project')">Eliminar proyecto</button></div></div>
+            @if (confirmDelete() === 'project') { <div class="ep2-notice"><p>Se eliminarán este proyecto y sus habitaciones. El catálogo y el historial se conservan.</p><div class="ep2-actions"><button type="button" [disabled]="busy()" (click)="deleteProject()">Confirmar eliminación</button><button type="button" (click)="confirmDelete.set(null)">Cancelar</button></div></div> }
+            <p class="ep2-hint">Cada habitación conserva su propio piso y margen de material adicional.</p>
+            <div class="ep2-rooms">
+              @for (room of active.rooms; track room.id) {
+                <article class="ep2-room" [class.ep2-room--selected]="selectedRoomId() === room.id"><button type="button" class="ep2-room-select" [attr.aria-pressed]="selectedRoomId() === room.id" [disabled]="busy()" (click)="selectRoom(room.id)"><strong>{{ room.name }}</strong><span>{{ room.areaMode === 'area' ? room.areaM2 + ' m²' : room.lengthM + ' × ' + room.widthM + ' m' }} · adicional {{ room.wastePercent }} %</span><small>{{ room.publication?.name ?? 'Sin piso seleccionado' }}</small></button><p class="ep2-hint">Límite: {{ room.budgetClp === null ? 'Sin límite propio' : money(room.budgetClp) }} · {{ room.sceneRoomId ? 'Espacio 3D: ' + room.sceneRoomId : 'Sin vínculo 3D' }}</p><div class="ep2-actions"><button type="button" [disabled]="busy()" (click)="editRoom(room)">Editar</button><button type="button" [disabled]="busy()" (click)="confirmDelete.set(room.id)">Eliminar</button></div>
+                  @if (confirmDelete() === room.id) { <div class="ep2-notice">¿Eliminar esta habitación?<div class="ep2-actions"><button type="button" [disabled]="busy()" (click)="deleteRoom(room)">Confirmar</button><button type="button" (click)="confirmDelete.set(null)">Cancelar</button></div></div> }
+                </article>
+              }
+            </div>
+            <button type="button" class="ep2-primary" [disabled]="busy() || active.rooms.length >= 100" (click)="editRoom(null)">+ Añadir habitación</button>
+            @if (sceneError()) { <p class="ep2-notice">{{ sceneError() }}</p> }
+            @if (showRoomForm()) { <app-room-editor [room]="editingRoom()" [sceneRooms]="sceneRooms()" [busy]="busy()" (save)="saveRoom($event)" (cancelEdit)="showRoomForm.set(false)" /> }
+          </section>
+          @if (selectedRoom(); as room) {
+            <section class="ep2-card ep2-selection"><div><span class="ep2-eyebrow">HABITACIÓN SELECCIONADA</span><h2>{{ room.name }}</h2><p>{{ room.publication?.name ?? 'Elige un piso en el catálogo de abajo.' }}</p><p class="ep2-hint">La apariencia 3D es orientativa y no reproduce exactamente el producto comercial.</p></div><div class="ep2-actions"><a class="ep2-primary" routerLink="/viewer-3d" [queryParams]="{ project: active.id, room: room.id }">Ver proyecto en 3D →</a>@if (room.publicationKey) { <button type="button" [disabled]="busy()" (click)="chooseFloor(null)">Quitar piso</button> }</div></section>
+          }
+          <app-floor-budget [budget]="budget()" [rooms]="active.rooms" [loading]="budgetLoading()" [error]="budgetError()" (refresh)="refreshBudget()" />
+          <app-floor-catalog [roomName]="selectedRoom()?.name ?? ''" [selectedKey]="selectedRoom()?.publicationKey ?? null" [busy]="busy() || projectLoading()" (choose)="chooseFloor($event)" />
+        } @else if (projects().length && !projectLoading()) { <p class="ep2-notice">Selecciona un proyecto para trabajar en sus habitaciones.</p> }
+      }
+    </main>
+  </div>
+</ion-content>
