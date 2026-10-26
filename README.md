@@ -19,11 +19,29 @@ La demo libre EP1 conserva sus datos demostrativos, separados del presupuesto EP
 - [Validación del bloque 2](docs/ep2/evidencias/bloque-2-validacion.md): pruebas y límites.
 - [Bloque 3: interfaz integrada y revisión antes del push](docs/ep2/bloque-3-interfaz.md):
   rutas, selección persistida, visor por habitación y comprobación local en Windows.
+- [Diseño preliminar de la capacidad adaptativa](docs/ep2/diseno-adaptativo.md):
+  recomendador de pisos por habitación previsto para el Módulo 3.
 
 La demo se ejecutará en el computador Windows del equipo, sin costo ni tarjeta.
 La configuración y primer despliegue de su runner requieren validación allí.
 El cierre integral de EP2 requiere además la CI de la rama y los pendientes operativos
 del equipo; el ensayo local no sustituye el primer despliegue automático del runner.
+
+### Datos de la entrega EP2 (formato común, pauta 24.3)
+
+| Elemento | Enlace o estado |
+| --- | --- |
+| Repositorio | https://github.com/Fourdath/Habita3D |
+| Tag o release evaluable | Pendiente: se crea sobre el commit validado en la demo. |
+| Ambiente desplegado (staging) | Computador Windows del equipo; ver [manual de staging](docs/ep2/bloque-2-staging.md). Sin URL pública. |
+| Tablero de gestión | Pendiente de enlazar. |
+| Prototipo de interfaz (Figma) | Pendiente de enlazar. |
+
+| Integrante | Participación en EP2 |
+| --- | --- |
+| Cris Dauros (Crisss333) | Plan y acuerdos; bloque 1 (extracción Sodimac/Easy, FastAPI, métricas) y bloque 2 (NestJS, PostgreSQL, capturas, CI/CD, staging). |
+| Matías Prado | Bloque 3: rediseño del inicio y del estudio 3D, sesión, proyectos, habitaciones, catálogo, presupuesto, historial y suelos por habitación. |
+| Carlos Ruz | Diseño preliminar de la capacidad adaptativa, revisión del cumplimiento de la pauta y actualización del estado del plan. |
 
 ## Definición del proyecto para EP1
 
@@ -146,7 +164,7 @@ de `main` está activa según la consulta a GitHub del 24/10/2026. Los administr
 - La API ofrece registro, inicio de sesión, consulta de sesión y cierre de sesión.
   Las rutas EP2 de proyectos y habitaciones requieren sesión y autorizan por propietario; la vista previa demostrativa EP1 continúa pública.
 - El visor, el presupuesto del navegador y la comparación de FastAPI usan datos
-  locales de demostración. La API EP2 ya integra fuentes y precios persistidos; mostrarlos en las pantallas y el visor corresponde al bloque 3. El motor adaptativo completo es posterior.
+  locales de demostración en la demo libre EP1. En los proyectos EP2 (`/projects`) el catálogo, el presupuesto y los suelos del visor usan los precios web persistidos. El motor adaptativo completo es posterior; su especificación está en [diseño adaptativo](docs/ep2/diseno-adaptativo.md).
 - Terraform define un staging local independiente de Compose. Su plan se verifica
   en CI; para EP2 se aplicaron y comprobaron 13 recursos en un staging local aislado.
   El despliegue del runner Windows y la demo completa siguen pendientes; no hay URL pública.
