@@ -41,6 +41,7 @@ export class EnvironmentManager {
   private vegetationGroup: THREE.Group | null = null;
   private readonly registry: MaterialRegistry;
   private readonly ownsRegistry: boolean;
+  private overviewMode = false;
 
   constructor(
     private readonly scene: THREE.Scene,
@@ -99,8 +100,17 @@ export class EnvironmentManager {
 
     this.vegetationGroup = buildVegetation(bounds, seedFromBounds(bounds));
     this.scene.add(this.vegetationGroup);
+    this.setOverviewMode(this.overviewMode);
 
     return bounds;
+  }
+
+  /** Keep the exterior intact for walking while presenting an uncluttered model. */
+  setOverviewMode(enabled: boolean): void {
+    this.overviewMode = enabled;
+    this.sky.visible = !enabled;
+    if (this.terrainMesh) this.terrainMesh.visible = !enabled;
+    if (this.vegetationGroup) this.vegetationGroup.visible = !enabled;
   }
 
   /**

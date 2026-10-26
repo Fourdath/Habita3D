@@ -1,0 +1,19 @@
+<form [formGroup]="form" (ngSubmit)="submit()" class="ep2-form" aria-label="Datos de la habitación">
+  <h3>{{ room() ? 'Editar habitación' : 'Nueva habitación' }}</h3>
+  <label>Espacio en el modelo 3D
+    <select formControlName="sceneRoomId" (change)="useScene()"><option value="">Sin vincular al modelo</option>
+      @for (scene of sceneRooms(); track scene.id) { <option [value]="scene.id">{{ scene.name }} · {{ scene.areaM2.toFixed(1) }} m² · {{ scene.id }}</option> }
+    </select>
+  </label>
+  <p class="ep2-hint">Vincula cada habitación a un espacio distinto del plano de ejemplo. La superficie de compra se puede editar.</p>
+  <label>Nombre<input formControlName="name" maxlength="120" required /></label>
+  <label>Superficie<select formControlName="areaMode"><option value="area">Área directa (m²)</option><option value="dimensions">Largo × ancho (m)</option></select></label>
+  @if (form.controls.areaMode.value === 'area') {
+    <label>Área (m²)<input formControlName="areaM2" inputmode="decimal" placeholder="10,5" /></label>
+  } @else {
+    <div class="ep2-row"><label>Largo (m)<input formControlName="lengthM" inputmode="decimal" /></label><label>Ancho (m)<input formControlName="widthM" inputmode="decimal" /></label></div>
+  }
+  <div class="ep2-row"><label>Material adicional (%)<input formControlName="wastePercent" inputmode="decimal" /></label><label>Límite opcional (CLP)<input formControlName="budgetClp" inputmode="numeric" placeholder="Sin límite" /></label></div>
+  @if (error) { <p role="alert" class="ep2-error">{{ error }}</p> }
+  <div class="ep2-actions"><button class="ep2-primary" type="submit" [disabled]="busy()">Guardar habitación</button><button type="button" (click)="cancelEdit.emit()" [disabled]="busy()">Cancelar</button></div>
+</form>

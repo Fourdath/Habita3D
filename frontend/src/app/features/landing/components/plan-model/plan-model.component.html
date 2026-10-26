@@ -1,0 +1,78 @@
+<div class="h3d-segmented" role="group" aria-label="Modo de la ilustración">
+  <button type="button" [attr.aria-pressed]="mode() === 'plan'" (click)="setMode('plan')">Plano 2D</button>
+  <button type="button" [attr.aria-pressed]="mode() === 'model'" (click)="setMode('model')">Modelo 3D</button>
+</div>
+
+<div
+  class="stage"
+  [class.is-model]="mode() === 'model'"
+  role="img"
+  [attr.aria-label]="mode() === 'model'
+    ? 'Modelo 3D de una vivienda de una planta con estar-cocina, dormitorio y baño, con materiales y mobiliario.'
+    : 'Plano 2D de una vivienda de una planta de 70 m² con estar-cocina, dormitorio y baño.'"
+>
+  <div class="scene">
+    <div class="base">
+      <i class="b-s"></i>
+      <i class="b-w"></i>
+    </div>
+
+    @for (room of rooms; track room.label) {
+      <div
+        [class]="'p floor floor--' + room.finish"
+        [style.--x]="room.x"
+        [style.--y]="room.y"
+        [style.--w]="room.width"
+        [style.--d]="room.depth"
+      ></div>
+    }
+
+    <div class="p rug" [style.--x]="rug.x" [style.--y]="rug.y" [style.--w]="rug.width" [style.--d]="rug.depth"></div>
+
+    <svg class="lines" viewBox="-1 -1 12 9" aria-hidden="true" focusable="false">
+      <g class="dims">
+        <path d="M0 -0.55 H10 M0 -0.7 V-0.4 M10 -0.7 V-0.4 M-0.55 0 V7 M-0.7 0 H-0.4 M-0.7 7 H-0.4" />
+        <text x="5" y="-0.7">10,00</text>
+        <text x="-0.7" y="3.5" transform="rotate(-90 -0.7 3.5)">7,00</text>
+      </g>
+      @for (wall of walls; track $index) {
+        <line
+          [class]="wall.window ? 'glass' : 'cut'"
+          [attr.x1]="wall.x"
+          [attr.y1]="wall.y"
+          [attr.x2]="wall.axis === 'h' ? wall.x + wall.length : wall.x"
+          [attr.y2]="wall.axis === 'v' ? wall.y + wall.length : wall.y"
+        />
+      }
+      @for (swing of doorSwings; track swing) {
+        <path class="swing" [attr.d]="swing" />
+      }
+      <g class="labels">
+        @for (room of rooms; track room.label) {
+          <text [attr.x]="room.labelX" [attr.y]="room.labelY">{{ room.label }}</text>
+          <text class="area" [attr.x]="room.labelX" [attr.y]="room.labelY + 0.38">{{ room.area }}</text>
+        }
+      </g>
+    </svg>
+
+    @for (wall of walls; track $index) {
+      <div
+        class="p wall"
+        [class.wall--v]="wall.axis === 'v'"
+        [class.wall--w]="wall.window"
+        [style.--x]="wall.x"
+        [style.--y]="wall.y"
+        [style.--l]="wall.length"
+        [style.--i]="$index"
+      ></div>
+    }
+
+    @for (box of furniture; track $index) {
+      <app-model-box [box]="box" [index]="$index" />
+    }
+  </div>
+
+  <span class="h3d-north" aria-hidden="true">N</span>
+</div>
+
+<p class="h3d-caption">Ilustración · vivienda de una planta · 70 m²</p>

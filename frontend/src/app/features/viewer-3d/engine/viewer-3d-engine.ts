@@ -7,6 +7,7 @@ import type { InteriorStyleId } from '../../../core/interior-style/interior-styl
 import { FLOORPLAN_URL } from '../../../core/floorplan/floorplan.constants';
 import type { Floorplan } from '../../../core/floorplan/floorplan.types';
 import { resolveFloorplanSpawn } from '../../../core/floorplan/floorplan-spawn';
+import { polygonArea } from '../../../core/floorplan/geometry-utils';
 import type { WallSurfaceOverride } from '../../../core/materials/material.types';
 
 import { EnvironmentManager } from './environment/environment-manager';
@@ -17,6 +18,8 @@ import { MaterialRegistry } from './materials/material-registry';
 import { PlayerController } from './player-controller';
 import { PointerLockLookInput } from './pointer-lock-look-input';
 import { OverviewController } from './overview-controller';
+import { applyRoomFloorSelections, type RoomFloorSelection } from './room-floor-selection';
+import type { SceneRoom } from '../../../core/ep2/ep2.types';
 import { disposeObject3D } from './three-object-disposal';
 import {
   CAMERA_FAR,
@@ -57,10 +60,14 @@ export class Viewer3DEngine {
   private readonly lookInput: PointerLockLookInput;
   private readonly player: PlayerController;
   private readonly overview: OverviewController;
-  private viewMode: 'walk' | 'overview' = 'walk';
+  private viewMode: 'walk' | 'overview' = 'overview';
+  private readonly overviewGrid = new THREE.GridHelper(200, 200, 0xc8cec5, 0xe0e4dd);
+  private exteriorFog: THREE.Fog | THREE.FogExp2 | null = null;
 
   private currentFloorplan: Floorplan | null = null;
   private disposed = false;
+  private roomFloorSelections: readonly RoomFloorSelection[] = [];
+  private roomFloorRequest = 0;
 
   constructor(
     private readonly container: HTMLElement,
@@ -100,11 +107,16 @@ export class Viewer3DEngine {
     this.interiorStyle = new InteriorStyleManager(this.materialRegistry);
 
     this.movementInput = new KeyboardMovementInput();
-    this.lookInput = new PointerLockLookInput(this.renderer.domElement, this.camera, (locked) =>
-      this.callbacks.onPointerLockChange?.(locked),
+    this.lookInput = new PointerLockLookInput(this.renderer.domElement, this.camera,
+      (locked) => this.callbacks.onPointerLockChange?.(locked),
+      () => this.callbacks.onPointerLockError?.(),
     );
     this.player = new PlayerController(this.camera, this.worldOctree, this.movementInput);
     this.overview = new OverviewController(this.renderer.domElement);
+    this.exteriorFog = this.scene.fog;
+    this.overviewGrid.position.y = -0.06;
+    this.scene.add(this.overviewGrid);
+    this.setViewMode('overview');
 
     this.resizeObserver = new ResizeObserver(() => this.handleResize());
     this.resizeObserver.observe(this.container);
@@ -124,10 +136,25 @@ export class Viewer3DEngine {
     this.viewMode = mode;
     if (mode === 'overview' && document.pointerLockElement === this.renderer.domElement) document.exitPointerLock();
     this.overview.setEnabled(mode === 'overview');
+    this.environment.setOverviewMode(mode === 'overview');
+    this.overviewGrid.visible = mode === 'overview';
+    this.scene.background = mode === 'overview' ? new THREE.Color(0xf5f6f2) : null;
+    this.scene.fog = mode === 'overview' ? new THREE.Fog(0xf5f6f2, 35, 110) : this.exteriorFog;
   }
 
   frameOverview(top = false): void {
     this.overview.frame(top);
+  }
+
+  zoomOverview(factor: number): void {
+    this.overview.zoom(factor);
+  }
+
+  getModelSummary(): { roomCount: number; areaM2: number } {
+    return {
+      roomCount: this.currentFloorplan?.rooms.length ?? 0,
+      areaM2: this.currentFloorplan?.rooms.reduce((sum, room) => sum + Math.abs(polygonArea(room.polygon)), 0) ?? 0,
+    };
   }
 
   /**
@@ -158,6 +185,7 @@ export class Viewer3DEngine {
     this.rebuildCollisions();
     this.player.respawn(resolveFloorplanSpawn(floorplan, PLAYER_CAPSULE_RADIUS));
     this.overview.setHouse(this.floorplanScene.currentGroup);
+    await this.applyRoomFloors();
   }
 
   /**
@@ -171,6 +199,22 @@ export class Viewer3DEngine {
       this.floorplanScene.currentGroup,
       this.renderer.capabilities.getMaxAnisotropy(),
     );
+    await this.applyRoomFloors();
+  }
+
+  getSceneRooms(): SceneRoom[] {
+    return this.currentFloorplan?.rooms.map(room => ({ id: room.id, name: room.name || room.id, areaM2: polygonArea(room.polygon) })) ?? [];
+  }
+
+  async setRoomFloorSelections(selections: readonly RoomFloorSelection[]): Promise<void> {
+    this.roomFloorSelections = [...selections];
+    await this.applyRoomFloors();
+  }
+
+  private async applyRoomFloors(): Promise<void> {
+    const request = ++this.roomFloorRequest;
+    await applyRoomFloorSelections(this.floorplanScene.currentGroup, this.roomFloorSelections, this.interiorStyle.currentStyle, this.materialRegistry,
+      () => !this.disposed && request === this.roomFloorRequest);
   }
 
   /** Applies explicit side-specific accents while preserving the current geometry. */
@@ -198,6 +242,7 @@ export class Viewer3DEngine {
     this.movementInput.dispose();
     this.lookInput.dispose();
     this.overview.dispose();
+    this.overviewGrid.dispose();
     this.interiorStyle.dispose();
     this.environment.dispose();
     this.floorplanScene.dispose();
@@ -234,9 +279,9 @@ export class Viewer3DEngine {
 
   private readonly animate = (): void => {
     const deltaTime = Math.min(MAX_DELTA_TIME, this.clock.getDelta()) / STEPS_PER_FRAME;
-    if (this.viewMode === 'walk') {
+    if (this.viewMode === 'walk' && this.lookInput.isLocked) {
       for (let i = 0; i < STEPS_PER_FRAME; i++) this.player.update(deltaTime);
-    } else {
+    } else if (this.viewMode === 'overview') {
       this.overview.update();
     }
     this.renderer.render(this.scene, this.viewMode === 'overview' ? this.overview.camera : this.camera);

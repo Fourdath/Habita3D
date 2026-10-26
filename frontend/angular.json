@@ -32,7 +32,7 @@
                 "input": "public"
               }
             ],
-            "styles": ["src/global.scss", "src/theme/variables.scss"],
+            "styles": ["src/global.scss", "src/theme/variables.scss", "src/theme/home.scss"],
             "scripts": [],
             "browser": "src/main.ts"
           },

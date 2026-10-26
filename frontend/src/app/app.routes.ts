@@ -2,6 +2,10 @@ import { Routes } from '@angular/router';
 
 export const routes: Routes = [
   {
+    path: 'projects',
+    loadComponent: () => import('./features/projects/projects.page').then(m => m.ProjectsPage),
+  },
+  {
     path: 'landing',
     loadComponent: () =>
       import('./features/landing/landing.page').then((m) => m.LandingPage),

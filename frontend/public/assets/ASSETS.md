@@ -21,6 +21,13 @@ adequate for the web prototype and cuts their transfer/storage cost roughly in h
 | `textures/laminate_floor_02/` | https://polyhaven.com/a/laminate_floor_02 | Industrial style floor |
 | `textures/brick_wall_003/` | https://polyhaven.com/a/brick_wall_003 | Industrial exterior facade |
 
+### Home page swatches (derived, CC0)
+
+`home/materials/*.webp` are 320×320 WebP crops (quality 72, ~1–20 KB each) of the
+`diffuse.jpg` maps above, generated with Pillow. The home page uses them for the
+material swatches and the hero illustration's floors instead of the 0.5–1.2 MB
+originals. Regenerate them from the source textures if a texture changes.
+
 ## Furniture GLB — poly.pizza (CC0)
 
 These assets remain available for a future user-controlled furniture editor. The

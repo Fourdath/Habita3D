@@ -70,6 +70,24 @@ describe('EnvironmentManager', () => {
     expect((terrain!.material as THREE.MeshStandardMaterial).map).toBeNull();
   });
 
+  it('hides the exterior in overview, keeps it hidden after replacing a plan, and restores it for walking', async () => {
+    const scene = new THREE.Scene();
+    const collidables = new THREE.Group();
+    const environment = new EnvironmentManager(scene, collidables);
+    environment.setOverviewMode(true);
+    for (const plan of [SMALL_HOUSE, LARGE_HOUSE]) {
+      await environment.rebuild(plan, 1);
+      const sky = scene.children.find((child) => (child as { isSky?: boolean }).isSky)!;
+      const terrain = collidables.children.find((child) => child instanceof THREE.Mesh)!;
+      const vegetation = scene.children.find((child) => child.name === 'vegetation')!;
+      expect([sky.visible, terrain.visible, vegetation.visible]).toEqual([false, false, false]);
+      environment.setOverviewMode(false);
+      expect([sky.visible, terrain.visible, vegetation.visible]).toEqual([true, true, true]);
+      environment.setOverviewMode(true);
+    }
+    environment.dispose();
+  });
+
   it('adds terrain to collidables and vegetation to scene (not collidables)', async () => {
     const scene = new THREE.Scene();
     const collidables = new THREE.Group();
