@@ -11,7 +11,7 @@ Fecha de comprobación: 18 de octubre de 2026. Alcance: consultas de muestra, si
 ## Decisiones de referencia
 
 - Ubicación activa: Región Metropolitana, Santiago, comuna La Florida. Sustituye la referencia inicial de Las Condes por decisión del equipo.
-- Alcance del producto ampliado por el usuario: cerámicas para piso y piso flotante laminado, sin vinílicos/SPC en EP2. Este informe contiene pruebas de cerámicas; la categoría de laminados y sus campos específicos aún deben verificarse.
+- Alcance del producto ampliado por el equipo: cerámicas para piso y piso flotante laminado, sin vinílicos/SPC en EP2. Este informe contiene pruebas de cerámicas; la categoría de laminados y sus campos específicos aún deben verificarse.
 - Muestra acordada para implementar en EP2: hasta 10 publicaciones por categoría y tienda, máximo 40. La investigación no equivale a una captura completa de esa muestra; los conteos de cientos de productos que aparecen más abajo corresponden a los totales informados por las fuentes durante las pruebas.
 - Frecuencia solicitada para el plan: tres procesos de comprobación a las 08:00, 12:00 y 16:00, en `America/Santiago`. Cada proceso puede requerir varias solicitudes espaciadas; la frecuencia no garantiza ausencia de bloqueos. La interfaz mostrará Última comprobación con la captura exitosa real en DD/MM/AAAA HH:MM.
 - Conservar ubicación, URL de origen y fecha de captura junto con precios y disponibilidad.

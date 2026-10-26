@@ -16,6 +16,7 @@ El bloque 1 de datos/FastAPI está implementado y tiene un
 | [Bloque 2: backend](bloque-2-backend.md) | Catálogo, persistencia, proyectos, habitaciones, presupuestos y APIs para Angular. |
 | [Bloque 2: staging](bloque-2-staging.md) | Docker/Terraform, seguridad de CI/CD y preparación del runner Windows. |
 | [Bloque 3: interfaz](bloque-3-interfaz.md) | Sesión, proyectos, catálogo, presupuesto y suelos por habitación; integración de ramas y pruebas en Windows. |
+| [Diseño adaptativo](diseno-adaptativo.md) | Especificación preliminar del recomendador de pisos por habitación (entregable 8): entradas, reglas, explicación, control y evaluación. |
 | [Validación bloque 2](evidencias/bloque-2-validacion.md) | Resultados verificados y validaciones externas pendientes. |
 | [Acceso Sodimac](sodimac-acceso.md) | Categorías, procedencia, condiciones y límites del adaptador. |
 | [Acceso Easy](easy-acceso.md) | Contexto geográfico público, extracción HTML/JSON y límites del adaptador. |

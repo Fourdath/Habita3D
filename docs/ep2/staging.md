@@ -15,7 +15,7 @@ con acceso a Internet y sin suspensión durante las capturas; no se prometen
 actualizaciones cuando esté apagado. Las alternativas cloud siguientes quedan
 como investigación histórica opcional, no como dependencias de la demo.
 
-Revisión documental: 18/10/2026. Restricciones del usuario: **$0 y sin tarjeta bancaria**. No se crearon cuentas ni se contrató infraestructura. Este documento no confirma todavía un proveedor definitivo.
+Revisión documental: 18/10/2026. Restricciones del equipo: **$0 y sin tarjeta bancaria**. No se crearon cuentas ni se contrató infraestructura. Este documento no confirma todavía un proveedor definitivo.
 
 ## Candidata principal
 
