@@ -136,7 +136,7 @@
             </section>
           }
           @if (project()) {
-            <section class="studio__project-floor" aria-label="Piso guardado y presupuesto">
+            <section id="floor-editor" class="studio__project-floor" aria-label="Piso guardado y presupuesto">
               @let room = selectedProjectRoom();
               <h3>Presupuesto de pisos de catálogo</h3>
               <app-viewer-floor-catalog [roomId]="room?.id ?? null" [currentKey]="room?.publicationKey ?? null"
@@ -144,6 +144,7 @@
                 (choose)="saveCatalogFloor($event)" (chooseWholeHouse)="saveCatalogFloor($event, true)" />
               @if (floorCatalogMessage()) { <p role="status">{{ floorCatalogMessage() }}</p> }
               @if (floorCatalogError()) { <p role="alert">{{ floorCatalogError() }}</p> }
+              @if (floorAppearanceError()) { <p role="alert">{{ floorAppearanceError() }}</p> }
               @if (projectBudget(); as costs) {
                 <p><strong>Total de pisos: {{ money(costs.total_cost_clp) }}</strong></p>
                 @if (costs.total_cost_clp === null) { <p>Subtotal calculado: {{ money(costs.calculable_subtotal_clp) }}. Quedan habitaciones o datos pendientes.</p> }
@@ -151,7 +152,10 @@
               }
               @if (projectBudgetError()) { <p role="alert">{{ projectBudgetError() }}</p> }
               @if (room?.publication; as floor) {
-                <strong>{{ floor.name }}</strong>
+                <div class="studio__saved-floor">
+                  <app-catalog-product-photo [src]="floor.imageUrl" />
+                  <strong>{{ floor.name }}</strong>
+                </div>
                 <p>{{ floor.seller }} · {{ money(floor.pricePerBoxClp) }} por caja · {{ floor.coveragePerBoxM2 ?? 'Cobertura pendiente' }} m² por caja</p>
                 <p>Última comprobación: {{ floor.lastCheckedDisplay }}</p>
                 @if (floor.availability === 'unknown') { <p>Disponibilidad sin confirmar</p> }
@@ -162,15 +166,15 @@
           } @else if (!projectMode()) {
             <a class="studio__link" routerLink="/projects" [queryParams]="{ nuevo: 1 }">Crear proyecto y presupuestar pisos ↗</a>
           }
-          <div id="floor-editor" class="studio__finish-editor">
-          @if (status() === 'ready' && appearanceRooms().length) {
+          <div [attr.id]="projectMode() ? null : 'floor-editor'" class="studio__finish-editor">
+          @if (!projectMode() && modelReady() && appearanceRooms().length) {
             <app-floor-appearance-panel
               [rooms]="appearanceRooms()"
               [selectedRoomId]="appearanceRoomId()"
               [finish]="activeFloorPreview()?.finishId ?? null"
               [tint]="activeFloorPreview()?.tint ?? null"
               [busy]="floorUpdating() || projectLoading() || interiorStyleLoading() || loadingFloorplan()"
-              [allowWholeHouse]="!projectMode() && sceneRooms().length > 1"
+              [allowWholeHouse]="sceneRooms().length > 1"
               (roomChange)="selectAppearanceRoom($event)"
               (finishChange)="changeFloorFinish($event)"
               (tintChange)="changeFloorTint($event)"
@@ -178,8 +182,8 @@
               (applyToWholeHouse)="previewFloorThroughoutHouse()"
             />
           }
-          @if (floorAppearanceError()) { <p class="studio__error" role="alert">{{ floorAppearanceError() }}</p> }
-          @if (status() === 'ready' && sceneRooms().length) {
+          @if (!projectMode() && floorAppearanceError()) { <p class="studio__error" role="alert">{{ floorAppearanceError() }}</p> }
+          @if (modelReady() && sceneRooms().length) {
             <details class="studio__wall-paint">
               <summary>Color de muros interiores</summary>
               <div class="studio__wall-paint-fields">

@@ -39,6 +39,21 @@ describe('Final delivery suggestions', () => {
     expect(fixture.nativeElement.textContent).toContain(suggestion.name);
   });
 
+  it('shows the product photo and keeps the suggestion usable if the image fails', async () => {
+    const imageUrl = 'https://media.example.test/piso.jpg';
+    api.suggestions.mockResolvedValueOnce({ ...TEST_SUGGESTIONS, suggestions: [{ ...suggestion, imageUrl }] });
+    await fixture.componentInstance.refresh();
+    await fixture.whenStable();
+    const card = fixture.nativeElement.querySelector('.ep2-product') as HTMLElement;
+    const image = card.querySelector('img');
+    expect(image?.getAttribute('src')).toBe(imageUrl);
+    image?.dispatchEvent(new Event('error'));
+    await fixture.whenStable();
+    expect(card.querySelector('img')).toBeNull();
+    expect(card.textContent).toContain('Foto no disponible');
+    expect(card.querySelector('button')?.disabled).toBe(false);
+  });
+
   it('requires a new explicit acceptance after a price change', async () => {
     const roomAfterSave = { ...room, publicationKey: TEST_PUBLICATION.publicationKey, publication: TEST_PUBLICATION };
     const revised = { ...suggestion, totalClp: 85000, fitsBudget: false, budgetExcessClp: 5000, quoteId: 'quote-v2' };

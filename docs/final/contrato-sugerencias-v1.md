@@ -38,6 +38,7 @@ Datos sintéticos para pruebas. Con saldo global de $80.000 y límite de habitac
     {
       "publicationKey": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       "name": "Cerámica de prueba",
+      "imageUrl": null,
       "source": "sodimac",
       "category": "ceramic",
       "availability": "unknown",
@@ -75,6 +76,7 @@ Primer envío con `publicationKey` del ejemplo y `quoteId: "cotizacion-sintetica
   "quote": {
     "publicationKey": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     "name": "Cerámica de prueba",
+    "imageUrl": null,
     "source": "sodimac",
     "category": "ceramic",
     "availability": "unknown",

@@ -37,15 +37,19 @@ describe('ViewerFloorCatalogComponent', () => {
   });
 
   it('emits one explicit change and clears the draft for a different room with the same current floor', async () => {
-    catalog.mockResolvedValue(page([TEST_PUBLICATION, nextFloor]));
+    const picturedFloor = { ...nextFloor, imageUrl: 'https://media.example.test/laminado.jpg' };
+    catalog.mockResolvedValue(page([TEST_PUBLICATION, picturedFloor]));
     await component.load(1);
+    fixture.detectChanges();
     const choose = vi.fn();
     component.choose.subscribe(choose);
     component.save();
-    component.setPending(nextFloor.publicationKey);
+    const card = fixture.nativeElement.querySelectorAll('.floor-product')[1] as HTMLElement;
+    expect(card.querySelector('img')?.getAttribute('src')).toBe(picturedFloor.imageUrl);
+    card.querySelector('input')?.click();
     component.save();
     component.save();
-    expect(choose).toHaveBeenCalledExactlyOnceWith(nextFloor);
+    expect(choose).toHaveBeenCalledExactlyOnceWith(picturedFloor);
     fixture.componentRef.setInput('roomId', 'kitchen');
     expect(component.pendingKey()).toBe(TEST_PUBLICATION.publicationKey);
   });

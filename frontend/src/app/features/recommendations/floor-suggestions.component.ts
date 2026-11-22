@@ -1,13 +1,14 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, DestroyRef, effect, inject, input, output, signal, untracked } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
+import { CatalogProductPhotoComponent } from '../../core/ep2/catalog-product-photo.component';
 import { apiError, chileDate, Ep2ApiService, money } from '../../core/ep2/ep2-api.service';
 import type { FloorCategory, FloorSuggestion, FloorSuggestions, ProjectRoom, RetailSource } from '../../core/ep2/ep2.types';
 import { SuggestionDismissals } from './suggestion-dismissals.service';
 
 @Component({
   selector: 'app-floor-suggestions',
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, CatalogProductPhotoComponent],
   templateUrl: './floor-suggestions.component.html',
 })
 export class FloorSuggestionsComponent {

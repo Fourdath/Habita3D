@@ -62,6 +62,7 @@ export interface FloorPreferences {
 export interface FloorSuggestion {
   publicationKey: string;
   name: string;
+  imageUrl?: string | null;
   source: RetailSource;
   category: FloorCategory;
   availability: Exclude<Availability, 'unavailable'>;

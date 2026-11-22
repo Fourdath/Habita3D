@@ -109,6 +109,7 @@ export function suggestionView(
   userId: number,
   projectId: number,
   secret: string,
+  imageUrl: string | null,
 ) {
   const key = ranked.publication_key;
   const { publication } = terms(input, key);
@@ -134,6 +135,7 @@ export function suggestionView(
   return {
     publicationKey: key,
     name: publication.name,
+    imageUrl,
     source: publication.source,
     category: publication.category,
     availability: publication.availability,

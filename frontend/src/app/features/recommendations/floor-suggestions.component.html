@@ -54,6 +54,7 @@
       <div class="ep2-products">
         @for (item of result.suggestions; track item.publicationKey) {
           <article class="ep2-product" [class.ep2-product--selected]="room().publicationKey === item.publicationKey">
+            <div class="ep2-product-image"><app-catalog-product-photo [src]="item.imageUrl" /></div>
             <div class="ep2-product-body">
               <small>{{ item.source === 'easy' ? 'Easy' : 'Sodimac' }} · {{ item.category === 'ceramic' ? 'Cerámica' : 'Flotante laminado' }}</small>
               <h3>{{ item.name }}</h3>

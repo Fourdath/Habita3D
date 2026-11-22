@@ -17,7 +17,7 @@ summary {
   cursor: pointer;
 }
 
-summary:focus-visible, select:focus-visible { outline: 2px solid #245442; outline-offset: 2px; }
+summary:focus-visible, .floor-product:focus-within { outline: 2px solid #245442; outline-offset: 2px; }
 
 .floor-catalog {
   padding: 0 12px 12px;
@@ -27,11 +27,10 @@ summary:focus-visible, select:focus-visible { outline: 2px solid #245442; outlin
   line-height: 1.5;
 }
 
-.floor-catalog label { display: grid; min-width: 0; gap: 4px; font-weight: 500; }
 .floor-catalog p { margin: 0; overflow-wrap: anywhere; }
 .floor-catalog [role='alert'] { color: #8d3030; }
 
-.floor-catalog button, .floor-catalog select {
+.floor-catalog button {
   min-width: 0;
   min-height: 44px;
   padding: 6px 8px;
@@ -42,6 +41,42 @@ summary:focus-visible, select:focus-visible { outline: 2px solid #245442; outlin
   font: inherit;
 }
 
-.floor-catalog select { width: 100%; text-overflow: ellipsis; }
 .floor-catalog .save-floor { background: #245442; color: #fff; }
 .floor-pages { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 4px; text-align: center; }
+
+.floor-products {
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 110px), 1fr));
+  gap: 8px;
+}
+
+.floor-products legend { padding: 0 0 6px; font-weight: 600; }
+.floor-products:disabled .floor-product { cursor: default; }
+
+.floor-product {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-width: 0;
+  border: 1px solid #d7dfd3;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.floor-product--selected { background: #eff5eb; border-color: #3e6e56; }
+
+.floor-product__photo {
+  aspect-ratio: 4 / 3;
+  height: auto;
+  background: #f1f3ef;
+  color: #57685e;
+}
+
+.floor-product__details { display: grid; align-content: start; gap: 3px; padding: 7px; overflow-wrap: anywhere; }
+.floor-product__source { display: flex; align-items: center; gap: 4px; color: #486353; }
+.floor-product__source input { margin: 0; accent-color: #245442; }
+.floor-product__saved { color: #245442; font-weight: 700; }

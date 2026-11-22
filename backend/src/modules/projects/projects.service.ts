@@ -556,7 +556,7 @@ export class ProjectsService {
       provisionalBudget: result.provisional_budget,
       emptyReason: result.empty_reason,
       suggestions: result.suggestions.map((item) =>
-        suggestionView(input, item, userId, id, secret),
+        suggestionView(input, item, userId, id, secret, context.photoUrls.get(item.publication_key) ?? null),
       ),
     };
   }
@@ -574,7 +574,7 @@ export class ProjectsService {
     // The Python calculation stays outside the SQL transaction. Recheck all price inputs
     // at save time while project and catalogue rows are locked against concurrent writes.
     for (let attempt = 0; attempt < 2; attempt += 1) {
-      const { input } = await this.prisma.$transaction(
+      const { input, photoUrls } = await this.prisma.$transaction(
         (tx) => this.suggestionContext(tx, userId, id, roomId, key),
         { isolationLevel: 'RepeatableRead' },
       );
@@ -589,7 +589,7 @@ export class ProjectsService {
       const result = await this.python.recommendFloors(input, requestId);
       const ranked = result.suggestions[0];
       if (!ranked) throw unavailablePublication();
-      const quote = suggestionView(input, ranked, userId, id, secret);
+      const quote = suggestionView(input, ranked, userId, id, secret, photoUrls.get(key) ?? null);
       if (quote.quoteId !== dto.quoteId)
         throw new ConflictException({ status: 'price_changed', quote });
       const hash = quoteTermsDigest(input, key);
@@ -699,7 +699,7 @@ export class ProjectsService {
       })),
       ...(selected ? { selected_publication_key: selected } : {}),
     };
-    return { room: target, input };
+    return { room: target, input, photoUrls: new Map(candidates.map(item => [item.publicationKey, item.imageUrl])) };
   }
 
   async budget(userId: number, id: number, requestId?: string) {

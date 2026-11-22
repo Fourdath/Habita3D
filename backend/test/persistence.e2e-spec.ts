@@ -315,7 +315,7 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === 'true')('EP2 PostgreSQL persis
     const initial = await request(server).get(route).set('Authorization', owner).expect(200);
     expect(initial.body).toMatchObject({ availableBudgetClp: 80000, provisionalBudget: true });
     const quote = initial.body.suggestions.find((p: { publicationKey: string }) => p.publicationKey === product.publication_key);
-    expect(quote).toMatchObject({ totalClp: 60000, boxes: 6 });
+    expect(quote).toMatchObject({ totalClp: 60000, boxes: 6, imageUrl: product.image_url });
     const dismissed = await request(server).get(route).query({ exclude: product.publication_key }).set('Authorization', owner).expect(200);
     expect(dismissed.body.suggestions.every((p: { publicationKey: string }) => p.publicationKey !== product.publication_key)).toBe(true);
 
@@ -332,6 +332,7 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === 'true')('EP2 PostgreSQL persis
     const update = changed.publications.find(p => p.source === 'sodimac')!;
     update.price_per_box_clp = 12000;
     update.price_per_m2_clp = '6000.00';
+    update.image_url = 'https://media.sodimac.cl/piso-prueba.jpg';
     let calculateUnderOldSnapshot!: () => void;
     let releaseCalculation!: () => void;
     const calculationStarted = new Promise<void>(resolve => { calculateUnderOldSnapshot = resolve; });
@@ -349,7 +350,10 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === 'true')('EP2 PostgreSQL persis
       releaseCalculation();
     }
     const conflict = await accepting;
-    expect(conflict.body).toMatchObject({ status: 'price_changed', quote: { totalClp: 72000, budgetExcessClp: 4000 } });
+    expect(conflict.body).toMatchObject({
+      status: 'price_changed',
+      quote: { totalClp: 72000, budgetExcessClp: 4000, imageUrl: update.image_url },
+    });
     const afterConflict = await request(server).get(path).set('Authorization', owner).expect(200);
     expect(afterConflict.body.rooms.find((r: { id: string }) => r.id === room.id)).toMatchObject({ ...prefs, publicationKey: null });
     const accepted = await accept(conflict.body.quote.quoteId).expect(200);

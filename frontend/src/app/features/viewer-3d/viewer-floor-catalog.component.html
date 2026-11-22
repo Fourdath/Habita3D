@@ -1,5 +1,5 @@
 <details (toggle)="onToggle($event)">
-  <summary>Cambiar producto del catálogo</summary>
+  <summary>Ver pisos del catálogo</summary>
   <div class="floor-catalog" [attr.aria-busy]="loading()">
     @if (loading()) { <p role="status">Cargando productos guardados…</p> }
     @if (failedPage(); as page) {
@@ -8,15 +8,24 @@
     }
     @if (catalog(); as result) {
       @if (products().length) {
-        <label>Producto de piso
-          <select [ngModel]="pendingProduct()?.publicationKey ?? ''" (ngModelChange)="setPending($event)"
-            [disabled]="busy() || loading() || failedPage() !== null">
-            <option value="">Selecciona un producto</option>
-            @for (product of products(); track product.publicationKey) {
-              <option [value]="product.publicationKey">{{ product.name }} · {{ product.source === 'easy' ? 'Easy' : 'Sodimac' }}</option>
-            }
-          </select>
-        </label>
+        <fieldset class="floor-products" [disabled]="busy() || loading() || failedPage() !== null">
+          <legend>Elige un piso</legend>
+          @for (product of products(); track product.publicationKey) {
+            <label class="floor-product" [class.floor-product--selected]="pendingKey() === product.publicationKey">
+              <app-catalog-product-photo class="floor-product__photo" [src]="product.imageUrl" />
+              <span class="floor-product__details">
+                <span class="floor-product__source">
+                  <input type="radio" name="catalog-floor" [value]="product.publicationKey"
+                    [checked]="pendingKey() === product.publicationKey" (change)="setPending(product.publicationKey)" />
+                  {{ product.source === 'easy' ? 'Easy' : 'Sodimac' }}
+                </span>
+                <strong>{{ product.name }}</strong>
+                <span>{{ money(product.pricePerBoxClp) }} / caja</span>
+                @if (currentKey() === product.publicationKey) { <span class="floor-product__saved">Guardado</span> }
+              </span>
+            </label>
+          }
+        </fieldset>
         @if (pendingProduct(); as product) {
           <p>{{ money(product.pricePerBoxClp) }} por caja · {{ product.coveragePerBoxM2 }} m² por caja</p>
           @if (product.availability === 'unknown') { <p>Disponibilidad sin confirmar.</p> }

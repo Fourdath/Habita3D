@@ -87,6 +87,14 @@ export function apiError(error: unknown): string {
 export function money(value: number | string | null): string {
   return value === null ? 'Pendiente' : new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: typeof value === 'string' ? 2 : 0 }).format(Number(value));
 }
+export function safeCatalogUrl(value: string | null | undefined): string | null {
+  try {
+    const url = new URL(value ?? '');
+    return url.protocol === 'https:' ? url.href : null;
+  } catch {
+    return null;
+  }
+}
 export function chileDate(value: string | null): string {
   if (!value || !Number.isFinite(Date.parse(value))) return 'Sin comprobación';
   const parts = new Intl.DateTimeFormat('es-CL', { timeZone: 'America/Santiago', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(value));

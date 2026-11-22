@@ -1,11 +1,11 @@
 import { Component, computed, inject, input, linkedSignal, output, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { CatalogProductPhotoComponent } from '../../core/ep2/catalog-product-photo.component';
 import { Ep2ApiService, money } from '../../core/ep2/ep2-api.service';
 import type { Page, Publication } from '../../core/ep2/ep2.types';
 
 @Component({
   selector: 'app-viewer-floor-catalog',
-  imports: [FormsModule],
+  imports: [CatalogProductPhotoComponent],
   templateUrl: 'viewer-floor-catalog.component.html',
   styleUrl: 'viewer-floor-catalog.component.scss',
 })
@@ -42,7 +42,7 @@ export class ViewerFloorCatalogComponent {
   }
 
   async load(page: number): Promise<void> {
-    if (this.loading() || this.busy()) return;
+    if (this.loading()) return;
     this.loading.set(true);
     this.failedPage.set(null);
     try {

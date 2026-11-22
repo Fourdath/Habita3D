@@ -186,6 +186,7 @@ export const floorSuggestionsOpenApi = {
       Suggestion: object({
         publicationKey: key,
         name: string,
+        imageUrl: { ...nullable('string'), format: 'uri' },
         source,
         category,
         availability: { ...string, enum: ['available', 'unknown'] },
