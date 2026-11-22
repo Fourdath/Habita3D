@@ -27,6 +27,59 @@
         }
       }
     },
+    "/recommendations/floors": {
+      "post": {
+        "tags": [
+          "recommendations"
+        ],
+        "summary": "Recommend Floors",
+        "description": "Rank eligible floor options from the project's persisted catalog snapshot.",
+        "operationId": "recommend_floors_recommendations_floors_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FloorRecommendationsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FloorRecommendationsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Credencial interna ausente o inválida"
+          },
+          "503": {
+            "description": "Credencial interna no configurada"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "MaterialsToken": []
+          }
+        ]
+      }
+    },
     "/recommendations/compare": {
       "post": {
         "tags": [
@@ -97,6 +150,12 @@
               }
             }
           },
+          "401": {
+            "description": "Credencial interna ausente o inválida"
+          },
+          "503": {
+            "description": "Credencial interna no configurada"
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -107,7 +166,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "MaterialsToken": []
+          }
+        ]
       }
     },
     "/materials/normalize": {
@@ -160,33 +224,15 @@
         "summary": "Create Capture",
         "description": "Explicit protected acquisition. Browsing/catalog reads must never call this route.",
         "operationId": "create_capture_materials_captures_post",
-        "parameters": [
-          {
-            "name": "x-materials-token",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Materials-Token"
-            }
-          }
-        ],
         "requestBody": {
-          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/CaptureApiRequest"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -209,7 +255,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "MaterialsToken": []
+          }
+        ]
       }
     },
     "/materials/status": {
@@ -220,48 +271,25 @@
         "summary": "Capture Status",
         "description": "Local acquisition evidence only, not the future application's catalogue API.",
         "operationId": "capture_status_materials_status_get",
-        "parameters": [
-          {
-            "name": "x-materials-token",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Materials-Token"
-            }
-          }
-        ],
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
                   "additionalProperties": true,
+                  "type": "object",
                   "title": "Response Capture Status Materials Status Get"
                 }
               }
             }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
           }
-        }
+        },
+        "security": [
+          {
+            "MaterialsToken": []
+          }
+        ]
       }
     }
   },
@@ -502,6 +530,131 @@
         ],
         "title": "CompareResponse"
       },
+      "CurrentRoom": {
+        "properties": {
+          "room_id": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Room Id"
+          },
+          "area_m2": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 10000000000.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,12}|(?=[\\d.]{1,19}0*$)\\d{0,12}\\.\\d{0,6}0*$)"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Area M2"
+          },
+          "length_m": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 10000000000.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,12}|(?=[\\d.]{1,19}0*$)\\d{0,12}\\.\\d{0,6}0*$)"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Length M"
+          },
+          "width_m": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 10000000000.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,12}|(?=[\\d.]{1,19}0*$)\\d{0,12}\\.\\d{0,6}0*$)"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Width M"
+          },
+          "waste_percent": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,3}|(?=[\\d.]{1,10}0*$)\\d{0,3}\\.\\d{0,6}0*$)"
+              }
+            ],
+            "title": "Waste Percent",
+            "default": "10"
+          },
+          "budget_clp": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 1000000000000000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget Clp"
+          },
+          "preferred_category": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "ceramic",
+                  "laminate"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preferred Category"
+          },
+          "preferred_source": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "sodimac",
+                  "easy"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preferred Source"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "room_id"
+        ],
+        "title": "CurrentRoom"
+      },
       "FloorBudgetRequest": {
         "properties": {
           "rooms": {
@@ -654,6 +807,156 @@
         ],
         "title": "FloorBudgetResponse"
       },
+      "FloorRecommendationsRequest": {
+        "properties": {
+          "budget_clp": {
+            "type": "integer",
+            "maximum": 1000000000000000.0,
+            "minimum": 0.0,
+            "title": "Budget Clp"
+          },
+          "room": {
+            "$ref": "#/components/schemas/CurrentRoom"
+          },
+          "other_rooms": {
+            "items": {
+              "$ref": "#/components/schemas/OtherRoom"
+            },
+            "type": "array",
+            "maxItems": 99,
+            "title": "Other Rooms"
+          },
+          "publications": {
+            "items": {
+              "$ref": "#/components/schemas/RecommendationPublication"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "title": "Publications"
+          },
+          "exclude": {
+            "items": {
+              "type": "string",
+              "maxLength": 256,
+              "minLength": 1
+            },
+            "type": "array",
+            "maxItems": 40,
+            "title": "Exclude"
+          },
+          "selected_publication_key": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 256,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selected Publication Key"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "budget_clp",
+          "room",
+          "publications"
+        ],
+        "title": "FloorRecommendationsRequest"
+      },
+      "FloorRecommendationsResponse": {
+        "properties": {
+          "available_budget_clp": {
+            "type": "integer",
+            "title": "Available Budget Clp"
+          },
+          "provisional_budget": {
+            "type": "boolean",
+            "title": "Provisional Budget"
+          },
+          "empty_reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "no_calculable_options",
+                  "all_dismissed"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Empty Reason"
+          },
+          "suggestions": {
+            "items": {
+              "$ref": "#/components/schemas/FloorSuggestion"
+            },
+            "type": "array",
+            "title": "Suggestions"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "available_budget_clp",
+          "provisional_budget",
+          "empty_reason",
+          "suggestions"
+        ],
+        "title": "FloorRecommendationsResponse"
+      },
+      "FloorSuggestion": {
+        "properties": {
+          "publication_key": {
+            "type": "string",
+            "title": "Publication Key"
+          },
+          "boxes": {
+            "type": "integer",
+            "title": "Boxes"
+          },
+          "total_clp": {
+            "type": "integer",
+            "title": "Total Clp"
+          },
+          "fits_budget": {
+            "type": "boolean",
+            "title": "Fits Budget"
+          },
+          "budget_excess_clp": {
+            "type": "integer",
+            "title": "Budget Excess Clp"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Reasons"
+          },
+          "price_stale": {
+            "type": "boolean",
+            "title": "Price Stale"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "publication_key",
+          "boxes",
+          "total_clp",
+          "fits_budget",
+          "budget_excess_clp",
+          "reasons",
+          "price_stale"
+        ],
+        "title": "FloorSuggestion"
+      },
       "GroupResult": {
         "properties": {
           "source": {
@@ -803,6 +1106,111 @@
         ],
         "title": "NormalizeResult"
       },
+      "OtherRoom": {
+        "properties": {
+          "room_id": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Room Id"
+          },
+          "area_m2": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 10000000000.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,12}|(?=[\\d.]{1,19}0*$)\\d{0,12}\\.\\d{0,6}0*$)"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Area M2"
+          },
+          "length_m": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 10000000000.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,12}|(?=[\\d.]{1,19}0*$)\\d{0,12}\\.\\d{0,6}0*$)"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Length M"
+          },
+          "width_m": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 10000000000.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,12}|(?=[\\d.]{1,19}0*$)\\d{0,12}\\.\\d{0,6}0*$)"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Width M"
+          },
+          "waste_percent": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,3}|(?=[\\d.]{1,10}0*$)\\d{0,3}\\.\\d{0,6}0*$)"
+              }
+            ],
+            "title": "Waste Percent",
+            "default": "10"
+          },
+          "budget_clp": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 1000000000000000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget Clp"
+          },
+          "publication": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PublicationSnapshot"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "room_id"
+        ],
+        "title": "OtherRoom"
+      },
       "Publication": {
         "properties": {
           "publication_key": {
@@ -902,7 +1310,8 @@
           "coverage_per_box_m2": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
               },
               {
                 "type": "null"
@@ -913,7 +1322,8 @@
           "price_per_m2_clp": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
               },
               {
                 "type": "null"
@@ -924,7 +1334,8 @@
           "reported_price_m2_clp": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
               },
               {
                 "type": "null"
@@ -1050,7 +1461,8 @@
                 "exclusiveMinimum": 0.0
               },
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,12}|(?=[\\d.]{1,19}0*$)\\d{0,12}\\.\\d{0,6}0*$)"
               },
               {
                 "type": "null"
@@ -1135,7 +1547,8 @@
           "validity_percent": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
               },
               {
                 "type": "null"
@@ -1146,7 +1559,8 @@
           "duplicates_percent": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
               },
               {
                 "type": "null"
@@ -1157,6 +1571,105 @@
         },
         "type": "object",
         "title": "QualityMetrics"
+      },
+      "RecommendationPublication": {
+        "properties": {
+          "publication_key": {
+            "type": "string",
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Publication Key"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "sodimac",
+              "easy"
+            ],
+            "title": "Source"
+          },
+          "price_per_box_clp": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 1000000000000000.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Per Box Clp"
+          },
+          "coverage_per_box_m2": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 10000000000.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,12}|(?=[\\d.]{1,19}0*$)\\d{0,12}\\.\\d{0,6}0*$)"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coverage Per Box M2"
+          },
+          "currency": {
+            "type": "string",
+            "const": "CLP",
+            "title": "Currency"
+          },
+          "price_type": {
+            "type": "string",
+            "const": "public",
+            "title": "Price Type",
+            "default": "public"
+          },
+          "checked_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Checked At"
+          },
+          "availability": {
+            "type": "string",
+            "enum": [
+              "available",
+              "unavailable",
+              "unknown"
+            ],
+            "title": "Availability",
+            "default": "unknown"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "ceramic",
+              "laminate"
+            ],
+            "title": "Category"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "publication_key",
+          "source",
+          "currency",
+          "checked_at",
+          "name",
+          "category"
+        ],
+        "title": "RecommendationPublication"
       },
       "RoomBudgetRequest": {
         "properties": {
@@ -1174,7 +1687,8 @@
                 "exclusiveMinimum": 0.0
               },
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,12}|(?=[\\d.]{1,19}0*$)\\d{0,12}\\.\\d{0,6}0*$)"
               },
               {
                 "type": "null"
@@ -1190,7 +1704,8 @@
                 "exclusiveMinimum": 0.0
               },
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,12}|(?=[\\d.]{1,19}0*$)\\d{0,12}\\.\\d{0,6}0*$)"
               },
               {
                 "type": "null"
@@ -1206,7 +1721,8 @@
                 "exclusiveMinimum": 0.0
               },
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,12}|(?=[\\d.]{1,19}0*$)\\d{0,12}\\.\\d{0,6}0*$)"
               },
               {
                 "type": "null"
@@ -1222,7 +1738,8 @@
                 "minimum": 0.0
               },
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,3}|(?=[\\d.]{1,10}0*$)\\d{0,3}\\.\\d{0,6}0*$)"
               }
             ],
             "title": "Waste Percent",
@@ -1304,16 +1821,19 @@
           },
           "area_m2": {
             "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Area M2"
           },
           "waste_percent": {
             "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Waste Percent"
           },
           "required_area_m2": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
               },
               {
                 "type": "null"
@@ -1324,7 +1844,8 @@
           "coverage_per_box_m2": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
               },
               {
                 "type": "null"
@@ -1357,7 +1878,8 @@
           "purchased_area_m2": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
               },
               {
                 "type": "null"
@@ -1494,6 +2016,13 @@
           "type"
         ],
         "title": "ValidationError"
+      }
+    },
+    "securitySchemes": {
+      "MaterialsToken": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Materials-Token"
       }
     }
   }

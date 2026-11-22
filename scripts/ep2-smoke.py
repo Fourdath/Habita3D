@@ -12,6 +12,7 @@ import json
 import os
 from pathlib import Path
 import urllib.error
+import urllib.parse
 import urllib.request
 from uuid import uuid4
 from zoneinfo import ZoneInfo
@@ -27,7 +28,11 @@ def main():
     parser.add_argument("--base-url", default="http://127.0.0.1:8080")
     parser.add_argument("--disposable-fixtures", action="store_true",
                         help="Write synthetic test captures into a disposable database only")
+    parser.add_argument("--adaptive-fixtures", action="store_true",
+                        help="Verify suggestions and price reconfirmation after importing disposable fixtures")
     args = parser.parse_args()
+    if args.adaptive_fixtures and not args.disposable_fixtures:
+        parser.error("--adaptive-fixtures needs --disposable-fixtures")
     base = args.base_url.rstrip("/")
     opener = urllib.request.build_opener(NoRedirect)
 
@@ -140,15 +145,75 @@ def main():
         assert updated_budget["total_cost_clp"] == expected_boxes * (selected["price_per_box_clp"] + 2000)
         assert updated_budget["rooms"][0]["publication_key"] == key
         call(project_path + f"/rooms/{room['id']}", "PATCH", {"publicationKey": None}, other_auth, 404)
-        call(project_path + "/rooms", "POST", {"name": "Bedroom", "areaMode": "area", "areaM2": "8"}, auth, 201)
+        bedroom = call(project_path + "/rooms", "POST", {
+            "name": "Bedroom", "areaMode": "area", "areaM2": "8", "budgetClp": 100000,
+        }, auth, 201)
         partial = call(project_path + "/budget", headers=auth)
         assert partial["total_cost_clp"] is None and partial["status"] == "partial"
         assert len(partial["unselected_room_ids"]) == 1
+        if args.adaptive_fixtures:
+            verify_adaptation(call, capture, operator, project_path, room, bedroom, auth, other_auth,
+                              updated_budget["total_cost_clp"])
     finally:
         call(project_path, "DELETE", headers=auth, expected=204)
         call("/api/auth/logout", "POST", headers=auth, expected=204)
         call("/api/auth/logout", "POST", headers=other_auth, expected=204)
     print("EP2 integration passed: idempotent import, history, retention, owner isolation, rooms and real FastAPI budgets.")
+
+
+def verify_adaptation(call, capture, operator, project_path, living, bedroom, auth, other_auth, committed):
+    room_path = f"{project_path}/rooms/{bedroom['id']}"
+    suggestions_path = room_path + "/suggestions"
+    living_path = f"{project_path}/rooms/{living['id']}/suggestions"
+    settings_path = project_path + "/suggestions/settings"
+    accept_path = suggestions_path + "/accept"
+
+    call(suggestions_path, headers=other_auth, expected=404)
+    call(project_path, "PATCH", {"budgetClp": committed + 80000}, auth)
+    initial = call(suggestions_path, headers=auth)
+    assert initial["availableBudgetClp"] == 80000 and not initial["provisionalBudget"]
+    assert len(initial["suggestions"]) == 2
+    assert call(living_path, headers=auth)["provisionalBudget"] is True
+
+    for category, source in [("ceramic", "sodimac"), ("laminate", "easy")]:
+        preferred = call(suggestions_path + "/preferences", "PATCH", {
+            "preferredCategory": category, "preferredSource": source,
+        }, auth)
+        assert preferred["preferredCategory"] == category and preferred["preferredSource"] == source
+        assert preferred["publicationKey"] is None
+        adjusted = call(suggestions_path, headers=auth)["suggestions"]
+        assert adjusted[0]["category"] == category and adjusted[0]["source"] == source
+    call(project_path, "PATCH", {"budgetClp": committed + 1000}, auth)
+    over_budget = call(suggestions_path, headers=auth)["suggestions"]
+    assert all(not candidate["fitsBudget"] for candidate in over_budget)
+    excesses = [candidate["budgetExcessClp"] for candidate in over_budget]
+    assert excesses == sorted(excesses) and len(excesses) == 2
+    call(project_path, "PATCH", {"budgetClp": committed + 80000}, auth)
+    adjusted = call(suggestions_path, headers=auth)["suggestions"]
+    preferred_floor = adjusted[0]
+    excluded_keys = urllib.parse.urlencode([("exclude", x["publicationKey"]) for x in adjusted])
+    assert call(suggestions_path + "?" + excluded_keys, headers=auth)["emptyReason"] == "all_dismissed"
+    assert call(suggestions_path + "?exclude=" + preferred_floor["publicationKey"], headers=auth)["suggestions"][0]["publicationKey"] != preferred_floor["publicationKey"]
+    assert preferred_floor["publicationKey"] in {x["publicationKey"] for x in call(living_path, headers=auth)["suggestions"]}
+
+    call(settings_path, "PATCH", {"suggestionsEnabled": False}, auth)
+    assert call(suggestions_path, headers=auth, expected=409)["code"] == "suggestions_disabled"
+    assert call(project_path + "/budget", headers=auth)["status"] == "partial"
+    call(settings_path, "PATCH", {"suggestionsEnabled": True}, auth)
+    call("/api/materials/import", "POST", capture(5, price_delta=3000), operator, 201)
+    proposal = {"publicationKey": preferred_floor["publicationKey"], "quoteId": preferred_floor["quoteId"]}
+    changed = call(accept_path, "POST", proposal, auth, 409)
+    assert changed["status"] == "price_changed"
+    assert changed["quote"]["totalClp"] > preferred_floor["totalClp"]
+    unchanged = call(project_path, headers=auth)
+    assert next(item for item in unchanged["rooms"] if item["id"] == bedroom["id"])["publicationKey"] is None
+    proposal["quoteId"] = changed["quote"]["quoteId"]
+    accepted = call(accept_path, "POST", proposal, auth)
+    assert accepted["status"] == "accepted" and accepted["room"]["publicationKey"] == proposal["publicationKey"]
+    assert call(project_path + "/budget", headers=auth)["status"] == "complete"
+    saved = next(item for item in call(project_path, headers=auth)["rooms"] if item["id"] == bedroom["id"])
+    assert saved["preferredSource"] == "easy" and saved["publicationKey"] == proposal["publicationKey"]
+    print(f"Adaptive integration passed: owner isolation, preference ranking, room exclusion, project switch and price confirmation {preferred_floor['totalClp']} -> {changed['quote']['totalClp']} CLP.")
 
 
 if __name__ == "__main__":

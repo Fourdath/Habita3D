@@ -1,5 +1,6 @@
 import { BadGatewayException, ServiceUnavailableException } from '@nestjs/common';
 import { PythonService } from './python.service.js';
+import type { FloorSuggestionRequest } from './floor-suggestions-contract.js';
 
 const payload = { rooms: [{ room_id: 'r1', area_m2: '10', waste_percent: '10', publication: {
   publication_key: 'p1', source: 'easy', currency: 'CLP', price_per_box_clp: 1000,
@@ -17,14 +18,16 @@ const result = { currency: 'CLP', status: 'complete', rooms: [{
 
 describe('Python integration', () => {
   const service = new PythonService();
+  const internalToken = 'only-a-test-operator-token';
+  beforeEach(() => { vi.stubEnv('MATERIALS_API_TOKEN', internalToken); });
   afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 
-  it('accepts the budget contract and propagates correlation without credentials', async () => {
+  it('accepts the budget contract and propagates correlation and the internal credential', async () => {
     const fetch = vi.fn().mockResolvedValue(Response.json(result));
     vi.stubGlobal('fetch', fetch);
     await expect(service.calculateBudget(payload, 'request-1')).resolves.toEqual(result);
     expect(fetch.mock.calls[0][1].headers['X-Request-ID']).toBe('request-1');
-    expect(fetch.mock.calls[0][1].headers['X-Materials-Token']).toBeUndefined();
+    expect(fetch.mock.calls[0][1].headers['X-Materials-Token']).toBe(internalToken);
     expect(fetch.mock.calls[0][1].redirect).toBe('error');
   });
 
@@ -68,5 +71,34 @@ describe('Python integration', () => {
     const fetch = vi.fn(); vi.stubGlobal('fetch', fetch);
     await expect(async () => service.capture({})).rejects.toBeInstanceOf(ServiceUnavailableException);
     expect(fetch).not.toHaveBeenCalled();
+  });
+
+  const suggestions: FloorSuggestionRequest = {
+    budget_clp: 10_000,
+    room: { room_id: 'r1', area_m2: '10', waste_percent: '10', budget_clp: 8_000, preferred_category: 'ceramic', preferred_source: null },
+    other_rooms: [],
+    publications: [{ ...payload.rooms[0].publication, price_type: 'public', category: 'ceramic', name: 'Piso de prueba' }],
+  };
+  const ranking = { available_budget_clp: 8_000, provisional_budget: false, empty_reason: null, suggestions: [{
+    publication_key: 'p1', boxes: 6, total_clp: 6_000, fits_budget: true, budget_excess_clp: 0,
+    reasons: ['Cabe en el presupuesto disponible'], price_stale: false,
+  }] };
+  it('validates and authenticates recommendations and propagates their correlation ID', async () => {
+    const fetch = vi.fn().mockResolvedValue(Response.json(ranking));
+    vi.stubGlobal('fetch', fetch);
+    await expect(service.recommendFloors(suggestions, 'request-2')).resolves.toEqual(ranking);
+    expect((fetch.mock.calls[0][0] as URL).pathname).toBe('/recommendations/floors');
+    expect(fetch.mock.calls[0][1].headers['X-Request-ID']).toBe('request-2');
+    expect(fetch.mock.calls[0][1].headers['X-Materials-Token']).toBe(internalToken);
+  });
+
+  it.each([
+    { ...ranking, available_budget_clp: 9_999 },
+    { ...ranking, suggestions: [{ ...ranking.suggestions[0], publication_key: 'outside-catalogue' }] },
+    { ...ranking, suggestions: [{ ...ranking.suggestions[0], total_clp: 5_999 }] },
+    { ...ranking, suggestions: [{ ...ranking.suggestions[0], budget_excess_clp: 1 }] },
+  ])('returns a controlled outage on an invalid recommendation response', async bad => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json(bad)));
+    await expect(service.recommendFloors(suggestions)).rejects.toMatchObject({ response: { code: 'recommendations_unavailable' } });
   });
 });

@@ -31,6 +31,17 @@ variable "frontend_port" {
   }
 }
 
+variable "app_version" {
+  description = "Commit reported by readiness when rehearsal image tags include an isolation prefix."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.app_version == null || can(regex("^[a-f0-9]{40}$", var.app_version))
+    error_message = "Use the full Git commit SHA when configuring app_version."
+  }
+}
+
 variable "database_name" {
   description = "PostgreSQL database name used only by staging."
   type        = string

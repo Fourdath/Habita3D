@@ -216,8 +216,8 @@ jobs:
       # Build success alone does not prove that migrations or service calls work.
       - run: docker compose up -d --wait --wait-timeout 180
       - run: bash scripts/ep1-smoke.sh
-      - name: Persisted EP2 catalogue and project integration (no retailer network)
-        run: python3 scripts/ep2-smoke.py --disposable-fixtures
+      - name: Catalogue, projects and adaptive recommendations (disposable fixtures)
+        run: python3 scripts/ep2-smoke.py --disposable-fixtures --adaptive-fixtures
 
       # Scan actual runtime images, including OS and language dependencies.
       # Pinned to the verified v0.36.0 release commit (not a mutable tag).

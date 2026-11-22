@@ -1,6 +1,6 @@
 # Contrato v1 de sugerencias por habitación
 
-Propuesta de integración entre Angular y NestJS para revisar con Cris. La rama base `d4b1ebc` contiene el catálogo persistido, el presupuesto por cajas y la comparación demostrativa de EP1. Las rutas de este documento están conectadas en el cliente y requieren la implementación del Bloque 1 para funcionar con datos reales.
+Angular consulta a NestJS para obtener sugerencias por habitación. NestJS usa el catálogo persistido y solicita el cálculo al servicio FastAPI con una credencial interna. El esquema para la integración está disponible en `GET /api/projects/suggestions/openapi.json`.
 
 ## Rutas y autenticación
 
@@ -21,7 +21,7 @@ Todas las operaciones usan JSON y `Authorization: Bearer <sesión Habita3D>`. Ne
 ## Responsabilidad de los datos
 
 - Angular envía identificadores, preferencias, ajuste del proyecto, descartes y la cotización que el usuario acaba de ver. Las dimensiones, el margen y los presupuestos se guardan mediante las rutas EP2 existentes. La interfaz muestra los importes, estados, explicaciones y el orden devueltos.
-- NestJS obtiene propietario, proyecto, habitación, preferencias, costos comprometidos y publicaciones con su última observación persistida. Pasa el contexto y las publicaciones a la recomendación interna de FastAPI, con la credencial interna y el identificador de solicitud. Ninguna de estas operaciones inicia capturas ni consulta directamente a las tiendas.
+- NestJS obtiene propietario, proyecto, habitación, preferencias y publicaciones con su última comprobación persistida. Envía a FastAPI las publicaciones seleccionadas en las demás habitaciones y hasta 40 candidatos del catálogo. La solicitud interna `POST /recommendations/floors` lleva los encabezados `X-Materials-Token` y `X-Request-ID`.
 - El motor usa cajas completas y el menor valor entre saldo global y límite de habitación, si existe. Marca el saldo provisional si faltan costos de otras habitaciones. Excluye productos agotados o sin costo calculable, conserva la disponibilidad desconocida como tal y aplica la prioridad del plan final por tipo, tienda y costo. Si ninguna opción cabe, devuelve las más cercanas por exceso. NestJS valida la respuesta interna y emite el contrato público.
 - NestJS genera una `quoteId` opaca vinculada a sesión o propietario, proyecto, habitación, publicación, entradas del cálculo y observación de precio. Al aceptar, recalcula con el último precio persistido y valida la cotización dentro de una operación consistente con el guardado. Si cambió, responde con la nueva cotización y conserva la selección previa. Repetir una aceptación válida para la misma publicación debe conservar una sola relación de piso.
 
@@ -96,9 +96,8 @@ Angular muestra $80.000 y $85.000 y espera la decisión explícita. Si el usuari
 
 | HTTP | Ejemplo de respuesta | Estado visible |
 | --- | --- | --- |
-| 400 | `{"code":"invalid_recommendation_request"}` | Revisar datos de la operación |
-| 401 | `{"code":"session_expired"}` | Volver a iniciar sesión y recuperar el recorrido |
-| 403 | `{"code":"forbidden"}` | La cuenta carece del permiso general requerido |
+| 400 | Mensajes de validación de NestJS o `{"code":"invalid_recommendation_request"}` para una cotización inválida | Revisar datos de la operación |
+| 401 | Respuesta de sesión requerida o vencida | Volver a iniciar sesión y recuperar el recorrido |
 | 404 | `{"code":"room_not_found"}` | Habitación inexistente o ajena |
 | 409 | `{"code":"suggestions_disabled"}` | Cambio de configuración concurrente |
 | 409 | `{"code":"publication_unavailable"}` | La publicación dejó de ser elegible. Consultar sugerencias de nuevo |
@@ -106,7 +105,7 @@ Angular muestra $80.000 y $85.000 y espera la decisión explícita. Si el usuari
 | 429 | `{"code":"rate_limited"}` | Esperar y reintentar |
 | 503 | `{"code":"recommendations_unavailable"}` | El servicio no está disponible. Reintentar después de recuperarlo |
 
-La pantalla incluye estados de carga y falta de conexión. Si fallan las sugerencias, conserva el piso guardado y permite navegar al catálogo. Antes de aprobar la integración, contrastar los códigos, DTO, autenticación y ejemplos con OpenAPI de NestJS y probar la misma secuencia desde navegador, PWA y Android.
+La pantalla incluye estados de carga y falta de conexión. Si fallan las sugerencias, conserva el piso guardado y permite navegar al catálogo. El contrato se puede comprobar en la especificación OpenAPI de NestJS y en las pruebas de persistencia de `backend/test/persistence.e2e-spec.ts`.
 
 ## Comprobación del cliente durante el desarrollo
 
@@ -117,4 +116,4 @@ En la rama local del Bloque 2, con base `d4b1ebc`, pasaron 20 pruebas de API, re
 3. Aceptar la propuesta de $80.000. Responder con `409` y la cotización de $85.000. Comprobar que se mantiene la selección previa hasta confirmar y que el segundo envío usa la nueva cotización. Verificar actualización del presupuesto y restauración de la selección después de recargar.
 4. Responder con `503` al consultar otra habitación. Recuperar el servicio simulado y pulsar «Volver a consultar». Desactivar las sugerencias y comprobar que el botón de catálogo mueve el foco al catálogo funcional.
 
-Ambos tamaños completaron el recorrido sin errores de JavaScript sin capturar. Quedan pendientes la revisión del contrato con Cris y la repetición contra las rutas reales de NestJS y FastAPI.
+Ambos tamaños completaron el recorrido sin errores de JavaScript sin capturar. La prueba integrada de NestJS usa PostgreSQL temporal y un motor de prueba controlado para verificar el cambio concurrente de precio, la reconfirmación y la persistencia de la selección.

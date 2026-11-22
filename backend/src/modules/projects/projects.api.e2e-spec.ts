@@ -98,6 +98,10 @@ describe('EP2 projects authorization and DTOs (HTTP)', () => {
     ['patch', '/api/projects/1'],
     ['delete', '/api/projects/1'],
     ['get', '/api/projects/1/budget'],
+    ['patch', '/api/projects/1/suggestions/settings'],
+    ['get', `/api/projects/1/rooms/${roomId}/suggestions`],
+    ['patch', `/api/projects/1/rooms/${roomId}/suggestions/preferences`],
+    ['post', `/api/projects/1/rooms/${roomId}/suggestions/accept`],
     ['post', '/api/projects/1/rooms'],
     ['patch', `/api/projects/1/rooms/${roomId}`],
     ['delete', `/api/projects/1/rooms/${roomId}`],
@@ -187,5 +191,17 @@ describe('EP2 projects authorization and DTOs (HTTP)', () => {
       .send({ name: 'Demo', areaM2: -1, budgetClp: 100 })
       .expect(400);
     expect(create).not.toHaveBeenCalled();
+  });
+
+  it('publishes the v1 contract and rejects invalid suggestion filters and changes', async () => {
+    const server = app.getHttpServer();
+    const contract = await request(server).get('/api/projects/suggestions/openapi.json').expect(200);
+    expect(contract.body.openapi).toBe('3.0.3');
+    expect(contract.body.paths['/projects/{id}/rooms/{roomId}/suggestions/accept'].post.responses['409']).toBeDefined();
+    await request(server).get(`/api/projects/1/rooms/${roomId}/suggestions?exclude=bad`).set('Authorization', 'Bearer owner').expect(400);
+    await request(server).patch('/api/projects/1/suggestions/settings').set('Authorization', 'Bearer owner').send({ suggestionsEnabled: 'false' }).expect(400);
+    await request(server).patch(`/api/projects/1/rooms/${roomId}/suggestions/preferences`)
+      .set('Authorization', 'Bearer owner').send({ preferredCategory: null }).expect(400);
+    expect(findFirst).not.toHaveBeenCalled();
   });
 });

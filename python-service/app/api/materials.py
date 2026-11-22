@@ -1,30 +1,20 @@
 """Block 1 processing contract; data management through NestJS follows in block 2."""
 
 import os
-import secrets
 from datetime import datetime
 from pathlib import Path
 from typing import Annotated, Any
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator
 
+from app.api.internal_auth import require_materials_token
 from app.services.capture_store import CaptureBusyError, CaptureStore
 from app.services.captures import CaptureRequest, CaptureResult, capture
 from app.services.materials import Publication, normalize_record
 
 router = APIRouter(prefix="/materials", tags=["materials"])
-
-
-def require_capture_token(x_materials_token: Annotated[str | None, Header()] = None) -> None:
-    configured = os.environ.get("MATERIALS_API_TOKEN", "")
-    if len(configured) < 24 or configured.startswith("replace-"):
-        raise HTTPException(503, "Configure MATERIALS_API_TOKEN (mínimo 24 caracteres)")
-    if not x_materials_token or not secrets.compare_digest(
-        configured.encode("utf-8"), x_materials_token.encode("utf-8")
-    ):
-        raise HTTPException(401, "Credencial de captura inválida")
 
 
 def get_store() -> CaptureStore:
@@ -107,7 +97,7 @@ def normalize(request: NormalizeRequest) -> NormalizeResult:
 
 
 @router.post(
-    "/captures", response_model=CaptureResult, dependencies=[Depends(require_capture_token)]
+    "/captures", response_model=CaptureResult, dependencies=[Depends(require_materials_token)]
 )
 async def create_capture(
     request: CaptureApiRequest,
@@ -129,7 +119,7 @@ async def create_capture(
         raise HTTPException(503, "No se pudo leer o guardar la evidencia local de captura") from exc
 
 
-@router.get("/status", dependencies=[Depends(require_capture_token)])
+@router.get("/status", dependencies=[Depends(require_materials_token)])
 def capture_status(store: CaptureStore = Depends(get_store)) -> dict:
     """Local acquisition evidence only, not the future application's catalogue API."""
     try:

@@ -5,7 +5,14 @@ están implementados **los bloques 1 y 2**: adquisición/procesamiento en Python
 catálogo e historial en PostgreSQL, proyectos privados por habitación y presupuesto
 calculado con los últimos precios persistidos. El **bloque 3 de Angular/3D** integra
 sesión, proyectos, habitaciones, catálogo, historial y suelos orientativos por habitación.
-La demo libre EP1 conserva sus datos demostrativos, separados del presupuesto EP2.
+El presupuesto de pisos usa los precios guardados de las tiendas. El visor ofrece
+una estimación demostrativa de planchas y revestimientos vinculada al plano.
+
+## Entrega final y revisión local
+
+- [Operación en Windows](docs/final/operacion-windows.md), [PWA y Android](docs/final/plataformas-windows.md) y [evidencias](docs/final/evidencias-windows.md).
+- [Contrato de sugerencias por habitación](docs/final/contrato-sugerencias-v1.md) y [decisión de arquitectura, datos y permisos](docs/adr/0004-recomendaciones-adaptativas.md).
+- CI prueba la integración con fixtures desechables. CD despliega desde `main` al runner de Windows cuando la CI de esa SHA ha aprobado y el entorno está habilitado.
 
 ## Estado de la EP2
 
@@ -66,9 +73,9 @@ del equipo; el ensayo local no sustituye el primer despliegue automático del ru
 
 | Carpeta | Responsabilidad |
 | --- | --- |
-| `frontend/` | Ionic, Angular, TypeScript y visor 3D; Capacitor está configurado, sin plataformas nativas añadidas. |
-| `backend/` | API NestJS, autorización por propietario, catálogo, captura coordinada y persistencia con Prisma. |
-| `python-service/` | FastAPI: adquisición y normalización de pisos, métricas y presupuestos por cajas; conserva la demo EP1. |
+| `frontend/` | Ionic, Angular, visor 3D, PWA y proyecto Android con Capacitor. |
+| `backend/` | API NestJS, autorización por propietario, catálogo, captura coordinada, cotizaciones y persistencia con Prisma. |
+| `python-service/` | FastAPI: adquisición, normalización, cálculo de cajas y recomendación adaptativa, además del contrato demostrativo de EP1. |
 | `infrastructure/terraform/staging/` | Staging aislado en Docker local, plan validado y despliegue Windows preparado. |
 | `docs/` | Arquitectura, modelo de datos, guía de EP1 y acuerdos/planificación de EP2. |
 | `.github/workflows/ci.yml` | Calidad, seguridad, compilación, integración con Compose y plan Terraform. |
@@ -91,7 +98,7 @@ Las variables de Compose están documentadas en [.env.example](.env.example):
 | `POSTGRES_PASSWORD` | Obligatoria: reemplace el valor de ejemplo por una contraseña local única, apta para una URL. |
 | `POSTGRES_USER`, `POSTGRES_DB` | Opcionales: usuario y base de datos; predeterminado `habita3d`. |
 | `POSTGRES_PORT`, `BACKEND_PORT`, `PYTHON_SERVICE_PORT`, `FRONTEND_PORT` | Puertos del host; predeterminados 5432, 3000, 8000 y 8080. |
-| `MATERIALS_API_TOKEN` | Credencial interna de al menos 24 caracteres para captura/importación; compartida por NestJS y FastAPI. |
+| `MATERIALS_API_TOKEN` | Credencial interna de al menos 24 caracteres para captura, procesamiento y recomendaciones, compartida por NestJS y FastAPI. |
 | `MATERIALS_SCHEDULE_ENABLED` | `false` por defecto; activar expresamente para las franjas 08/12/16 de Chile. |
 | `APP_VERSION`, `IMAGE_TAG` | Versión desplegada y etiqueta de imágenes; CI/CD usa el commit. |
 | `NODE_ENV` | Entorno de NestJS; predeterminado `development` en Compose. |
@@ -164,7 +171,7 @@ de `main` está activa según la consulta a GitHub del 24/10/2026. Los administr
 - La API ofrece registro, inicio de sesión, consulta de sesión y cierre de sesión.
   Las rutas EP2 de proyectos y habitaciones requieren sesión y autorizan por propietario; la vista previa demostrativa EP1 continúa pública.
 - El visor, el presupuesto del navegador y la comparación de FastAPI usan datos
-  locales de demostración en la demo libre EP1. En los proyectos EP2 (`/projects`) el catálogo, el presupuesto y los suelos del visor usan los precios web persistidos. El motor adaptativo completo es posterior; su especificación está en [diseño adaptativo](docs/ep2/diseno-adaptativo.md).
+  locales de demostración en la demo libre EP1. En los proyectos EP2 (`/projects`) el catálogo, el presupuesto y los suelos del visor usan los precios web persistidos. Las sugerencias por habitación usan esos mismos datos y el saldo del proyecto. La aceptación vuelve a comprobar la cotización. Véase el [contrato de sugerencias](docs/final/contrato-sugerencias-v1.md).
 - Terraform define un staging local independiente de Compose. Su plan se verifica
   en CI; para EP2 se aplicaron y comprobaron 13 recursos en un staging local aislado.
   El despliegue del runner Windows y la demo completa siguen pendientes; no hay URL pública.

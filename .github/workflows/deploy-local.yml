@@ -29,6 +29,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       commit: ${{ steps.gate.outputs.commit }}
+      ci_run_url: ${{ steps.gate.outputs.ci_run_url }}
     steps:
       - name: Require a successful main push CI for the exact current commit
         id: gate
@@ -45,12 +46,13 @@ jobs:
               ...repo, workflow_id: 'ci.yml', head_sha: sha,
               event: 'push', status: 'success', per_page: 100
             });
-            const trusted = runs.data.workflow_runs.some(run =>
+            const trusted = runs.data.workflow_runs.find(run =>
               run.head_sha === sha && run.head_branch === 'main' &&
               run.head_repository?.full_name === `${repo.owner}/${repo.repo}` &&
               run.conclusion === 'success');
             if (!trusted) throw new Error('The exact main commit has no successful push CI');
             core.setOutput('commit', sha);
+            core.setOutput('ci_run_url', trusted.html_url);
 
   deploy:
     name: Deploy on designated Windows computer
@@ -61,11 +63,17 @@ jobs:
     defaults:
       run:
         shell: pwsh
-    env:
-      TF_VAR_database_password: ${{ secrets.STAGING_DATABASE_PASSWORD }}
-      TF_VAR_materials_api_token: ${{ secrets.STAGING_MATERIALS_API_TOKEN }}
-      TF_VAR_materials_schedule_enabled: ${{ vars.STAGING_MATERIALS_SCHEDULE_ENABLED || 'false' }}
     steps:
+      - name: Confirm main after the runner starts
+        uses: actions/github-script@v7
+        env:
+          DEPLOY_VERSION: ${{ needs.verify-commit.outputs.commit }}
+        with:
+          script: |
+            const { data } = await github.rest.git.getRef({ ...context.repo, ref: 'heads/main' });
+            if (data.object.sha !== process.env.DEPLOY_VERSION) {
+              throw new Error('The verified commit was superseded while awaiting deployment');
+            }
       - uses: actions/checkout@v4
         with:
           ref: ${{ needs.verify-commit.outputs.commit }}
@@ -77,10 +85,19 @@ jobs:
       - name: Apply isolated local infrastructure, migrate and verify
         env:
           DEPLOY_VERSION: ${{ needs.verify-commit.outputs.commit }}
+          CI_RUN_URL: ${{ needs.verify-commit.outputs.ci_run_url }}
+          CD_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          TF_VAR_database_password: ${{ secrets.STAGING_DATABASE_PASSWORD }}
+          TF_VAR_materials_api_token: ${{ secrets.STAGING_MATERIALS_API_TOKEN }}
+          TF_VAR_materials_schedule_enabled: ${{ vars.STAGING_MATERIALS_SCHEDULE_ENABLED || 'false' }}
           STAGING_STATE_DIRECTORY: ${{ vars.STAGING_STATE_DIRECTORY || 'C:\Habita3D-staging' }}
           STAGING_FRONTEND_PORT: ${{ vars.STAGING_FRONTEND_PORT || '18080' }}
+          STAGING_READINESS_WARNING_MS: ${{ vars.STAGING_READINESS_WARNING_MS || '2000' }}
         run: >-
           ./scripts/deploy-windows.ps1
           -Version $env:DEPLOY_VERSION
           -StateDirectory $env:STAGING_STATE_DIRECTORY
           -FrontendPort ([int]$env:STAGING_FRONTEND_PORT)
+          -ReadinessWarningMs ([int]$env:STAGING_READINESS_WARNING_MS)
+          -CiRunUrl $env:CI_RUN_URL
+          -DeploymentRunUrl $env:CD_RUN_URL

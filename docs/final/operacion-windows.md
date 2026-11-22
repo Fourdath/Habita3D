@@ -23,9 +23,32 @@ En el visor, prueba los estilos **Mediterráneo** y **Contemporáneo** con sus f
 
 El precio estima cajas completas. El visor representa cada publicación con un material aproximado según su categoría y los acabados reconocibles en su nombre. Los cambios de **Apariencia del piso** duran mientras se usa el visor. Guardar un producto del catálogo conserva la selección y el presupuesto del proyecto. La disponibilidad «sin confirmar» indica que la fuente no confirmó el stock. La muestra está limitada a cerámica y laminado de Sodimac y Easy para La Florida.
 
+## Ensayo local de despliegue antes del push
+
+Usa PowerShell 7.2 o posterior, Docker Desktop en modo Linux y Terraform. Ejecuta desde el checkout del commit que quieres probar. Crea un directorio de estado dedicado fuera del repositorio, con acceso limitado al operador. Utiliza credenciales distintas a las del staging del equipo. Conserva esas credenciales durante todo el ensayo para poder repetir el despliegue y verificar su respaldo.
+
+```powershell
+$estadoEnsayo = Join-Path ([IO.Path]::GetTempPath()) 'Habita3D-cd-rehearsal'
+New-Item -Path $estadoEnsayo -ItemType Directory -Force | Out-Null
+$env:TF_VAR_database_password = Read-Host 'Contraseña de la base del ensayo (mínimo 16 caracteres)' -MaskInput
+$env:TF_VAR_materials_api_token = Read-Host 'Token interno del ensayo (mínimo 24 caracteres)' -MaskInput
+$versionEnsayo = (git rev-parse HEAD).Trim()
+./scripts/deploy-windows.ps1 -Rehearsal -StateDirectory $estadoEnsayo -Version $versionEnsayo
+```
+
+Abre `http://127.0.0.1:18083` y prueba el flujo de la demo. El ensayo usa contenedores, imágenes, redes, volúmenes y estado propios. La comprobación mide el tiempo de readiness y emite un aviso por encima de 2000 ms. `last-successful-deployment.json` registra la SHA, los servicios y el ID de solicitud para consultar los logs.
+
+Repite el comando de despliegue con la misma SHA para comprobar el respaldo previo de la base existente. Verifica el archivo en un contenedor PostgreSQL desechable:
+
+```powershell
+./scripts/verify-staging-backup.ps1 -StateDirectory $estadoEnsayo -PassThru
+```
+
+`last-verified-restore.json` registra el SHA-256 del respaldo y los conteos de la base restaurada. Conserva el estado y los archivos `.dump` en el directorio protegido. Usa los reportes JSON de verificación como evidencia del ensayo.
+
 ## Staging por GitHub Actions
 
-Coordina con Fourdath el environment `habita3d-local`, el runner `self-hosted` Windows x64 con etiqueta `habita3d-staging` y los Secrets/Variables del [manual de staging](../ep2/bloque-2-staging.md#4-preparar-el-despliegue-desde-github-al-windows-del-compañero). El workflow de CD solo despliega el `main` actual si la CI de push para esa SHA aprobó y el environment permite el despliegue. Usa una instalación local del runner con acceso a Docker Desktop y al directorio protegido de estado de Terraform. El registro del runner se hace con el token temporal emitido por el repositorio.
+Coordina con Fourdath el environment `habita3d-local`, el runner `self-hosted` Windows x64 con etiqueta `habita3d-staging` y los Secrets/Variables del [manual de staging](../ep2/bloque-2-staging.md#4-preparar-el-despliegue-desde-github-al-windows-del-compañero). El workflow de CD solo despliega el `main` actual si la CI de push para esa SHA aprobó y el environment permite el despliegue. Usa una instalación local del runner con acceso a Docker Desktop y al directorio protegido de estado de Terraform. El registro del runner se hace con el token temporal emitido por el repositorio. Libera el puerto asignado antes del primer CD si la demo de Compose lo está usando. La configuración de Android debe apuntar al puerto que se elija para staging.
 
 En el host ejecuta la verificación con la SHA completa que GitHub Actions registró:
 
@@ -33,12 +56,20 @@ En el host ejecuta la verificación con la SHA completa que GitHub Actions regis
 ./scripts/verify-local.ps1 -BaseUrl http://127.0.0.1:18080 -ExpectedVersion '<SHA completa>'
 ```
 
-Registra los enlaces de CI y CD, la SHA, el resultado de readiness y la URL local. El operador ejecuta la captura manual acotada coordinada con Cris y anota el identificador, la fecha, el resultado por tienda y el conteo. Las consultas del catálogo y del recomendador usan datos persistidos.
+El resumen de GitHub Actions y el reporte local `last-successful-deployment.json` registran los enlaces de CI y CD, la SHA, la URL local, la salud y la latencia de readiness. La Variable de GitHub `STAGING_READINESS_WARNING_MS` permite ajustar el umbral del aviso. El operador ejecuta la captura manual acotada coordinada con Cris y anota el identificador, la fecha, el resultado por tienda y el conteo. Las consultas del catálogo y del recomendador usan datos persistidos.
+
+Para consultar el log de NestJS asociado a una comprobación, usa el directorio del entorno que verificaste:
+
+```powershell
+$estado = 'C:\Habita3D-staging'
+$evidencia = Get-Content -Raw (Join-Path $estado 'last-successful-deployment.json') | ConvertFrom-Json
+docker logs "$($evidencia.prefix)-backend" | Select-String -SimpleMatch $evidencia.health.readinessRequestId
+```
 
 ## Ensayo de recuperación
 
-Coordina con Cris la versión estable, el respaldo, el momento del ensayo y qué entorno se interrumpe. Comprueba el respaldo con `pg_restore --list`. Restaura en una base separada mediante `pg_restore --exit-on-error` y compara el número de proyectos, habitaciones, selecciones y publicaciones con la base de origen. Conserva el staging original mientras se comprueba el respaldo.
+Coordina con Cris la versión estable, el respaldo, el momento del ensayo y qué entorno se interrumpe. Ejecuta `verify-staging-backup.ps1` con el directorio de estado protegido para comprobar el último respaldo generado por CD y restaurarlo en un contenedor aislado. Compara los conteos del reporte con los de la base al momento del respaldo.
 
 Para el ensayo de Python en una copia Compose, abre un proyecto con un piso elegido y detén solo el servicio Python del proyecto Compose de prueba. Comprueba el aviso del presupuesto o de sugerencias, recarga el proyecto y verifica el piso guardado. Inicia de nuevo Python, comprueba readiness con `verify-local.ps1` y vuelve a consultar presupuesto y sugerencias. Anota el resultado antes, durante y después del fallo.
 
-Para revertir el staging, usa el [procedimiento de rollback](../ep2/bloque-2-staging.md#rollback) con la versión estable acordada. Comprueba compatibilidad de migraciones antes de desplegar. Registra la SHA recuperada, la salud del entorno y el estado de los datos.
+Para revertir el staging, conserva el respaldo, consulta `previous-successful-commit.txt` y comprueba con Cris la compatibilidad del esquema con la versión estable. Si el equipo decide revertir código, el commit de reversión pasa por CI en `main` y por el mismo CD protegido. Registra la SHA recuperada, la salud del entorno y el estado de los datos. [Procedimiento de rollback](../ep2/bloque-2-staging.md#rollback)

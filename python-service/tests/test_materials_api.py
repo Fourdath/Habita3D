@@ -144,6 +144,7 @@ def test_capture_then_budget_from_normalized_real_contract(api):
             ],
             "budget_clp": 50000,
         },
+        headers=headers,
     )
     assert budget.status_code == 200
     assert budget.json()["rooms"][0]["boxes"] == 6
@@ -174,6 +175,7 @@ def test_health_and_openapi_expose_new_routes_without_removing_demo(api):
     schema = client.get("/openapi.json").json()
     for path in (
         "/recommendations/compare",
+        "/recommendations/floors",
         "/floors/budget",
         "/materials/normalize",
         "/materials/captures",

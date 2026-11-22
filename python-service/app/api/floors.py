@@ -10,7 +10,7 @@ from decimal import Decimal
 from typing import Annotated, Literal
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -20,6 +20,7 @@ from pydantic import (
     model_validator,
 )
 
+from app.api.internal_auth import INTERNAL_AUTH_ERRORS, require_materials_token
 from app.services.floor_budget import calculate_floor, room_area
 
 router = APIRouter(prefix="/floors", tags=["floors"])
@@ -90,14 +91,13 @@ class PublicationSnapshot(StrictModel):
         return value
 
 
-class RoomBudgetRequest(StrictModel):
+class RoomMeasurements(StrictModel):
     room_id: Annotated[str, Field(min_length=1, max_length=100)]
     area_m2: PositiveDecimal | None = None
     length_m: PositiveDecimal | None = None
     width_m: PositiveDecimal | None = None
     waste_percent: WastePercent = Decimal("10")
     budget_clp: WholePesos | None = None
-    publication: PublicationSnapshot
 
     @field_validator("area_m2", "length_m", "width_m", "waste_percent", mode="before")
     @classmethod
@@ -112,13 +112,24 @@ class RoomBudgetRequest(StrictModel):
         return value
 
     @model_validator(mode="after")
-    def exactly_one_area_mode(self) -> "RoomBudgetRequest":
+    def exactly_one_area_mode(self) -> "RoomMeasurements":
         has_dimensions = self.length_m is not None or self.width_m is not None
         if self.area_m2 is not None and has_dimensions:
             raise ValueError("Indique área directa o largo y ancho, nunca ambos")
         if self.area_m2 is None and (self.length_m is None or self.width_m is None):
             raise ValueError("Indique área directa o ambos valores de largo y ancho")
         return self
+
+    def surface(self) -> Decimal:
+        if self.area_m2 is not None:
+            return self.area_m2
+        # The request validator guarantees both dimensions in this mode.
+        assert self.length_m is not None and self.width_m is not None
+        return room_area(length_m=self.length_m, width_m=self.width_m)
+
+
+class RoomBudgetRequest(RoomMeasurements):
+    publication: PublicationSnapshot
 
 
 class FloorBudgetRequest(StrictModel):
@@ -185,7 +196,12 @@ def budget_difference(cost: int | None, budget: int | None) -> dict:
     }
 
 
-@router.post("/budget", response_model=FloorBudgetResponse)
+@router.post(
+    "/budget",
+    response_model=FloorBudgetResponse,
+    dependencies=[Depends(require_materials_token)],
+    responses=INTERNAL_AUTH_ERRORS,
+)
 def floor_budget(request: FloorBudgetRequest) -> FloorBudgetResponse:
     """Calculate whole-box floor purchases using ordinary public CLP box prices.
 
@@ -198,11 +214,7 @@ def floor_budget(request: FloorBudgetRequest) -> FloorBudgetResponse:
     results: list[RoomBudgetResponse] = []
     for room in request.rooms:
         publication = room.publication
-        area = room.area_m2
-        if area is None:
-            # The request validator guarantees both dimensions in this mode.
-            assert room.length_m is not None and room.width_m is not None
-            area = room_area(length_m=room.length_m, width_m=room.width_m)
+        area = room.surface()
         reasons = []
         if publication.price_per_box_clp is None:
             reasons.append("missing_price")

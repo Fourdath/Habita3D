@@ -9,6 +9,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -19,7 +20,14 @@ import { CreateProjectDto } from './dto/create-project.dto.js';
 import { PreviewProjectDto } from './dto/preview-project.dto.js';
 import { ProjectFloorDto } from './dto/project-floor.dto.js';
 import { CreateRoomDto, UpdateRoomDto } from './dto/room.dto.js';
+import {
+  AcceptFloorSuggestionDto,
+  SuggestionQueryDto,
+  UpdateFloorPreferencesDto,
+  UpdateSuggestionSettingsDto,
+} from './dto/suggestions.dto.js';
 import { UpdateProjectDto } from './dto/update-project.dto.js';
+import { floorSuggestionsOpenApi } from './floor-suggestions.openapi.js';
 import { ProjectPreviewService } from './project-preview.service.js';
 import { ProjectsService } from './projects.service.js';
 
@@ -57,6 +65,78 @@ export class ProjectsController {
     return this.projects.budget(
       request.authenticatedUser.id,
       id,
+      typeof requestId === 'string' ? requestId : undefined,
+    );
+  }
+
+  @Get('suggestions/openapi.json')
+  suggestionsContract() {
+    return floorSuggestionsOpenApi;
+  }
+
+  @Patch(':id/suggestions/settings')
+  @UseGuards(SessionAuthGuard)
+  updateSuggestionSettings(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateSuggestionSettingsDto,
+  ) {
+    return this.projects.updateSuggestionSettings(
+      request.authenticatedUser.id,
+      id,
+      dto,
+    );
+  }
+
+  @Patch(':id/rooms/:roomId/suggestions/preferences')
+  @UseGuards(SessionAuthGuard)
+  updateFloorPreferences(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseIntPipe) id: number,
+    @Param('roomId', new ParseUUIDPipe({ version: '4' })) roomId: string,
+    @Body() dto: UpdateFloorPreferencesDto,
+  ) {
+    return this.projects.updateFloorPreferences(
+      request.authenticatedUser.id,
+      id,
+      roomId,
+      dto,
+    );
+  }
+
+  @Get(':id/rooms/:roomId/suggestions')
+  @UseGuards(SessionAuthGuard)
+  suggestions(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseIntPipe) id: number,
+    @Param('roomId', new ParseUUIDPipe({ version: '4' })) roomId: string,
+    @Query() query: SuggestionQueryDto,
+  ) {
+    const requestId = request.headers['x-request-id'];
+    return this.projects.suggestions(
+      request.authenticatedUser.id,
+      id,
+      roomId,
+      query.exclude ?? [],
+      typeof requestId === 'string' ? requestId : undefined,
+    );
+  }
+
+  @Post(':id/rooms/:roomId/suggestions/accept')
+  @HttpCode(200)
+  @UseGuards(SessionAuthGuard)
+  acceptSuggestion(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseIntPipe) id: number,
+    @Param('roomId', new ParseUUIDPipe({ version: '4' })) roomId: string,
+    @Body() dto: AcceptFloorSuggestionDto,
+  ) {
+    const requestId = request.headers['x-request-id'];
+    return this.projects.acceptSuggestion(
+      request.authenticatedUser.id,
+      id,
+      roomId,
+      dto,
       typeof requestId === 'string' ? requestId : undefined,
     );
   }

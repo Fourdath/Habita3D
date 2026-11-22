@@ -11,6 +11,12 @@ from app.services.floor_budget import calculate_floor
 app = FastAPI()
 app.include_router(router)
 client = TestClient(app)
+TOKEN = "floor-budget-test-token-nonsecret"
+
+
+@pytest.fixture(autouse=True)
+def configured_token(monkeypatch) -> None:
+    monkeypatch.setenv("MATERIALS_API_TOKEN", TOKEN)
 
 
 def room(**changes: object) -> dict:
@@ -31,7 +37,20 @@ def room(**changes: object) -> dict:
 
 
 def post(*rooms: dict, **changes: object):
-    return client.post("/floors/budget", json={"rooms": list(rooms), **changes})
+    return client.post(
+        "/floors/budget",
+        json={"rooms": list(rooms), **changes},
+        headers={"X-Materials-Token": TOKEN},
+    )
+
+
+def test_floor_budget_requires_the_internal_credential(monkeypatch) -> None:
+    path = "/floors/budget"
+    data = {"rooms": [room()]}
+    assert client.post(path, json=data).status_code == 401
+    assert client.post(path, json=data, headers={"X-Materials-Token": "invalid"}).status_code == 401
+    monkeypatch.delenv("MATERIALS_API_TOKEN")
+    assert post(room()).status_code == 503
 
 
 def test_default_waste_complete_boxes_and_santiago_check_time() -> None:

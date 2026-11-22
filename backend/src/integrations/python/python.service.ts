@@ -2,6 +2,9 @@ import { randomUUID } from 'node:crypto';
 
 import { BadGatewayException, Injectable, ServiceUnavailableException } from '@nestjs/common';
 
+import { isFloorSuggestionResponse, type FloorSuggestionRequest, type FloorSuggestionResponse } from './floor-suggestions-contract.js';
+import { internalPythonToken } from './internal-python-token.js';
+
 export interface FloorRoomResponse {
   room_id: string;
   publication_key: string;
@@ -121,18 +124,29 @@ export function isFloorBudgetResponse(value: unknown, payload: unknown): value i
 @Injectable()
 export class PythonService {
   async calculateBudget(payload: unknown, requestId?: string): Promise<FloorBudgetResponse> {
-    const result = await this.json('/floors/budget', payload, requestId, 10_000);
+    const result = await this.json('/floors/budget', payload, requestId, 10_000, { 'X-Materials-Token': internalPythonToken() });
     if (!isFloorBudgetResponse(result, payload)) {
       throw new BadGatewayException('El cálculo de pisos no cumple el contrato esperado');
     }
     return result;
   }
 
-  capture(payload: unknown, requestId?: string): Promise<unknown> {
-    const token = process.env.MATERIALS_API_TOKEN ?? '';
-    if (token.length < 24 || token.length > 256 || token.startsWith('replace-')) {
-      throw new ServiceUnavailableException('Configure la credencial interna de captura');
+  async recommendFloors(payload: FloorSuggestionRequest, requestId?: string): Promise<FloorSuggestionResponse> {
+    const path = '/recommendations/floors';
+    const correlation = requestId && /^[A-Za-z0-9_-]{1,64}$/.test(requestId) ? requestId : randomUUID();
+    const started = performance.now();
+    try {
+      const result = await this.json(path, payload, correlation, 5_000, { 'X-Materials-Token': internalPythonToken() });
+      if (isFloorSuggestionResponse(result, payload)) return result;
+      this.log(path, correlation, 'invalid_contract', started);
+    } catch (error) {
+      if (!(error instanceof BadGatewayException || error instanceof ServiceUnavailableException)) throw error;
     }
+    throw new ServiceUnavailableException({ code: 'recommendations_unavailable', message: 'El motor de sugerencias no está disponible' });
+  }
+
+  capture(payload: unknown, requestId?: string): Promise<unknown> {
+    const token = internalPythonToken();
     const configured = Number(process.env.PYTHON_CAPTURE_TIMEOUT_MS ?? 600_000);
     const timeout = Number.isInteger(configured) && configured >= 1_000 && configured <= 900_000 ? configured : 600_000;
     return this.json('/materials/captures', payload, requestId, timeout, { 'X-Materials-Token': token });
