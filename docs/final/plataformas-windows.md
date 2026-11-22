@@ -1,6 +1,8 @@
 # PWA y Android en Windows
 
-Usar el staging de la demo en `http://127.0.0.1:18080`. El navegador depende del mismo origen para `/api`; la PWA necesita un origen seguro y funciona en el loopback del PC. El APK de depuración accede al mismo puerto a través del alias `10.0.2.2` del emulador. Mantener el proxy de staging enlazado al loopback de Windows. [Red del emulador](https://developer.android.com/studio/run/emulator-networking-address)
+La dirección prevista del staging es `http://127.0.0.1:18080`. El navegador usa el mismo origen para `/api`. La PWA necesita un origen seguro y funciona en el loopback del PC. El APK de depuración accede al mismo puerto mediante el alias `10.0.2.2` del emulador. Mantener el proxy de staging enlazado al loopback de Windows. [Red del emulador](https://developer.android.com/studio/run/emulator-networking-address)
+
+El 22 de noviembre de 2026 se completó un ensayo manual con el checkout `57c423252fcaf6ca914719e01533478e371de89c`. Para la entrega, repetir la validación de plataformas cuando se despliegue por CD la SHA elegida en `main`. La sección de evidencias conserva las pruebas de ese ensayo y el estado de CD de la integración. [Evidencia en Windows](evidencias-windows.md)
 
 ## PWA
 
@@ -12,11 +14,11 @@ Usar el staging de la demo en `http://127.0.0.1:18080`. El navegador depende del
 
 El service worker precarga el inicio, el código del visor y los recursos públicos de la demo después de la primera visita. Proyectos, precios, sugerencias, sesiones y llamadas a `/api` requieren el servidor. La primera instalación del worker depende de que termine la descarga de los recursos de la demo. [Configuración de caché](https://angular.dev/ecosystem/service-workers/config)
 
-En la prueba del 22 de noviembre de 2026, Chrome instaló y abrió Habita3D en una ventana independiente. El inicio y el plano de ejemplo se abrieron sin red. Proyectos mostró el aviso de sesión sin conexión y recuperó el proyecto al reconectar y reintentar. Una prueba aislada del mismo build de producción verificó el aviso de actualización y su recarga. Las capturas quedaron en `.local/platform/evidence/`.
+En el ensayo manual, Chrome instaló y abrió Habita3D en una ventana independiente. El inicio y el plano de ejemplo se abrieron sin red. Proyectos mostró el aviso de sesión sin conexión y recuperó el proyecto al reconectar y reintentar. Un build anterior, probado de forma aislada, verificó el aviso de actualización y su recarga. Las capturas quedaron en `.local/platform/evidence/`.
 
 ## Android con Capacitor
 
-Requisitos del proyecto nativo
+### Requisitos del proyecto nativo
 
 - Node de `.nvmrc`, JDK 21, Android SDK Platform 36, Platform-Tools, Emulator y una imagen Android 36 con aceleración disponible en Windows. Android Studio puede proporcionar el SDK y su propio JDK compatible. [Entorno Capacitor](https://capacitorjs.com/docs/getting-started/environment-setup) · [Aceleración del emulador](https://developer.android.com/studio/run/emulator-acceleration)
 - Configurar `JAVA_HOME` y `ANDROID_HOME` en la sesión o abrir `frontend/android` en Android Studio con el SDK configurado.
@@ -52,6 +54,12 @@ $adb = Join-Path $env:ANDROID_HOME 'platform-tools\adb.exe'
 
 El APK queda en `frontend/android/app/build/outputs/apk/debug/app-debug.apk`. El perfil `android-staging` compila la interfaz dentro del APK y usa el puente HTTP nativo de Capacitor para llegar al staging. La excepción HTTP del manifiesto de depuración admite exclusivamente `10.0.2.2`. Si cambia el puerto de staging, ajustar el origen de `frontend/src/environments/environment.android-staging.ts` y volver a sincronizar. Este perfil es para el emulador y cuentas ficticias de la demo. [Instalación de Android con Capacitor](https://capacitorjs.com/docs/android) · [HTTP nativo](https://capacitorjs.com/docs/apis/http)
 
-En el emulador, probar inicio de sesión, proyecto, habitación, sugerencias, presupuesto, visor y rotación de pantalla. Verificar la operación táctil en primera persona y la vista general con gestos. Registrar dispositivo, API de Android, SHA del código, hash del APK y resultado de cada caso. Comparar la SHA desplegada con la que informa staging y registrar cualquier diferencia durante una prueba local.
+En el emulador, probar inicio de sesión, proyecto, habitación, sugerencias, presupuesto, visor y rotación de pantalla. Verificar la operación táctil en primera persona y la vista general con gestos.
 
-En la prueba del 22 de noviembre de 2026, el APK se compiló con Gradle y se instaló en el emulador API 36. La aplicación abrió sesión contra el staging de Windows, creó un proyecto y una habitación, guardó un piso y mostró cinco cajas por $85.405. Al recargar conservó el piso y lo aplicó al recinto del plano en el visor. Se probó el recorrido en primera persona con arrastre y avance táctil, el retorno a la vista general y el giro de pantalla. La pantalla de sugerencias mostró el aviso de servicio no disponible porque los endpoints adaptativos seguían pendientes de integración. Las capturas quedaron en `.local/platform/evidence/`.
+El 22 de noviembre, un APK inicial se compiló con Gradle y se instaló en el emulador API 36. La aplicación abrió sesión contra la demo de Windows, creó un proyecto y una habitación, guardó un piso y mostró cinco cajas por $85.405. Al recargar conservó el piso y lo aplicó al recinto del plano en el visor. Se probó el recorrido en primera persona con arrastre y avance táctil, el retorno a la vista general y el giro de pantalla. En esa primera prueba la pantalla de sugerencias mostró el aviso de servicio no disponible, ya que los endpoints adaptativos aún no estaban integrados en la demo.
+
+En el ensayo posterior con el contrato integrado, `Habita3D_API_36` mostró sugerencias del catálogo persistido, guardó un laminado de Easy de seis cajas por $201.456 y conservó el piso al recargar. Las capturas y el hash del APK de ese ensayo están inventariados en las evidencias de Windows. [Resultados del ensayo](evidencias-windows.md)
+
+### Evidencia de la versión final
+
+Registrar fecha, navegador o dispositivo, API de Android, SHA del código de cada cliente y SHA que informa `/api/health/ready` en staging. Guardar el resultado y las capturas de cada recorrido, incluida la apertura sin red de la PWA y una sugerencia guardada después de recargar en Android. Calcular el SHA-256 del APK que se instaló con `Get-FileHash -Algorithm SHA256` y asociarlo al emulador y al resultado.

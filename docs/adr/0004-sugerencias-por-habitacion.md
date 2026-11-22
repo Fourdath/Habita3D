@@ -1,5 +1,8 @@
 # ADR 0004: sugerencias explicables por habitación
 
+> Decisión histórica del bloque 1. La integración final se documenta en el
+> [ADR de recomendaciones adaptativas](0004-recomendaciones-adaptativas.md).
+
 - Fecha de decisiones de alcance: 22/11/2026.
 - Estado: implementado en el bloque 1. Integración visual en el bloque 2.
 

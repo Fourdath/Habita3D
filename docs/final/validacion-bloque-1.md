@@ -1,5 +1,8 @@
 # Validación del bloque 1
 
+Para las comprobaciones posteriores a la integración, consultar las
+[evidencias de Windows y GitHub Actions](evidencias-windows.md).
+
 Comprobaciones realizadas el 22/11/2026 sobre una copia de trabajo basada en
 main d4b1ebc. Se usó Docker Compose con una base PostgreSQL desechable,
 FastAPI real y datos sintéticos identificados. Las capturas de tiendas
@@ -34,10 +37,11 @@ El caso de confirmación conserva la selección anterior al cotizar
 $80.000 y recibir un costo actualizado de $84.000. La publicación se
 guarda después de confirmar el costo actualizado.
 
-Queda por ejecutar la comparación en el Windows de la demo con una captura
-real acotada. La comparación técnica ilustra el ajuste a presupuesto y
-preferencias en los casos observados. El alcance de dos tiendas y una
-comuna limita su generalización.
+La comparación técnica ilustra el ajuste a presupuesto y preferencias en los
+casos observados. El alcance de dos tiendas y una comuna limita su
+generalización. Las evidencias en Windows documentan un ensayo posterior con
+datos reales y la [guía de cierre](cierre-windows.md) describe cómo repetir las
+comprobaciones sobre la versión evaluable.
 
 ## Dependencias y operación
 

@@ -1,83 +1,40 @@
 # Habita3D
 
-Habita3D permite explorar una vivienda en 3D y comparar pisos y costos. Para EP2
-están implementados **los bloques 1 y 2**: adquisición/procesamiento en Python,
-catálogo e historial en PostgreSQL, proyectos privados por habitación y presupuesto
-calculado con los últimos precios persistidos. El **bloque 3 de Angular/3D** integra
-sesión, proyectos, habitaciones, catálogo, historial y suelos orientativos por habitación.
-El presupuesto de pisos usa los precios guardados de las tiendas. El visor ofrece
-una estimación demostrativa de planchas y revestimientos vinculada al plano.
+Habita3D ayuda a elegir pisos para una vivienda, previsualizarlos en 3D y
+comparar el costo de compra antes de decidir. Permite cargar un plano SVG
+compatible de CubiCasa, recorrer la vivienda, seleccionar un recinto y guardar
+un piso por habitación. El presupuesto usa cajas completas y los últimos
+precios comprobados de Sodimac y Easy para La Florida.
 
-## Entrega final y revisión local
+El recomendador considera el saldo del proyecto, el límite de la habitación, la
+superficie, el margen y las preferencias opcionales de tipo de piso y tienda.
+Muestra hasta tres opciones con sus razones y permite descartar una opción,
+aceptarla o desactivar las sugerencias por proyecto. Si la cotización cambió,
+solicita confirmación antes de guardar. La muestra abarca cerámicas y laminados.
+Las texturas son orientativas y el costo de pisos cubre la compra del material.
+La vista de planchas y revestimientos ofrece una estimación demostrativa.
 
-- [Operación en Windows](docs/final/operacion-windows.md), [PWA y Android](docs/final/plataformas-windows.md) y [evidencias](docs/final/evidencias-windows.md).
-- [Contrato de sugerencias por habitación](docs/final/contrato-sugerencias-v1.md) y [decisión de arquitectura, datos y permisos](docs/adr/0004-recomendaciones-adaptativas.md).
-- CI prueba la integración con fixtures desechables. CD despliega desde `main` al runner de Windows cuando la CI de esa SHA ha aprobado y el entorno está habilitado.
-
-## Entrega final · Bloque 1
-
-La [guía de entrega final](docs/final/README.md) reúne el recomendador de
-pisos, las preferencias por habitación, la aceptación con confirmación del
-costo y las comprobaciones de seguridad y despliegue. El [contrato para
-Angular](docs/final/contrato-sugerencias.md) contiene ejemplos para integrar
-la interfaz del bloque 2. Swagger está en /api/docs y el esquema JSON en
-/api/docs-json. La evidencia de PWA, Android y staging en Windows se completa
-durante la integración del equipo.
-
-## Estado de la EP2
-
-- [Acuerdos y plan de trabajo](docs/ep2/README.md): alcance, reparto y pendientes.
-- [Bloque 1: datos y FastAPI](docs/ep2/bloque-1-datos.md): fuentes reales, normalización,
-  cálculo compartido, métricas y restricciones de acceso.
-- [Bloque 2: backend y APIs](docs/ep2/bloque-2-backend.md): persistencia, catálogo/filtros,
-  historial, autenticación, habitaciones, captura coordinada y observabilidad.
-- [Bloque 2: staging y Windows](docs/ep2/bloque-2-staging.md): ejecución local gratuita,
-  Terraform, CI/CD y configuración del runner que el compañero hará posteriormente.
-- [Validación del bloque 2](docs/ep2/evidencias/bloque-2-validacion.md): pruebas y límites.
-- [Bloque 3: interfaz integrada y revisión antes del push](docs/ep2/bloque-3-interfaz.md):
-  rutas, selección persistida, visor por habitación y comprobación local en Windows.
-- [Diseño preliminar de la capacidad adaptativa](docs/ep2/diseno-adaptativo.md):
-  recomendador de pisos por habitación previsto para el Módulo 3.
-
-La demo se ejecutará en el computador Windows del equipo, sin costo ni tarjeta.
-La configuración y primer despliegue de su runner requieren validación allí.
-El cierre integral de EP2 requiere además la CI de la rama y los pendientes operativos
-del equipo; el ensayo local no sustituye el primer despliegue automático del runner.
-
-### Datos de la entrega EP2 (formato común, pauta 24.3)
+## Entrega final
 
 | Elemento | Enlace o estado |
 | --- | --- |
-| Repositorio | https://github.com/Fourdath/Habita3D |
-| Tag o release evaluable | Pendiente: se crea sobre el commit validado en la demo. |
-| Ambiente desplegado (staging) | Computador Windows del equipo; ver [manual de staging](docs/ep2/bloque-2-staging.md). Sin URL pública. |
-| Tablero de gestión | Pendiente de enlazar. |
-| Prototipo de interfaz (Figma) | Pendiente de enlazar. |
+| Documentación técnica | [Índice de la entrega final](docs/final/README.md), [arquitectura](docs/architecture/overview.md) y [modelo de datos](docs/architecture/data-model.md). |
+| API | [Contrato vigente de sugerencias v1](docs/final/contrato-sugerencias-v1.md). Swagger en `/api/docs`, especificación general en `/api/docs-json` y especificación de sugerencias en `/api/projects/suggestions/openapi.json`. |
+| Evidencias | [Pruebas de integración con datos de prueba y ensayos en Windows](docs/final/evidencias-windows.md). |
+| Staging de la demo | `http://127.0.0.1:18080` en el PC Windows de Matías. La comprobación del despliegue de la versión evaluable está pendiente. Véase la [guía de cierre](docs/final/cierre-windows.md). |
+| Tag o release evaluable | Pendiente de la validación en Windows. Se publica sobre la SHA desplegada y comprobada. |
+| Figma y tablero | Matías incorporará ambos enlaces y verificará su acceso para la revisión docente. |
 
-| Integrante | Participación en EP2 |
+### Aportes del equipo
+
+| Integrante | Labores realizadas |
 | --- | --- |
-| Cris Dauros (Crisss333) | Plan y acuerdos; bloque 1 (extracción Sodimac/Easy, FastAPI, métricas) y bloque 2 (NestJS, PostgreSQL, capturas, CI/CD, staging). |
-| Matías Prado | Bloque 3: rediseño del inicio y del estudio 3D, sesión, proyectos, habitaciones, catálogo, presupuesto, historial y suelos por habitación. |
-| Carlos Ruz | Diseño preliminar de la capacidad adaptativa, revisión del cumplimiento de la pauta y actualización del estado del plan. |
+| **Matías Prado (`Fourdath`)** | Diseño funcional y desarrollo frontend en Angular e Ionic. Implementó la carga de SVG, el visor 3D, la selección de recintos y la previsualización de terminaciones. Integró catálogo, presupuesto y sugerencias con la API. Preparó PWA y Android con Capacitor. En CI/CD y seguridad incorporó auditorías de dependencias y Gitleaks, ajustó la CI de la integración final, actualizó Nginx y ensayó el despliegue en Windows. [Interfaz de EP2](https://github.com/Fourdath/Habita3D/pull/7) · [Controles iniciales](https://github.com/Fourdath/Habita3D/commit/3a8e46109c02d2fc5d691abbd85e24505e6df60a) · [Integración final](https://github.com/Fourdath/Habita3D/pull/10). |
+| **Cris Dauros (`Crisss333`)** | Diseño e implementación de la extracción y normalización de precios de Sodimac y Easy. Desarrolló la mayor parte del backend NestJS y la persistencia PostgreSQL de catálogo, historial, proyectos y habitaciones. Implementó en FastAPI el cálculo por cajas y el motor de recomendación. Preparó Terraform. En CI/CD y seguridad amplió las pruebas de integración, incorporó Semgrep y Trivy y creó el workflow de CD que exige una CI aprobada antes de desplegar en staging. [Datos](https://github.com/Fourdath/Habita3D/pull/5) · [Backend y CI/CD](https://github.com/Fourdath/Habita3D/pull/6) · [Recomendador](https://github.com/Fourdath/Habita3D/pull/9). |
+| **Carlos Ruz (`CarlosIgRuz`)** | Elaboró la especificación inicial del recomendador de pisos por habitación y sus criterios de evaluación. Revisó el cumplimiento de la pauta en todas las entregas y evaluó el recomendador con datos reales, comparando sus sugerencias con el orden base del catálogo. [Especificación inicial y revisión de EP2](https://github.com/Fourdath/Habita3D/pull/8). |
 
-## Definición del proyecto para EP1
-
-- **Problema:** una vivienda terminada y sus costos son difíciles de anticipar
-  cuando planos, terminaciones y precios se consultan por separado.
-- **Usuarios:** clientes que exploran una vivienda; más adelante, operadores que
-  administrarán proyectos y catálogos.
-- **Objetivo y alcance:** navegar un modelo 3D, comparar terminaciones y mostrar
-  una estimación inicial. EP1 entrega la base integrada y un flujo demostrativo;
-  la consulta de precios reales y la aplicación móvil nativa quedan para etapas
-  posteriores.
-- **Fuente web considerada:** el
-  [catálogo de materiales de construcción de Sodimac Chile](https://www.sodimac.cl/sodimac-cl/lista/CATG10731/Materiales-de-Construccion).
-  Es una candidata que requiere revisión de condiciones de acceso y calidad; la
-  aplicación de EP1 no extrae datos de este sitio.
-- **Capacidad adaptativa propuesta:** ordenar materiales por presupuesto,
-  preferencias de estilo y necesidades, con precio, disponibilidad, procedencia
-  y explicación de cada sugerencia. La comparación actual solo utiliza cifras
-  ilustrativas según superficie y presupuesto.
+Los antecedentes de la propuesta y su evolución están en la [demo de EP1](docs/ep1-demo.md),
+la [documentación de EP2](docs/ep2/README.md) y el [diseño preliminar de la adaptación](docs/ep2/diseno-adaptativo.md).
 
 ## Tecnologías y estructura
 
@@ -87,8 +44,9 @@ del equipo; el ensayo local no sustituye el primer despliegue automático del ru
 | `backend/` | API NestJS, autorización por propietario, catálogo, captura coordinada, cotizaciones y persistencia con Prisma. |
 | `python-service/` | FastAPI: adquisición, normalización, cálculo de cajas y recomendación adaptativa, además del contrato demostrativo de EP1. |
 | `infrastructure/terraform/staging/` | Staging aislado en Docker local, plan validado y despliegue Windows preparado. |
-| `docs/` | Arquitectura, modelo de datos, guía de EP1 y acuerdos/planificación de EP2. |
+| `docs/` | Arquitectura, modelo de datos, decisiones y evidencia de las entregas. |
 | `.github/workflows/ci.yml` | Calidad, seguridad, compilación, integración con Compose y plan Terraform. |
+| `.github/workflows/deploy-local.yml` | Despliegue y comprobación del commit aprobado de `main` en staging Windows. |
 
 PostgreSQL es la base de datos. NestJS es el único servicio de aplicación que la
 administra; el navegador llama a NestJS por `/api` y NestJS consulta FastAPI por la
@@ -172,23 +130,17 @@ migraciones y ejecuta pruebas HTTP y de persistencia real con `RUN_DATABASE_TEST
 Terraform recibe verificaciones de formato, configuración y plan. La protección
 de `main` está activa según la consulta a GitHub del 24/10/2026. Los administradores deben mantener los checks obligatorios del equipo; el nuevo análisis estático también debe exigirse al actualizar esa configuración.
 
-## Alcance de EP1 y siguientes etapas
+## Uso, plataformas y despliegue
 
-- El formulario de inicio solicita `POST /api/projects/preview`. NestJS consulta
-  `POST /recommendations/compare` en FastAPI y, tras recibir una respuesta válida,
-  guarda el proyecto en PostgreSQL. Una respuesta inválida o un servicio Python
-  inaccesible produce un error controlado y no crea el proyecto.
-- La API ofrece registro, inicio de sesión, consulta de sesión y cierre de sesión.
-  Las rutas EP2 de proyectos y habitaciones requieren sesión y autorizan por propietario; la vista previa demostrativa EP1 continúa pública.
-- El visor, el presupuesto del navegador y la comparación de FastAPI usan datos
-  locales de demostración en la demo libre EP1. En los proyectos EP2 (`/projects`) el catálogo, el presupuesto y los suelos del visor usan los precios web persistidos. Las sugerencias por habitación usan esos mismos datos y el saldo del proyecto. La aceptación vuelve a comprobar la cotización. Véase el [contrato de sugerencias](docs/final/contrato-sugerencias-v1.md).
-- Terraform define un staging local independiente de Compose. Su plan se verifica
-  en CI; para EP2 se aplicaron y comprobaron 13 recursos en un staging local aislado.
-  El despliegue del runner Windows y la demo completa siguen pendientes; no hay URL pública.
-- **Figma:** falta incorporar al repositorio el enlace verificable al prototipo del
-  equipo antes de la entrega. No se incluye una URL de ejemplo.
+En **Mis proyectos**, ingresa con una cuenta ficticia y abre un proyecto con su
+SVG guardado. Selecciona una habitación para consultar sugerencias, comprobar
+precio y disponibilidad, previsualizar el piso y guardar la elección. El visor
+libre conserva un plano de ejemplo. Para preparar el entorno, instalar la PWA o
+ejecutar el APK de depuración, consulta los manuales del equipo.
+[Operación en Windows](docs/final/operacion-windows.md) · [PWA y Android](docs/final/plataformas-windows.md)
 
-Véanse la [arquitectura](docs/architecture/overview.md), el
-[modelo de datos](docs/architecture/data-model.md), la
-[guía de staging](infrastructure/terraform/README.md) y los
-[ADR](docs/adr/0001-staging-local-con-terraform.md).
+La [CI](.github/workflows/ci.yml) usa datos sintéticos para automatizar pruebas y
+escaneos. El [CD](.github/workflows/deploy-local.yml) aplica Terraform en el
+runner Windows una vez aprobada la CI del commit actual de `main`. El catálogo
+real se comprueba desde ese staging y las consultas de la aplicación usan la
+información persistida. [Guía de staging](infrastructure/terraform/README.md) · [Fuentes y calidad de datos](docs/ep2/fuentes-web.md)
