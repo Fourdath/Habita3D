@@ -1,13 +1,11 @@
 import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { firstValueFrom, Observable } from 'rxjs';
-import { SessionService } from './session.service';
-import type { CatalogStatus, Page, PriceHistory, Project, ProjectBudget, ProjectRoom, ProjectSummary, Publication, RoomInput } from './ep2.types';
+import { firstValueFrom } from 'rxjs';
+import type { CatalogStatus, FloorPreferences, FloorSuggestions, Page, PriceHistory, Project, ProjectBudget, ProjectRoom, ProjectSummary, Publication, RoomInput, SuggestionAcceptance } from './ep2.types';
 
 @Injectable({ providedIn: 'root' })
 export class Ep2ApiService {
   private readonly http = inject(HttpClient);
-  private readonly session = inject(SessionService);
   catalog(filters: Record<string, string>, page = 1): Promise<Page<Publication>> {
     const params = new HttpParams({ fromObject: { ...filters, page, limit: 12 } });
     return firstValueFrom(this.http.get<Page<Publication>>('/api/materials', { params }));
@@ -16,35 +14,60 @@ export class Ep2ApiService {
   history(key: string, page = 1): Promise<PriceHistory> {
     return firstValueFrom(this.http.get<PriceHistory>(`/api/materials/${encodeURIComponent(key)}/history`, { params: { page, limit: 20 } }));
   }
-  projects(): Promise<ProjectSummary[]> { return this.privateRequest(this.http.get<ProjectSummary[]>('/api/projects', { headers: this.session.headers() })); }
-  project(id: number): Promise<Project> { return this.privateRequest(this.http.get<Project>(`/api/projects/${id}`, { headers: this.session.headers() })); }
+  projects(): Promise<ProjectSummary[]> { return firstValueFrom(this.http.get<ProjectSummary[]>('/api/projects')); }
+  project(id: number): Promise<Project> { return firstValueFrom(this.http.get<Project>(`/api/projects/${id}`)); }
   saveProject(data: { name: string; budgetClp: number }, id?: number): Promise<ProjectSummary> {
-    const options = { headers: this.session.headers() };
-    return this.privateRequest(id ? this.http.patch<ProjectSummary>(`/api/projects/${id}`, data, options) : this.http.post<ProjectSummary>('/api/projects', data, options));
+    return firstValueFrom(id ? this.http.patch<ProjectSummary>(`/api/projects/${id}`, data) : this.http.post<ProjectSummary>('/api/projects', data));
   }
-  deleteProject(id: number): Promise<void> { return this.privateRequest(this.http.delete<void>(`/api/projects/${id}`, { headers: this.session.headers() })); }
+  deleteProject(id: number): Promise<void> { return firstValueFrom(this.http.delete<void>(`/api/projects/${id}`)); }
   saveRoom(id: number, data: RoomInput | { publicationKey: string | null }, roomId?: string): Promise<ProjectRoom> {
     const url = `/api/projects/${id}/rooms`;
-    const options = { headers: this.session.headers() };
-    return this.privateRequest(roomId ? this.http.patch<ProjectRoom>(`${url}/${encodeURIComponent(roomId)}`, data, options) : this.http.post<ProjectRoom>(url, data, options));
+    return firstValueFrom(roomId ? this.http.patch<ProjectRoom>(this.roomUrl(id, roomId), data) : this.http.post<ProjectRoom>(url, data));
   }
-  deleteRoom(id: number, roomId: string): Promise<void> { return this.privateRequest(this.http.delete<void>(`/api/projects/${id}/rooms/${encodeURIComponent(roomId)}`, { headers: this.session.headers() })); }
-  budget(id: number): Promise<ProjectBudget> { return this.privateRequest(this.http.get<ProjectBudget>(`/api/projects/${id}/budget`, { headers: this.session.headers() })); }
-  private async privateRequest<T>(request: Observable<T>): Promise<T> {
-    try { return await firstValueFrom(request); }
-    catch (error) {
-      if (error instanceof HttpErrorResponse && error.status === 401) this.session.clear();
+  deleteRoom(id: number, roomId: string): Promise<void> { return firstValueFrom(this.http.delete<void>(this.roomUrl(id, roomId))); }
+  budget(id: number): Promise<ProjectBudget> { return firstValueFrom(this.http.get<ProjectBudget>(`/api/projects/${id}/budget`)); }
+
+  suggestions(id: number, roomId: string, exclude: string[]): Promise<FloorSuggestions> {
+    const params = new HttpParams({ fromObject: { exclude } });
+    return firstValueFrom(this.http.get<FloorSuggestions>(`${this.roomUrl(id, roomId)}/suggestions`, { params }));
+  }
+
+  saveFloorPreferences(id: number, roomId: string, preferences: FloorPreferences): Promise<ProjectRoom> {
+    return firstValueFrom(this.http.patch<ProjectRoom>(`${this.roomUrl(id, roomId)}/suggestions/preferences`, preferences));
+  }
+
+  saveSuggestionsEnabled(id: number, suggestionsEnabled: boolean): Promise<{ suggestionsEnabled: boolean }> {
+    return firstValueFrom(this.http.patch<{ suggestionsEnabled: boolean }>(`/api/projects/${id}/suggestions/settings`, { suggestionsEnabled }));
+  }
+
+  async acceptSuggestion(id: number, roomId: string, publicationKey: string, quoteId: string): Promise<SuggestionAcceptance> {
+    try {
+      return await firstValueFrom(this.http.post<Extract<SuggestionAcceptance, { status: 'accepted' }>>(
+        `${this.roomUrl(id, roomId)}/suggestions/accept`, { publicationKey, quoteId },
+      ));
+    } catch (error) {
+      if (error instanceof HttpErrorResponse && error.status === 409 && error.error?.status === 'price_changed'
+        && error.error.quote?.publicationKey === publicationKey && typeof error.error.quote.quoteId === 'string'
+        && Number.isSafeInteger(error.error.quote.totalClp) && Number.isSafeInteger(error.error.quote.boxes)) {
+        return { status: 'price_changed', quote: error.error.quote };
+      }
       throw error;
     }
+  }
+
+  private roomUrl(id: number, roomId: string): string {
+    return `/api/projects/${id}/rooms/${encodeURIComponent(roomId)}`;
   }
 }
 
 export function apiError(error: unknown): string {
   if (error instanceof HttpErrorResponse) {
     if (error.status === 401) return 'La sesión venció o las credenciales no son correctas. Inicia sesión nuevamente.';
+    if (error.status === 403) return 'Esta cuenta no tiene acceso a la operación.';
     if (error.status === 404) return 'No se encontró el proyecto o no pertenece a esta cuenta.';
     if (error.status === 409) return 'Ya existe una cuenta con ese correo o hubo un conflicto al guardar.';
-    if (error.status === 0) return 'No se pudo conectar con la API. Comprueba que los servicios estén iniciados.';
+    if (error.status === 0) return 'No se pudo conectar con la aplicación. Comprueba tu conexión y vuelve a intentar.';
+    if (error.status === 429) return 'Se alcanzó el límite de solicitudes. Espera un momento y vuelve a intentar.';
     if (error.status >= 500) return 'El servicio no está disponible. Conservamos la última información; vuelve a consultar.';
     if (error.status === 400) return 'Revisa los datos: nombre, superficie, margen y presupuesto deben ser válidos.';
   }

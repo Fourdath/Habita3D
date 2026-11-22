@@ -1,4 +1,4 @@
-import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, ElementRef, OnInit, computed, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -8,13 +8,14 @@ import { SessionService } from '../../core/ep2/session.service';
 import { ScenePlanService } from '../../core/ep2/scene-plan.service';
 import type { Project, ProjectBudget, ProjectRoom, ProjectSummary, Publication, RoomInput, SceneRoom } from '../../core/ep2/ep2.types';
 import { BrandMarkComponent } from '../landing/components/brand-mark.component';
+import { FloorSuggestionsComponent } from '../recommendations/floor-suggestions.component';
 import { BudgetPanelComponent } from './budget-panel.component';
 import { CatalogPanelComponent } from './catalog-panel.component';
 import { RoomEditorComponent } from './room-editor.component';
 
 @Component({
   selector: 'app-projects', templateUrl: 'projects.page.html', styleUrls: ['projects.page.scss'],
-  imports: [IonContent, RouterLink, ReactiveFormsModule, BrandMarkComponent, BudgetPanelComponent, CatalogPanelComponent, RoomEditorComponent],
+  imports: [IonContent, RouterLink, ReactiveFormsModule, BrandMarkComponent, BudgetPanelComponent, CatalogPanelComponent, RoomEditorComponent, FloorSuggestionsComponent],
 })
 export class ProjectsPage implements OnInit {
   readonly session = inject(SessionService);
@@ -32,23 +33,26 @@ export class ProjectsPage implements OnInit {
   readonly loading = signal(true);
   readonly projectLoading = signal(false);
   readonly budgetLoading = signal(false);
-  readonly busy = signal(false);
+  private readonly mutating = signal(false);
+  readonly suggestionPending = signal(false);
+  readonly busy = computed(() => this.mutating() || this.suggestionPending());
   readonly error = signal('');
   readonly budgetError = signal('');
   readonly sceneError = signal('');
   readonly notice = signal('');
-  readonly authMode = signal<'login' | 'register'>('login');
+  readonly projectListFailed = signal(false);
   readonly showProjectForm = signal(false);
   readonly editingProjectId = signal<number | undefined>(undefined);
   readonly showRoomForm = signal(false);
   readonly editingRoom = signal<ProjectRoom | null>(null);
   readonly confirmDelete = signal<string | null>(null);
   readonly money = money;
+  private readonly catalogTarget = viewChild('catalogTarget', { read: ElementRef<HTMLElement> });
   private initialized = false;
   private request = 0;
+  private budgetRequest = 0;
   private requestedProject: number | null = null;
   private requestedRoom: string | null = null;
-  readonly authForm = new FormGroup({ email: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.email, Validators.maxLength(254)] }), password: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.minLength(12), Validators.maxLength(128)] }) });
   readonly projectForm = new FormGroup({ name: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.maxLength(120)] }), budgetClp: new FormControl(200000, { nonNullable: true, validators: [Validators.required, Validators.min(0), Validators.max(1e15), Validators.pattern(/^\d+$/)] }) });
 
   ngOnInit(): void {
@@ -65,38 +69,39 @@ export class ProjectsPage implements OnInit {
   }
 
   async initialize(): Promise<void> {
-    this.error.set(''); this.loading.set(true);
+    this.error.set(''); this.loading.set(true); this.projectListFailed.set(false);
     try {
-      await this.session.restore();
       if (this.session.user()) { await this.reloadProjects(); await this.openProject(this.requestedProject); }
-    } catch (error) { this.handleError(error); }
+    } catch (error) { this.projectListFailed.set(true); this.handleError(error); }
     finally { this.initialized = true; this.loading.set(false); }
     try { this.sceneRooms.set(await this.scenePlan.rooms()); }
     catch { this.sceneError.set('No se pudo leer el plano de ejemplo. Puedes guardar habitaciones sin vincularlas y volver a intentar al abrir el visor.'); }
   }
-  async authenticate(): Promise<void> {
-    if (this.authForm.invalid) { this.error.set('Usa un correo válido y una contraseña de 12 a 128 caracteres.'); return; }
-    await this.mutate(async () => {
-      const { email, password } = this.authForm.getRawValue();
-      await this.session.authenticate(this.authMode(), email, password);
-      this.authForm.controls.password.reset();
-      await this.reloadProjects(); await this.openProject(this.requestedProject);
-    });
-  }
   async logout(): Promise<void> {
-    await this.mutate(async () => {
-      try { await this.session.logout(); } finally { ++this.request; this.project.set(null); this.budget.set(null); this.projects.set([]); this.showProjectForm.set(false); this.showRoomForm.set(false); }
-    });
+    try { await this.session.logout(); }
+    catch (error) { this.handleError(error); }
+    finally { await this.router.navigate(['/login']); }
   }
   private async reloadProjects(): Promise<void> { this.projects.set(await this.api.projects()); }
-  async selectProject(id: number): Promise<void> { await this.router.navigate([], { relativeTo: this.route, queryParams: { project: id } }); }
+  async selectProject(id: number): Promise<void> {
+    if (this.requestedProject === id && this.project()?.id !== id) {
+      this.error.set('');
+      await this.openProject(id);
+      return;
+    }
+    await this.router.navigate([], { relativeTo: this.route, queryParams: { project: id } });
+  }
   async selectRoom(id: string): Promise<void> {
     this.selectedRoomId.set(id); this.showRoomForm.set(false); this.confirmDelete.set(null);
     await this.router.navigate([], { relativeTo: this.route, queryParams: { project: this.project()?.id, room: id }, replaceUrl: true });
   }
   async openProject(id: number | null, preferredRoom = this.requestedRoom): Promise<void> {
     const request = ++this.request;
-    if (this.project()?.id !== id) this.project.set(null);
+    ++this.budgetRequest;
+    if (this.project()?.id !== id) {
+      this.project.set(null);
+      this.suggestionPending.set(false);
+    }
     this.budget.set(null); this.showRoomForm.set(false); this.showProjectForm.set(false); this.confirmDelete.set(null);
     this.budgetLoading.set(false); this.projectLoading.set(false);
     if (id === null) return;
@@ -151,17 +156,43 @@ export class ProjectsPage implements OnInit {
       this.notice.set(publication ? 'Piso guardado para esta habitación. Abre el visor para ver su apariencia orientativa.' : 'Selección retirada de esta habitación.');
     });
   }
+  async toggleSuggestions(project: Project): Promise<void> {
+    await this.mutate(async () => {
+      const result = await this.api.saveSuggestionsEnabled(project.id, !project.suggestionsEnabled);
+      this.project.update(current => current?.id === project.id ? { ...current, suggestionsEnabled: result.suggestionsEnabled } : current);
+    });
+  }
+
+  saveRoomResult(room: ProjectRoom): void {
+    this.project.update(project => project?.id === room.projectId
+      ? { ...project, rooms: project.rooms.map(current => current.id === room.id ? room : current) }
+      : project);
+  }
+
+  async useSuggestedFloor(room: ProjectRoom): Promise<void> {
+    this.saveRoomResult(room);
+    this.notice.set('Piso guardado para esta habitación. Abre el visor para ver su apariencia orientativa.');
+    await this.refreshBudget();
+  }
+
+  focusCatalog(): void {
+    const target = this.catalogTarget()?.nativeElement;
+    target?.focus();
+    target?.scrollIntoView({ block: 'start' });
+  }
+
   async refreshBudget(): Promise<void> {
     const id = this.project()?.id; if (!id) return;
+    const request = ++this.budgetRequest;
     this.budgetLoading.set(true); this.budgetError.set(''); this.budget.set(null);
-    try { const result = await this.api.budget(id); if (this.project()?.id === id) this.budget.set(result); }
-    catch (error) { if (this.project()?.id === id) { this.budgetError.set(apiError(error)); this.handleSessionError(); } }
-    finally { if (this.project()?.id === id) this.budgetLoading.set(false); }
+    try { const result = await this.api.budget(id); if (request === this.budgetRequest && this.project()?.id === id) this.budget.set(result); }
+    catch (error) { if (request === this.budgetRequest && this.project()?.id === id) { this.budgetError.set(apiError(error)); this.handleSessionError(); } }
+    finally { if (request === this.budgetRequest && this.project()?.id === id) this.budgetLoading.set(false); }
   }
   private async mutate(action: () => Promise<void>): Promise<void> {
     if (this.busy()) return;
-    this.busy.set(true); this.error.set(''); this.notice.set('');
-    try { await action(); } catch (error) { this.handleError(error); } finally { this.busy.set(false); }
+    this.mutating.set(true); this.error.set(''); this.notice.set('');
+    try { await action(); } catch (error) { this.handleError(error); } finally { this.mutating.set(false); }
   }
   private handleError(error: unknown): void { this.error.set(apiError(error)); this.handleSessionError(); }
   private handleSessionError(): void { if (!this.session.user()) { ++this.request; this.project.set(null); this.budget.set(null); this.projects.set([]); } }

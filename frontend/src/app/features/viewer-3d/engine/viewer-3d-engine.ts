@@ -17,6 +17,7 @@ import { KeyboardMovementInput } from './movement-input';
 import { MaterialRegistry } from './materials/material-registry';
 import { PlayerController } from './player-controller';
 import { PointerLockLookInput } from './pointer-lock-look-input';
+import { TouchWalkInput, type WalkDirection } from './touch-walk-input';
 import { OverviewController } from './overview-controller';
 import { applyRoomFloorSelections, type RoomFloorSelection } from './room-floor-selection';
 import type { SceneRoom } from '../../../core/ep2/ep2.types';
@@ -58,6 +59,7 @@ export class Viewer3DEngine {
 
   private readonly movementInput: MovementInputSource;
   private readonly lookInput: PointerLockLookInput;
+  private readonly touchInput: TouchWalkInput;
   private readonly player: PlayerController;
   private readonly overview: OverviewController;
   private viewMode: 'walk' | 'overview' = 'overview';
@@ -68,6 +70,7 @@ export class Viewer3DEngine {
   private disposed = false;
   private roomFloorSelections: readonly RoomFloorSelection[] = [];
   private roomFloorRequest = 0;
+  private exampleSvg: Promise<string> | null = null;
 
   constructor(
     private readonly container: HTMLElement,
@@ -111,7 +114,10 @@ export class Viewer3DEngine {
       (locked) => this.callbacks.onPointerLockChange?.(locked),
       () => this.callbacks.onPointerLockError?.(),
     );
-    this.player = new PlayerController(this.camera, this.worldOctree, this.movementInput);
+    this.touchInput = new TouchWalkInput(this.renderer.domElement, this.camera);
+    this.player = new PlayerController(this.camera, this.worldOctree, {
+      getState: () => this.touchInput.enabled ? this.touchInput.getState() : this.movementInput.getState(),
+    });
     this.overview = new OverviewController(this.renderer.domElement);
     this.exteriorFog = this.scene.fog;
     this.overviewGrid.position.y = -0.06;
@@ -124,16 +130,25 @@ export class Viewer3DEngine {
 
     this.renderer.setAnimationLoop(this.animate);
 
-    this.loadDefaultFloorplan();
+    void this.initializeExample();
   }
 
   requestPointerLock(): void {
     if (this.viewMode === 'walk') this.lookInput.requestLock();
   }
 
+  setTouchWalkEnabled(enabled: boolean): void {
+    this.touchInput.setEnabled(enabled && this.viewMode === 'walk');
+  }
+
+  setTouchDirection(direction: WalkDirection, pressed: boolean): void {
+    this.touchInput.setDirection(direction, pressed);
+  }
+
   setViewMode(mode: 'walk' | 'overview'): void {
     if (this.disposed) return;
     this.viewMode = mode;
+    if (mode === 'overview') this.touchInput.setEnabled(false);
     if (mode === 'overview' && document.pointerLockElement === this.renderer.domElement) document.exitPointerLock();
     this.overview.setEnabled(mode === 'overview');
     this.environment.setOverviewMode(mode === 'overview');
@@ -241,6 +256,7 @@ export class Viewer3DEngine {
     this.resizeObserver.disconnect();
     this.movementInput.dispose();
     this.lookInput.dispose();
+    this.touchInput.dispose();
     this.overview.dispose();
     this.overviewGrid.dispose();
     this.interiorStyle.dispose();
@@ -261,16 +277,20 @@ export class Viewer3DEngine {
     this.worldOctree.fromGraphNode(this.collidables);
   }
 
-  private async loadDefaultFloorplan(): Promise<void> {
+  async loadExampleFloorplan(): Promise<void> {
+    this.exampleSvg ??= fetch(FLOORPLAN_URL).then(response => {
+      if (!response.ok) throw new Error('No se pudo cargar el plano de ejemplo.');
+      return response.text();
+    }).catch(error => {
+      this.exampleSvg = null;
+      throw error;
+    });
+    await this.loadFloorplanFromSvgText(await this.exampleSvg);
+  }
+
+  private async initializeExample(): Promise<void> {
     try {
-      const response = await fetch(FLOORPLAN_URL);
-      if (!response.ok) {
-        throw new Error('No se pudo cargar el plano CubiCasa.');
-      }
-
-      const svgText = await response.text();
-      await this.loadFloorplanFromSvgText(svgText);
-
+      await this.loadExampleFloorplan();
       if (!this.disposed) this.callbacks.onReady?.();
     } catch (error) {
       if (!this.disposed) this.callbacks.onError?.(error);
@@ -279,7 +299,7 @@ export class Viewer3DEngine {
 
   private readonly animate = (): void => {
     const deltaTime = Math.min(MAX_DELTA_TIME, this.clock.getDelta()) / STEPS_PER_FRAME;
-    if (this.viewMode === 'walk' && this.lookInput.isLocked) {
+    if (this.viewMode === 'walk' && (this.lookInput.isLocked || this.touchInput.enabled)) {
       for (let i = 0; i < STEPS_PER_FRAME; i++) this.player.update(deltaTime);
     } else if (this.viewMode === 'overview') {
       this.overview.update();

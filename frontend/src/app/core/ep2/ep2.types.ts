@@ -29,7 +29,10 @@ export interface CatalogStatus {
   schedule: { enabled: boolean; hours: number[]; timezone: string };
 }
 export interface ProjectSummary { id: number; name: string; budgetClp: number; createdAt: string; updatedAt: string }
-export interface Project extends ProjectSummary { rooms: ProjectRoom[] }
+export interface Project extends ProjectSummary {
+  rooms: ProjectRoom[];
+  suggestionsEnabled?: boolean;
+}
 export interface RoomInput {
   name: string; areaMode: 'area' | 'dimensions'; areaM2?: string; lengthM?: string; widthM?: string;
   wastePercent: string; budgetClp: number | null; sceneRoomId: string | null;
@@ -37,7 +40,37 @@ export interface RoomInput {
 export interface ProjectRoom extends Omit<RoomInput, 'areaM2' | 'lengthM' | 'widthM'> {
   id: string; projectId: number; areaM2: string | null; lengthM: string | null; widthM: string | null;
   publicationKey: string | null; publication: Publication | null;
+  preferredCategory?: FloorCategory | null;
+  preferredSource?: RetailSource | null;
 }
+export interface FloorPreferences {
+  preferredCategory: FloorCategory | null;
+  preferredSource: RetailSource | null;
+}
+export interface FloorSuggestion {
+  publicationKey: string;
+  name: string;
+  source: RetailSource;
+  category: FloorCategory;
+  availability: Exclude<Availability, 'unavailable'>;
+  checkedAt: string;
+  priceStale: boolean;
+  boxes: number;
+  totalClp: number;
+  fitsBudget: boolean;
+  budgetExcessClp: number;
+  reasons: string[];
+  quoteId: string;
+}
+export interface FloorSuggestions {
+  availableBudgetClp: number;
+  provisionalBudget: boolean;
+  suggestions: FloorSuggestion[];
+  emptyReason: 'no_calculable_options' | 'all_dismissed' | null;
+}
+export type SuggestionAcceptance =
+  | { status: 'accepted'; room: ProjectRoom }
+  | { status: 'price_changed'; quote: FloorSuggestion };
 export interface RoomBudget {
   room_id: string; publication_key: string; status: 'calculated' | 'uncalculable';
   reasons: ('missing_price' | 'missing_coverage')[];

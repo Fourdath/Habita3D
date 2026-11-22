@@ -5,14 +5,18 @@ import { provideHttpClientTesting } from '@angular/common/http/testing';
 import type { Viewer3DEngineCallbacks } from './engine/viewer-3d.types';
 import { Viewer3DPage } from './viewer-3d.page';
 import { VIEWER_ENGINE_FACTORY } from './engine/viewer-engine.factory';
-import { TEST_PROJECT, TEST_PUBLICATION } from '../../core/ep2/ep2.fixtures';
+import { Ep2ApiService } from '../../core/ep2/ep2-api.service';
+import { SessionService } from '../../core/ep2/session.service';
+import type { SceneRoom } from '../../core/ep2/ep2.types';
+import { TEST_BUDGET, TEST_PROJECT, TEST_PUBLICATION, TEST_STATUS } from '../../core/ep2/ep2.fixtures';
 
 const engine = {
   fail: false,
   callbacks: {} as Viewer3DEngineCallbacks,
   setViewMode: vi.fn(), frameOverview: vi.fn(), zoomOverview: vi.fn(), requestPointerLock: vi.fn(),
+  setTouchWalkEnabled: vi.fn(), setTouchDirection: vi.fn(), loadExampleFloorplan: vi.fn(),
   loadFloorplanFromSvgText: vi.fn(), applyInteriorStyle: vi.fn(), dispose: vi.fn(),
-  getSceneRooms: vi.fn(() => []), setRoomFloorSelections: vi.fn().mockResolvedValue(undefined),
+  getSceneRooms: vi.fn((): SceneRoom[] => []), setRoomFloorSelections: vi.fn().mockResolvedValue(undefined),
 };
 
 describe('Viewer3DPage', () => {
@@ -110,6 +114,23 @@ describe('Viewer3DPage', () => {
     button('Vista general').click();
     expect(engine.frameOverview).toHaveBeenLastCalledWith(false);
   });
+  it('offers touch movement without requiring pointer lock and returns to the overview', () => {
+    const host = ready();
+    Object.defineProperty(component, 'touchSupported', { value: true });
+    Object.defineProperty(component, 'pointerLockSupported', { value: false });
+    button('Recorrer la casa →').click();
+    fixture.detectChanges();
+    expect(host.querySelector('.viewer-3d__pause')).toBeNull();
+    expect(engine.setTouchWalkEnabled).toHaveBeenCalledWith(true);
+    expect(engine.requestPointerLock).not.toHaveBeenCalled();
+    const forward = host.querySelector<HTMLButtonElement>('[aria-label="Avanzar"]')!;
+    forward.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+    forward.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter' }));
+    expect(engine.setTouchDirection.mock.calls).toEqual([['forward', true], ['forward', false]]);
+    button('Vista general').click();
+    expect(component.touchWalk()).toBe(false);
+    expect(engine.setViewMode).toHaveBeenLastCalledWith('overview');
+  });
   it('does not allow entering while the model or finishes are loading', () => {
     ready();
     Object.defineProperty(component, 'pointerLockSupported', { value: true });
@@ -161,6 +182,65 @@ describe('Viewer3DPage', () => {
     expect(component.modelName()).toBe('Vivienda de demostración');
     expect(component.floorplanError()).toBe('El plano no tiene muros.');
     expect(component.loadingFloorplan()).toBe(false);
+  });
+  it('uses example geometry for saved floors, then restores the free SVG without project materials', async () => {
+    ready();
+    await component.onFloorplanFileSelected(fileEvent('Mi casa.svg'));
+    const api = TestBed.inject(Ep2ApiService);
+    TestBed.inject(SessionService).user.set({ id: 1, email: 'demo@example.test' });
+    vi.spyOn(api, 'project').mockResolvedValue({
+      ...TEST_PROJECT,
+      rooms: [{ ...TEST_PROJECT.rooms[0], publicationKey: TEST_PUBLICATION.publicationKey, publication: TEST_PUBLICATION }],
+    });
+    vi.spyOn(api, 'budget').mockResolvedValue(TEST_BUDGET);
+    vi.spyOn(api, 'status').mockResolvedValue(TEST_STATUS);
+    engine.getSceneRooms.mockImplementationOnce(() => [{ id: 'scene-test', name: 'Ejemplo', areaM2: 12 }]);
+
+    component.projectMode.set(true);
+    component.projectId.set(TEST_PROJECT.id);
+    await component.loadActiveProject();
+
+    expect(engine.loadExampleFloorplan).toHaveBeenCalledOnce();
+    const exampleLoad = engine.loadExampleFloorplan.mock.invocationCallOrder[0];
+    expect(exampleLoad).toBeLessThan(engine.getSceneRooms.mock.invocationCallOrder[0]);
+    expect(exampleLoad).toBeLessThan(engine.setRoomFloorSelections.mock.invocationCallOrder.at(-1)!);
+    expect(engine.setRoomFloorSelections).toHaveBeenLastCalledWith([{ sceneRoomId: 'scene-test', publicationKey: TEST_PUBLICATION.publicationKey, category: 'ceramic' }]);
+    expect(component.modelName()).toBe(TEST_PROJECT.name);
+
+    component.projectMode.set(false);
+    await component.loadActiveProject();
+    expect(engine.loadFloorplanFromSvgText).toHaveBeenCalledTimes(2);
+    expect(engine.loadFloorplanFromSvgText.mock.calls[0]).toEqual(engine.loadFloorplanFromSvgText.mock.calls[1]);
+    expect(engine.setRoomFloorSelections).toHaveBeenLastCalledWith([]);
+    expect(engine.setRoomFloorSelections.mock.invocationCallOrder.at(-1)!).toBeLessThan(engine.loadFloorplanFromSvgText.mock.invocationCallOrder.at(-1)!);
+    expect(component.modelName()).toBe('Mi casa');
+    expect(component.project()).toBeNull();
+  });
+  it('ignores a project response received after returning to the free viewer', async () => {
+    ready();
+    await component.onFloorplanFileSelected(fileEvent('Mi casa.svg'));
+    TestBed.inject(SessionService).user.set({ id: 1, email: 'demo@example.test' });
+    let markStarted!: () => void;
+    let respond!: (project: typeof TEST_PROJECT) => void;
+    const requestStarted = new Promise<void>(resolve => { markStarted = resolve; });
+    const projectResponse = new Promise<typeof TEST_PROJECT>(resolve => { respond = resolve; });
+    vi.spyOn(TestBed.inject(Ep2ApiService), 'project').mockImplementation(() => {
+      markStarted();
+      return projectResponse;
+    });
+    component.projectMode.set(true);
+    component.projectId.set(TEST_PROJECT.id);
+    const loading = component.loadActiveProject();
+    await requestStarted;
+
+    component.projectMode.set(false);
+    await component.loadActiveProject();
+    respond(TEST_PROJECT);
+    await loading;
+    expect(component.modelName()).toBe('Mi casa');
+    expect(component.project()).toBeNull();
+    expect(engine.getSceneRooms).not.toHaveBeenCalled();
+    expect(engine.setRoomFloorSelections).toHaveBeenLastCalledWith([]);
   });
   it('preserves a chosen finish when moving between overview and walkthrough', async () => {
     ready();

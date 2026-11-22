@@ -28,7 +28,7 @@
           <div class="viewer-3d__heading">
             <span class="studio__eyebrow">{{ viewMode() === 'overview' ? 'EXPLORA A TU RITMO' : 'DENTRO DE TU VIVIENDA' }}</span>
             <h1>{{ viewMode() === 'overview' ? 'Una nueva perspectiva.' : 'Siente el espacio.' }}</h1>
-            <p>{{ viewMode() === 'overview' ? 'Conoce la distribución antes de entrar.' : 'Presiona Esc para pausar el recorrido.' }}</p>
+            <p>{{ viewMode() === 'overview' ? 'Conoce la distribución antes de entrar.' : touchWalk() ? 'Arrastra el plano para mirar alrededor.' : 'Presiona Esc para pausar el recorrido.' }}</p>
           </div>
 
           <nav class="viewer-3d__views" aria-label="Vista de la vivienda">
@@ -47,6 +47,22 @@
             </div>
             <div class="viewer-3d__help"><span aria-hidden="true">↔</span> Arrastra para girar <i>·</i> Rueda o pellizca para acercar</div>
             <span class="viewer-3d__scale">MODELO 3D / {{ topView() ? 'VISTA SUPERIOR' : 'PERSPECTIVA' }}</span>
+          } @else if (touchWalk()) {
+            <span class="viewer-3d__crosshair" aria-hidden="true">+</span>
+            <div class="viewer-3d__movement" role="group" aria-label="Mantén presionada una flecha para moverte">
+              @for (control of directions; track control.direction) {
+                <button type="button" [class.viewer-3d__forward]="control.direction === 'forward'" [attr.aria-label]="control.label"
+                  (pointerdown)="onTouchDirection(control.direction, true, $event)"
+                  (pointerup)="onTouchDirection(control.direction, false)"
+                  (pointercancel)="onTouchDirection(control.direction, false)"
+                  (lostpointercapture)="onTouchDirection(control.direction, false)"
+                  (keydown.enter)="onTouchDirection(control.direction, true)"
+                  (keyup.enter)="onTouchDirection(control.direction, false)"
+                  (keydown.space)="onTouchDirection(control.direction, true)"
+                  (keyup.space)="onTouchDirection(control.direction, false)"
+                  (blur)="onTouchDirection(control.direction, false)">{{ control.arrow }}</button>
+              }
+            </div>
           } @else {
             @if (!pointerLocked()) {
               <div class="viewer-3d__pause">
@@ -79,6 +95,7 @@
           @if (projectMode()) {
             <section class="studio__project-floor" aria-label="Selección de pisos del proyecto">
               <a routerLink="/projects" [queryParams]="{ project: projectId(), room: selectedProjectRoom()?.id }">← Administrar habitaciones y pisos</a>
+              <a routerLink="/viewer-3d">Abrir visor libre</a>
               @if (projectLoading()) { <p role="status">Recuperando pisos guardados…</p> }
               @if (captureWarning()) { <p role="status">{{ captureWarning() }}</p> }
               @if (projectError()) { <p role="alert">{{ projectError() }}</p><button type="button" (click)="loadActiveProject()">Reintentar</button> }
@@ -96,7 +113,7 @@
                     <p>{{ money(floor.pricePerBoxClp) }} por {{ floor.saleUnit === 'box' ? 'caja' : 'unidad desconocida' }} · {{ floor.coveragePerBoxM2 === null ? 'Cobertura desconocida' : floor.coveragePerBoxM2 + ' m² por caja' }}</p>
                     <p>Precio por m²: {{ floor.pricePerM2Clp === null ? 'Desconocido' : money(floor.pricePerM2Clp) }}</p>
                     <p>Última comprobación: {{ floor.lastCheckedDisplay }}</p>
-                    <p>{{ floor.availability === 'unknown' ? 'Disponibilidad desconocida' : floor.availability === 'available' ? 'Disponible según la fuente' : 'No disponible según la fuente' }}</p>
+                    <p>{{ floor.availability === 'unknown' ? 'Disponibilidad sin confirmar' : floor.availability === 'available' ? 'Disponible según la fuente' : 'No disponible según la fuente' }}</p>
                     <a [href]="floor.productUrl" target="_blank" rel="noopener noreferrer">Ver publicación real ↗</a>
                     @if (selectedRoomBudget(); as cost) { <p>Cajas: {{ cost.boxes ?? 'Pendiente' }} · Costo: {{ money(cost.cost_clp) }}</p> }
                   } @else { <p>Esta habitación aún no tiene un piso elegido.</p> }
@@ -119,7 +136,7 @@
             <app-interior-style-panel
               [showDemoBudget]="!projectMode()"
               [styleId]="interiorStyleId()"
-              [loading]="interiorStyleLoading() || loadingFloorplan()"
+              [loading]="interiorStyleLoading() || loadingFloorplan() || projectLoading()"
               [errorMessage]="interiorStyleError()"
               [budget]="budget()"
               (styleChange)="onInteriorStyleChange($event)"
@@ -137,7 +154,7 @@
           }
           </div>
           <div class="studio__enter">
-            <button type="button" class="studio__primary" [disabled]="status() !== 'ready' || loadingFloorplan() || interiorStyleLoading() || projectLoading()" (click)="pointerLockSupported ? onStartClick() : onViewModeChange('walk')">Recorrer la casa <span aria-hidden="true">→</span></button>
+            <button type="button" class="studio__primary" [disabled]="status() !== 'ready' || loadingFloorplan() || interiorStyleLoading() || projectLoading()" (click)="onStartClick($event)">Recorrer la casa <span aria-hidden="true">→</span></button>
             <p>Descubre el interior en primera persona.</p>
           </div>
         </aside>

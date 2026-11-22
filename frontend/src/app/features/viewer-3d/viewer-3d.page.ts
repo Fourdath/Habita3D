@@ -12,8 +12,11 @@ import { readFloorplanFile } from '../../core/floorplan/floorplan-file';
 
 import { VIEWER_ENGINE_FACTORY, type ViewerEngine } from './engine/viewer-engine.factory';
 import type { ViewerStatus } from './engine/viewer-3d.types';
+import type { WalkDirection } from './engine/touch-walk-input';
 import { InteriorStylePanelComponent } from './interior-style-panel.component';
 import { BrandMarkComponent } from '../landing/components/brand-mark.component';
+
+const EXAMPLE_MODEL_NAME = 'Vivienda de demostración';
 
 @Component({
   selector: 'app-viewer-3d',
@@ -30,9 +33,17 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
   readonly walkError = signal<string | null>(null);
   readonly viewMode = signal<'walk' | 'overview'>('overview');
   readonly topView = signal(false);
-  readonly modelName = signal('Vivienda de demostración');
+  readonly modelName = signal(EXAMPLE_MODEL_NAME);
   readonly modelSummary = signal({ roomCount: 0, areaM2: 0 });
   readonly pointerLockSupported = typeof HTMLElement.prototype.requestPointerLock === 'function';
+  readonly touchSupported = navigator.maxTouchPoints > 0 || window.matchMedia?.('(pointer: coarse)').matches === true;
+  readonly touchWalk = signal(false);
+  readonly directions: { direction: WalkDirection; label: string; arrow: string }[] = [
+    { direction: 'forward', label: 'Avanzar', arrow: '↑' },
+    { direction: 'left', label: 'Moverse a la izquierda', arrow: '←' },
+    { direction: 'backward', label: 'Retroceder', arrow: '↓' },
+    { direction: 'right', label: 'Moverse a la derecha', arrow: '→' },
+  ];
   readonly errorMessage = signal('');
   readonly projectMode = signal(false);
   readonly projectId = signal<number | null>(null);
@@ -70,6 +81,10 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
   private readonly session = inject(SessionService);
   private projectRequest = 0;
   private engine: ViewerEngine | null = null;
+  private freePlan: { svgText: string; name: string } | null = null;
+  private loadedSvg: string | null | undefined = null;
+  private sceneProjectMode = false;
+  private pendingScene = Promise.resolve();
 
   ngAfterViewInit(): void {
     try {
@@ -111,16 +126,29 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
     this.onViewModeChange('overview');
   }
 
-  onStartClick(): void {
-    if (this.status() !== 'ready' || this.loadingFloorplan() || this.interiorStyleLoading() || this.projectLoading() || !this.pointerLockSupported) return;
+  onStartClick(event?: MouseEvent): void {
+    if (this.status() !== 'ready' || this.loadingFloorplan() || this.interiorStyleLoading() || this.projectLoading()) return;
     this.walkError.set(null);
+    const touched = event && 'pointerType' in event && event.pointerType === 'touch';
+    const coarsePointer = window.matchMedia?.('(pointer: coarse)').matches === true;
+    this.touchWalk.set(this.touchSupported && (touched || coarsePointer || !this.pointerLockSupported));
     this.onViewModeChange('walk');
-    this.engine?.requestPointerLock();
+    if (this.touchWalk()) this.engine?.setTouchWalkEnabled(true);
+    else if (this.pointerLockSupported) this.engine?.requestPointerLock();
   }
 
   onViewModeChange(mode: 'walk' | 'overview'): void {
+    if (mode === 'overview') this.touchWalk.set(false);
     this.engine?.setViewMode(mode);
     this.viewMode.set(mode);
+  }
+
+  onTouchDirection(direction: WalkDirection, pressed: boolean, event?: PointerEvent): void {
+    if (pressed && event) {
+      if (event.button !== 0) return;
+      (event.currentTarget as HTMLButtonElement).setPointerCapture?.(event.pointerId);
+    }
+    this.engine?.setTouchDirection(direction, pressed);
   }
 
   onFrameOverview(top = false): void {
@@ -139,12 +167,25 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
 
   async loadActiveProject(): Promise<void> {
     const request = ++this.projectRequest;
+    const saved = this.projectMode();
+    const freePlan = saved ? null : this.freePlan;
+    const targetSvg = freePlan?.svgText ?? null;
     this.project.set(null); this.projectBudget.set(null); this.projectError.set(''); this.projectBudgetError.set(''); this.captureWarning.set(''); this.unmappedRooms.set([]);
-    if (!this.projectMode()) { this.projectLoading.set(false); await this.engine?.setRoomFloorSelections([]); return; }
-    this.projectLoading.set(true);
+    const resetScene = saved || this.sceneProjectMode || this.loadedSvg !== targetSvg || this.projectLoading() || this.loadingFloorplan();
+    this.projectLoading.set(resetScene);
     try {
-      await this.engine?.setRoomFloorSelections([]);
+      if (resetScene) {
+        await this.updateScene(async () => {
+          if (request !== this.projectRequest) return;
+          await this.engine?.setRoomFloorSelections([]);
+          if (request !== this.projectRequest) return;
+          await this.showGeometry(targetSvg);
+          this.sceneProjectMode = saved;
+        });
+      }
       if (request !== this.projectRequest) return;
+      this.modelName.set(freePlan?.name ?? EXAMPLE_MODEL_NAME);
+      if (!saved) return;
       const id = this.projectId();
       if (id === null) { this.projectError.set('El identificador del proyecto no es válido. Abre el proyecto desde Mis proyectos.'); return; }
       if (!this.session.user()) await this.session.restore();
@@ -155,7 +196,10 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
       const sceneIds = new Set(this.engine?.getSceneRooms().map(room => room.id));
       const selected = project.rooms.filter(room => room.sceneRoomId && room.publication);
       this.unmappedRooms.set(project.rooms.filter(room => !room.sceneRoomId || !sceneIds.has(room.sceneRoomId)).map(room => room.name));
-      await this.engine?.setRoomFloorSelections(selected.filter(room => sceneIds.has(room.sceneRoomId!)).map(room => ({ sceneRoomId: room.sceneRoomId!, publicationKey: room.publication!.publicationKey, category: room.publication!.category })));
+      await this.updateScene(async () => {
+        if (request !== this.projectRequest) return;
+        await this.engine?.setRoomFloorSelections(selected.filter(room => sceneIds.has(room.sceneRoomId!)).map(room => ({ sceneRoomId: room.sceneRoomId!, publicationKey: room.publication!.publicationKey, category: room.publication!.category })));
+      });
       if (request !== this.projectRequest) return;
       this.project.set(project); this.modelName.set(project.name);
       const [budget, status] = await Promise.allSettled([this.api.budget(id), this.api.status()]);
@@ -163,43 +207,48 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
       if (budget.status === 'fulfilled') this.projectBudget.set(budget.value);
       else {
         this.projectBudgetError.set(apiError(budget.reason));
-        if (!this.session.user()) { this.project.set(null); this.projectError.set(apiError(budget.reason)); await this.engine?.setRoomFloorSelections([]); }
+        if (!this.session.user()) { this.project.set(null); this.projectError.set(apiError(budget.reason)); await this.clearRoomFloors(request); }
       }
       if (status.status === 'rejected') this.captureWarning.set('No se pudo comprobar el estado de actualización. Revisa las fechas guardadas de cada piso.');
       else if (status.value.latestJob?.status === 'failed' || status.value.groups.some(group => ['failed', 'partial'].includes(group.status))) this.captureWarning.set('La actualización falló o fue incompleta. Se muestran los últimos precios válidos con su fecha anterior.');
     } catch (error) {
       if (request === this.projectRequest) {
-        this.projectError.set(error instanceof Error && error.message.startsWith('Dos habitaciones') ? error.message : apiError(error));
-        await this.engine?.setRoomFloorSelections([]);
+        if (saved) {
+          this.projectError.set(error instanceof Error && error.message.startsWith('Dos habitaciones') ? error.message : apiError(error));
+          await this.clearRoomFloors(request);
+        } else {
+          this.floorplanError.set(error instanceof Error ? error.message : 'No se pudo recuperar el plano libre.');
+        }
       }
     } finally { if (request === this.projectRequest) this.projectLoading.set(false); }
   }
 
   /**
    * Reads and validates the picked SVG entirely in memory (never uploaded, never
-   * written into public/) and hands it to the engine. On any failure — bad
-   * extension/size/XML, or a structurally invalid plan — the current house stays
-   * exactly as it was; only floorplanError() is set, so the 3D view is unaffected.
+   * written into public/) and remembers it only for the current free viewer.
    */
   async onFloorplanFileSelected(event: Event): Promise<void> {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0] ?? null;
     input.value = '';
-    if (!file) {
+    if (!file || this.projectMode() || this.projectLoading() || this.loadingFloorplan()) {
       return;
     }
 
     this.loadingFloorplan.set(true);
+    const request = this.projectRequest;
     try {
       const svgText = await readFloorplanFile(file);
-      await this.engine?.loadFloorplanFromSvgText(svgText);
-      this.modelName.set(file.name.replace(/\.svg$/i, ''));
-      this.onViewModeChange('overview');
-      this.onFrameOverview();
-      this.floorplanError.set(null);
-      this.refreshStyleState();
+      await this.updateScene(async () => {
+        if (request !== this.projectRequest || !this.engine) return;
+        await this.showGeometry(svgText);
+        this.freePlan = { svgText, name: file.name.replace(/\.svg$/i, '') };
+        if (request !== this.projectRequest) return;
+        this.modelName.set(this.freePlan.name);
+        this.floorplanError.set(null);
+      });
     } catch (error) {
-      this.floorplanError.set(error instanceof Error ? error.message : 'No se pudo cargar el plano seleccionado.');
+      if (request === this.projectRequest) this.floorplanError.set(error instanceof Error ? error.message : 'No se pudo cargar el plano seleccionado.');
     } finally {
       this.loadingFloorplan.set(false);
     }
@@ -208,7 +257,7 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
   async onInteriorStyleChange(styleId: InteriorStyleId): Promise<void> {
     this.interiorStyleLoading.set(true);
     try {
-      await this.engine?.applyInteriorStyle(styleId);
+      await this.updateScene(async () => this.engine?.applyInteriorStyle(styleId));
       this.interiorStyleId.set(styleId);
       this.interiorStyleError.set(null);
       this.refreshStyleState();
@@ -217,6 +266,31 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
     } finally {
       this.interiorStyleLoading.set(false);
     }
+  }
+
+  private async showGeometry(svgText: string | null): Promise<void> {
+    const engine = this.engine;
+    if (!engine || this.loadedSvg === svgText) return;
+    this.loadedSvg = undefined;
+    if (svgText === null) await engine.loadExampleFloorplan();
+    else await engine.loadFloorplanFromSvgText(svgText);
+    if (this.engine !== engine) return;
+    this.loadedSvg = svgText;
+    this.onViewModeChange('overview');
+    this.onFrameOverview();
+    this.refreshStyleState();
+  }
+
+  private async clearRoomFloors(request: number): Promise<void> {
+    await this.updateScene(async () => {
+      if (request === this.projectRequest) await this.engine?.setRoomFloorSelections([]);
+    });
+  }
+
+  private updateScene(update: () => Promise<void>): Promise<void> {
+    const next = this.pendingScene.then(update);
+    this.pendingScene = next.catch(() => undefined);
+    return next;
   }
 
   private refreshStyleState(): void {

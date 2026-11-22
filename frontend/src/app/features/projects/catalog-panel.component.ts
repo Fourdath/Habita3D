@@ -68,5 +68,5 @@ export class CatalogPanelComponent implements OnInit {
   safeUrl(value: string | null): string | null {
     try { const url = new URL(value ?? ''); return url.protocol === 'https:' ? url.href : null; } catch { return null; }
   }
-  availability(value: string): string { return value === 'available' ? 'Disponible según la fuente' : value === 'unavailable' ? 'No disponible según la fuente' : 'Disponibilidad desconocida'; }
+  availability(value: string): string { return value === 'available' ? 'Disponible según la fuente' : value === 'unavailable' ? 'No disponible según la fuente' : 'Disponibilidad sin confirmar'; }
 }

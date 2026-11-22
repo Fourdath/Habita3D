@@ -30,6 +30,10 @@
 .ep2-form { display: grid; gap: 16px; } .ep2-form > h3 { margin-top: 20px; }
 .ep2-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .ep2-auth { max-width: 500px; margin: 12px auto; width: 100%; } .ep2-auth .ep2-form { margin-top: 20px; } .ep2-auth > p { margin: 12px 0; color: #63735f; }
+.ep2-auth button { min-height: 44px; }
+.ep2-auth input { min-height: 44px; font-size: 16px; }
+.ep2-auth .ep2-error { color: #8d3030; }
+.ep2-auth .ep2-notice { color: #694f24; }
 .ep2-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
 .ep2-hint { color: #687662; font-size: 12px; margin: 9px 0 !important; }
 .ep2-error, .ep2-notice, .ep2-success { padding: 12px 16px; border-radius: 8px; font-size: 13px; margin: 12px 0; }
