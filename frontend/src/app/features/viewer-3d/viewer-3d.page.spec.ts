@@ -11,6 +11,12 @@ import type { SceneRoom } from '../../core/ep2/ep2.types';
 import { TEST_BUDGET, TEST_PROJECT, TEST_PUBLICATION, TEST_STATUS } from '../../core/ep2/ep2.fixtures';
 import { finishForPublication } from './engine/floor-finishes';
 
+const uploaded = {
+  name: 'Proyecto.svg',
+  svg: '<svg xmlns="http://www.w3.org/2000/svg"><g class="Wall"><polygon points="0,0 15,0 15,2 0,2"/></g></svg>',
+  revision: '216a38f6-4173-498f-a7b9-e29c65ae6bb6',
+};
+
 const engine = {
   fail: false,
   callbacks: {} as Viewer3DEngineCallbacks,
@@ -186,13 +192,14 @@ describe('Viewer3DPage', () => {
     expect(component.floorplanError()).toBe('El plano no tiene muros.');
     expect(component.loadingFloorplan()).toBe(false);
   });
-  it('uses example geometry for saved floors, then restores the free SVG without project materials', async () => {
+  it('loads the saved drawing before its floors and restores the separate free SVG', async () => {
     ready();
     await component.onFloorplanFileSelected(fileEvent('Mi casa.svg'));
     const api = TestBed.inject(Ep2ApiService);
     TestBed.inject(SessionService).user.set({ id: 1, email: 'demo@example.test' });
     vi.spyOn(api, 'project').mockResolvedValue({
       ...TEST_PROJECT,
+      floorplan: uploaded,
       rooms: [{ ...TEST_PROJECT.rooms[0], publicationKey: TEST_PUBLICATION.publicationKey, publication: TEST_PUBLICATION }],
     });
     vi.spyOn(api, 'budget').mockResolvedValue(TEST_BUDGET);
@@ -203,10 +210,11 @@ describe('Viewer3DPage', () => {
     component.projectId.set(TEST_PROJECT.id);
     await component.loadActiveProject();
 
-    expect(engine.loadExampleFloorplan).toHaveBeenCalledOnce();
-    const exampleLoad = engine.loadExampleFloorplan.mock.invocationCallOrder[0];
-    expect(exampleLoad).toBeLessThan(engine.getSceneRooms.mock.invocationCallOrder.at(-1)!);
-    expect(exampleLoad).toBeLessThan(engine.setRoomFloorSelections.mock.invocationCallOrder.at(-1)!);
+    expect(engine.loadExampleFloorplan).not.toHaveBeenCalled();
+    expect(engine.loadFloorplanFromSvgText).toHaveBeenLastCalledWith(uploaded.svg);
+    const projectLoad = engine.loadFloorplanFromSvgText.mock.invocationCallOrder.at(-1)!;
+    expect(projectLoad).toBeLessThan(engine.getSceneRooms.mock.invocationCallOrder.at(-1)!);
+    expect(projectLoad).toBeLessThan(engine.setRoomFloorSelections.mock.invocationCallOrder.at(-1)!);
     expect(engine.setRoomFloorSelections).toHaveBeenLastCalledWith([expect.objectContaining({
       sceneRoomId: 'scene-test', publicationKey: TEST_PUBLICATION.publicationKey, category: 'ceramic',
       finishId: finishForPublication('ceramic', TEST_PUBLICATION.name),
@@ -215,12 +223,24 @@ describe('Viewer3DPage', () => {
 
     component.projectMode.set(false);
     await component.loadActiveProject();
-    expect(engine.loadFloorplanFromSvgText).toHaveBeenCalledTimes(2);
-    expect(engine.loadFloorplanFromSvgText.mock.calls[0]).toEqual(engine.loadFloorplanFromSvgText.mock.calls[1]);
+    expect(engine.loadFloorplanFromSvgText).toHaveBeenCalledTimes(3);
+    expect(engine.loadFloorplanFromSvgText.mock.calls[0]).toEqual(engine.loadFloorplanFromSvgText.mock.calls[2]);
     expect(engine.setRoomFloorSelections).toHaveBeenLastCalledWith([]);
-    expect(engine.setRoomFloorSelections.mock.invocationCallOrder.at(-1)!).toBeLessThan(engine.loadFloorplanFromSvgText.mock.invocationCallOrder.at(-1)!);
     expect(component.modelName()).toBe('Mi casa');
     expect(component.project()).toBeNull();
+  });
+  it('asks for a drawing when a project has no saved floor plan', async () => {
+    ready();
+    const api = TestBed.inject(Ep2ApiService);
+    TestBed.inject(SessionService).user.set({ id: 1, email: 'demo@example.test' });
+    vi.spyOn(api, 'project').mockResolvedValue(TEST_PROJECT);
+    component.projectMode.set(true);
+    component.projectId.set(TEST_PROJECT.id);
+    await component.loadActiveProject();
+    fixture.detectChanges();
+    expect(engine.loadExampleFloorplan).not.toHaveBeenCalled();
+    expect(component.modelReady()).toBe(false);
+    expect(fixture.nativeElement.textContent).toContain('Ir al proyecto y cargar el plano');
   });
   it('ignores a project response received after returning to the free viewer', async () => {
     ready();
@@ -290,7 +310,7 @@ describe('Viewer3DPage', () => {
     ready();
     const api = TestBed.inject(Ep2ApiService);
     TestBed.inject(SessionService).user.set({ id: 1, email: 'demo@example.test' });
-    vi.spyOn(api, 'project').mockResolvedValue(TEST_PROJECT);
+    vi.spyOn(api, 'project').mockResolvedValue({ ...TEST_PROJECT, floorplan: uploaded });
     const budget = vi.spyOn(api, 'budget').mockResolvedValue(TEST_BUDGET);
     vi.spyOn(api, 'status').mockResolvedValue(TEST_STATUS);
     component.projectMode.set(true);
@@ -314,7 +334,7 @@ describe('Viewer3DPage', () => {
     ready();
     const api = TestBed.inject(Ep2ApiService);
     TestBed.inject(SessionService).user.set({ id: 1, email: 'demo@example.test' });
-    vi.spyOn(api, 'project').mockResolvedValue({ ...TEST_PROJECT, rooms: [] });
+    vi.spyOn(api, 'project').mockResolvedValue({ ...TEST_PROJECT, rooms: [], floorplan: uploaded });
     const budget = vi.spyOn(api, 'budget').mockResolvedValue(TEST_BUDGET);
     vi.spyOn(api, 'status').mockResolvedValue(TEST_STATUS);
     component.projectMode.set(true);
@@ -323,7 +343,7 @@ describe('Viewer3DPage', () => {
     const updated = { ...TEST_PROJECT, rooms: [{ ...TEST_PROJECT.rooms[0], sceneRoomId: 'selection-a', publication: TEST_PUBLICATION }] };
     const bulk = vi.spyOn(api, 'saveProjectFloor').mockResolvedValue(updated);
     await component.saveCatalogFloor(TEST_PUBLICATION, true);
-    expect(bulk).toHaveBeenCalledWith(TEST_PROJECT.id, TEST_PUBLICATION.publicationKey, [{ id: 'selection-a', name: 'Living', areaM2: '8.125000' }]);
+    expect(bulk).toHaveBeenCalledWith(TEST_PROJECT.id, TEST_PUBLICATION.publicationKey, [{ id: 'selection-a', name: 'Living', areaM2: '8.125000' }], uploaded.revision);
     expect(component.project()).toEqual(updated);
     expect(budget).toHaveBeenCalledTimes(2);
   });

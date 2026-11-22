@@ -5,11 +5,13 @@ import {
   NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
 
 import { PrismaService } from '../../database/prisma.service.js';
 import {
   Prisma,
   type Project,
+  type ProjectFloorplan,
   type Room,
 } from '../../generated/prisma/client.js';
 import type { FloorSuggestionRequest } from '../../integrations/python/floor-suggestions-contract.js';
@@ -19,6 +21,7 @@ import { CATALOGUE_IMPORT_LOCK } from '../materials/capture-contract.js';
 import { serializePublication } from '../materials/publication-view.js';
 import { CreateProjectDto } from './dto/create-project.dto.js';
 import type { ProjectFloorDto } from './dto/project-floor.dto.js';
+import type { ProjectFloorplanDto } from './dto/project-floorplan.dto.js';
 import { CreateRoomDto, UpdateRoomDto } from './dto/room.dto.js';
 import type {
   AcceptFloorSuggestionDto,
@@ -37,7 +40,10 @@ import {
 type RoomWithPublication = Prisma.RoomGetPayload<{
   include: { publication: true };
 }>;
-type ProjectWithRooms = Project & { rooms?: RoomWithPublication[] };
+type ProjectWithRooms = Project & {
+  rooms?: RoomWithPublication[];
+  floorplan?: Pick<ProjectFloorplan, 'name' | 'svg' | 'revision'> | null;
+};
 
 const missingProject = () => new NotFoundException('Proyecto no encontrado');
 const missingRoom = () => new NotFoundException('Habitación no encontrada');
@@ -90,6 +96,7 @@ function serializeProject(project: ProjectWithRooms) {
     createdAt: project.createdAt,
     updatedAt: project.updatedAt,
     ...(project.rooms ? { rooms: project.rooms.map(serializeRoom) } : {}),
+    ...(project.floorplan !== undefined ? { floorplan: project.floorplan } : {}),
   };
 }
 
@@ -216,17 +223,65 @@ export class ProjectsService {
 
   async findOne(userId: number, id: number) {
     projectId(id);
-    const project = await this.prisma.project.findFirst({
-      where: { id, ownerId: userId },
-      include: {
-        rooms: {
-          include: { publication: true },
-          orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+    const project = await this.prisma.$transaction(
+      (tx) => tx.project.findFirst({
+        where: { id, ownerId: userId },
+        include: {
+          floorplan: { select: { name: true, svg: true, revision: true } },
+          rooms: {
+            include: { publication: true },
+            orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+          },
         },
-      },
-    });
+      }),
+      { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
+    );
     if (!project) throw missingProject();
     return serializeProject(project);
+  }
+
+  async saveFloorplan(userId: number, id: number, dto: ProjectFloorplanDto) {
+    if (
+      Buffer.byteLength(dto.svg) > 1_048_576 ||
+      /<!\s*(?:DOCTYPE|ENTITY)\b/i.test(dto.svg) ||
+      !/<svg[\s>]/.test(dto.svg) ||
+      !/<\/svg\s*>/.test(dto.svg)
+    ) {
+      throw new BadRequestException('El plano debe ser un SVG CubiCasa de hasta 1 MB.');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      await this.owned(tx, userId, id);
+      const previous = await tx.projectFloorplan.findUnique({ where: { projectId: id } });
+      const changed = previous?.svg !== dto.svg;
+      if (changed) {
+        // Parsed room IDs depend on the drawing. Old IDs cannot safely identify rooms in a new drawing.
+        await tx.room.updateMany({
+          where: { projectId: id, sceneRoomId: { not: null } },
+          data: { sceneRoomId: null },
+        });
+      }
+      if (changed && !(await tx.room.count({ where: { projectId: id } }))) {
+        await tx.room.createMany({
+          data: dto.rooms.map((room) => ({
+            projectId: id,
+            name: room.name,
+            sceneRoomId: room.id,
+            areaMode: 'area',
+            areaM2: room.areaM2,
+          })),
+        });
+      }
+      const { name, svg } = dto;
+      const revision = !changed && previous ? previous.revision : randomUUID();
+      const floorplan = await tx.projectFloorplan.upsert({
+        where: { projectId: id },
+        create: { projectId: id, name, svg, revision },
+        update: { name, svg, revision },
+        select: { name: true, svg: true, revision: true },
+      });
+      return { floorplan };
+    });
   }
 
   async update(userId: number, id: number, dto: UpdateProjectDto) {
@@ -273,10 +328,21 @@ export class ProjectsService {
     }
   }
 
+  private async checkFloorplanRevision(tx: Prisma.TransactionClient, id: number, revision?: string) {
+    const floorplan = await tx.projectFloorplan.findUnique({
+      where: { projectId: id },
+      select: { revision: true },
+    });
+    if (floorplan?.revision !== revision) {
+      throw new ConflictException({ code: 'floorplan_changed', message: 'El plano cambió. Abre el proyecto nuevamente.' });
+    }
+  }
+
   async createRoom(userId: number, id: number, dto: CreateRoomDto) {
     const surface = surfaceData(dto);
     return this.prisma.$transaction(async (tx) => {
       await this.owned(tx, userId, id);
+      if (dto.sceneRoomId) await this.checkFloorplanRevision(tx, id, dto.floorplanRevision);
       if ((await tx.room.count({ where: { projectId: id } })) >= 100) {
         throw new BadRequestException(
           'Un proyecto admite hasta 100 habitaciones',
@@ -305,6 +371,7 @@ export class ProjectsService {
   async applyProjectFloor(userId: number, id: number, dto: ProjectFloorDto) {
     return this.prisma.$transaction(async (tx) => {
       await this.owned(tx, userId, id);
+      await this.checkFloorplanRevision(tx, id, dto.floorplanRevision);
       const product = await tx.publication.findUnique({
         where: { publicationKey: dto.publicationKey },
       });
@@ -392,6 +459,7 @@ export class ProjectsService {
       });
       if (!room) throw missingRoom();
       const surface = surfaceData(dto, room);
+      if (dto.sceneRoomId) await this.checkFloorplanRevision(tx, id, dto.floorplanRevision);
       await this.selectedPublication(tx, dto.publicationKey);
       return serializeRoom(
         await tx.room.update({

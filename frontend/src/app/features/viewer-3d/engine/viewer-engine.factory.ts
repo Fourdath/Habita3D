@@ -10,8 +10,8 @@ export type ViewerEngine = Pick<Viewer3DEngine,
 
 /** Angular boundary: the page can be exercised without a WebGL context. */
 export const VIEWER_ENGINE_FACTORY = new InjectionToken<
-  (container: HTMLElement, callbacks: Viewer3DEngineCallbacks) => ViewerEngine
+  (container: HTMLElement, callbacks: Viewer3DEngineCallbacks, loadExample: boolean) => ViewerEngine
 >('VIEWER_ENGINE_FACTORY', {
   providedIn: 'root',
-  factory: () => (container, callbacks) => new Viewer3DEngine(container, callbacks),
+  factory: () => (container, callbacks, loadExample) => new Viewer3DEngine(container, callbacks, loadExample),
 });

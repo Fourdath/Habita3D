@@ -3,15 +3,15 @@
     <header class="studio__header">
       <a routerLink="/landing" class="studio__brand" aria-label="Habita3D, volver al inicio"><app-brand-mark /></a>
       <div class="studio__project"><span>ESTUDIO 3D</span><strong>{{ modelName() }}</strong></div>
-      <a routerLink="/projects" class="studio__home">Mis proyectos</a>
+      <a routerLink="/projects" [queryParams]="{ project: projectId() }" class="studio__home">Mis proyectos</a>
       <a routerLink="/landing" class="studio__home">← <span>Volver al inicio</span></a>
     </header>
 
     <div class="studio__workspace">
       <main class="viewer-3d" aria-label="Modelo interactivo de la vivienda">
-        <div #canvasHost class="viewer-3d__canvas-host"></div>
+        <div #canvasHost class="viewer-3d__canvas-host" [style.visibility]="modelReady() ? null : 'hidden'"></div>
 
-        @if (status() === 'loading') {
+        @if (status() === 'loading' || (projectMode() && projectLoading() && !project())) {
           <div class="viewer-3d__overlay" role="status">
             <ion-spinner name="crescent"></ion-spinner>
             <h1>Preparando tu vivienda</h1><p>Estamos construyendo la vista general.</p>
@@ -23,8 +23,16 @@
             <a routerLink="/landing">Volver al inicio</a>
           </div>
         }
+        @if (status() === 'ready' && projectMode() && !projectLoading() && !project()) {
+          <div class="viewer-3d__overlay" role="alert">
+            <h1>Plano del proyecto</h1>
+            <p>{{ projectError() }}</p>
+            <a routerLink="/projects" [queryParams]="{ project: projectId() }">Ir al proyecto y cargar el plano</a>
+            <button type="button" class="studio__secondary" (click)="loadActiveProject()">Reintentar</button>
+          </div>
+        }
 
-        @if (status() === 'ready') {
+        @if (modelReady()) {
           <div class="viewer-3d__heading">
             <span class="studio__eyebrow">{{ viewMode() === 'overview' ? 'EXPLORA A TU RITMO' : 'DENTRO DE TU VIVIENDA' }}</span>
             <h1>{{ viewMode() === 'overview' ? 'Una nueva perspectiva.' : 'Siente el espacio.' }}</h1>
@@ -114,7 +122,6 @@
               <a routerLink="/viewer-3d">Abrir visor libre</a>
               @if (projectLoading()) { <p role="status">Recuperando pisos guardados…</p> }
               @if (captureWarning()) { <p role="status">{{ captureWarning() }}</p> }
-              @if (projectError()) { <p role="alert">{{ projectError() }}</p><button type="button" (click)="loadActiveProject()">Reintentar</button> }
               @if (project(); as saved) {
                 @if (saved.rooms.length) {
                   <label for="project-room">Habitación del proyecto</label>
@@ -191,7 +198,7 @@
             <div><strong>{{ modelName() }}</strong><span>{{ status() === 'ready' ? 'Modelo listo para explorar' : 'Preparando modelo…' }}</span></div>
             <span class="studio__dot" [class.studio__dot--ready]="status() === 'ready'"></span>
           </div>
-          @if (status() === 'ready') {
+          @if (modelReady()) {
             <div class="studio__facts">
               <div><strong>{{ modelSummary().roomCount }}</strong><span>espacios en el plano</span></div>
               <div><strong>{{ modelSummary().areaM2.toFixed(1) }} <small>m²</small></strong><span>superficie de recintos</span></div>
@@ -212,11 +219,13 @@
               <p>Tu plano se procesa en este dispositivo.</p>
               @if (floorplanError()) { <p class="studio__error" role="alert">{{ floorplanError() }}</p> }
             </div>
-            } @else { <p class="studio__plan-note">Proyecto vinculado al plano de ejemplo. Los planos SVG cargados en modo libre no se guardan en este proyecto.</p> }
+            } @else {
+              <p class="studio__plan-note">Plano guardado: {{ projectFloorplan()?.name }}</p>
+            }
           }
           </div>
           <div class="studio__enter">
-            <button type="button" class="studio__primary" [disabled]="status() !== 'ready' || loadingFloorplan() || interiorStyleLoading() || projectLoading() || floorUpdating()" (click)="onStartClick($event)">Recorrer la casa <span aria-hidden="true">→</span></button>
+            <button type="button" class="studio__primary" [disabled]="!modelReady() || loadingFloorplan() || interiorStyleLoading() || projectLoading() || floorUpdating()" (click)="onStartClick($event)">Recorrer la casa <span aria-hidden="true">→</span></button>
             <p>Descubre el interior en primera persona.</p>
           </div>
         </aside>

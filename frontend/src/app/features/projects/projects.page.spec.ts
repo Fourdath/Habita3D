@@ -17,7 +17,7 @@ describe('EP2 project orchestration', () => {
     api.projects.mockResolvedValue([TEST_PROJECT]); api.project.mockResolvedValue(structuredClone(TEST_PROJECT)); api.budget.mockResolvedValue(TEST_BUDGET); api.saveRoom.mockResolvedValue(TEST_PROJECT.rooms[0]);
     TestBed.configureTestingModule({ providers: [
       { provide: Ep2ApiService, useValue: api }, { provide: SessionService, useValue: session },
-      { provide: ScenePlanService, useValue: { rooms: vi.fn().mockResolvedValue([]) } },
+      { provide: ScenePlanService, useValue: { rooms: vi.fn().mockReturnValue([]) } },
       { provide: Router, useValue: { navigate: vi.fn().mockResolvedValue(true) } },
       { provide: ActivatedRoute, useValue: { queryParamMap: of(convertToParamMap({})), snapshot: { queryParams: {} } } },
     ] });

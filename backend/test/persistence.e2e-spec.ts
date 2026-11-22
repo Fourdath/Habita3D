@@ -262,6 +262,37 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === 'true')('EP2 PostgreSQL persis
     expect(budget.body.rooms).toHaveLength(2);
   });
 
+  it('saves a project drawing, isolates it by owner and detaches old room links on replacement', async () => {
+    const owner = await register('drawing-owner');
+    const other = await register('drawing-other');
+    const server = app.getHttpServer();
+    const project = await request(server).post('/api/projects').set('Authorization', owner)
+      .send({ name: 'Plano privado', budgetClp: 200000 }).expect(201);
+    const path = `/api/projects/${project.body.id}`;
+    const read = (auth: string) => request(server).get(path).set('Authorization', auth);
+    const save = (auth: string, name: string, svg: string) => request(server).put(`${path}/floorplan`)
+      .set('Authorization', auth).send({ name, svg, rooms: [{ id: 'room_0', name: 'Living', areaM2: '10' }] });
+    const drawing = '<svg xmlns="http://www.w3.org/2000/svg"><g class="Wall"/><g class="Space Living"/></svg>';
+    expect((await read(owner).expect(200)).body.floorplan).toBeNull();
+    await save(other, 'otro.svg', drawing).expect(404);
+    await save(owner, 'invalido.svg', `<!DOCTYPE svg>${drawing}`).expect(400);
+    const { body: initial } = await save(owner, 'propio.svg', drawing).expect(200);
+    const { body: detail } = await read(owner).expect(200);
+    expect(detail.floorplan).toEqual(initial.floorplan);
+    expect(detail.rooms).toMatchObject([{ name: 'Living', sceneRoomId: 'room_0', areaM2: '10' }]);
+    await read(other).expect(404);
+    expect((await save(owner, 'renombrado.svg', drawing).expect(200)).body.floorplan.revision).toBe(initial.floorplan.revision);
+    const { body: replacement } = await save(owner, 'nuevo.svg', drawing.replace('Living', 'Kitchen')).expect(200);
+    expect(replacement.floorplan.revision).not.toBe(initial.floorplan.revision);
+    expect((await read(owner).expect(200)).body.rooms).toMatchObject([
+      { id: detail.rooms[0].id, name: 'Living', sceneRoomId: null, areaM2: '10' },
+    ]);
+    const patch = (revision: string) => request(server).patch(`${path}/rooms/${detail.rooms[0].id}`)
+      .set('Authorization', owner).send({ sceneRoomId: 'room_0', floorplanRevision: revision });
+    await patch(initial.floorplan.revision).expect(409);
+    await patch(replacement.floorplan.revision).expect(200);
+  });
+
   it('persists preferences and requires an updated price to be confirmed before changing the floor', async () => {
     const owner = await register('recommendation-owner');
     const other = await register('recommendation-other');

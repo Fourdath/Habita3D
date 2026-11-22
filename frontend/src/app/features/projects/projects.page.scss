@@ -1,1 +1,7 @@
 :host { display: block; height: 100%; color-scheme: light; }
+.ep2-plan-file {
+  display: grid;
+  gap: .4rem;
+  max-width: 26rem;
+  margin-block-start: 1rem;
+}

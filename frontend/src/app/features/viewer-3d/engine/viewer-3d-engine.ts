@@ -88,6 +88,7 @@ export class Viewer3DEngine {
   constructor(
     private readonly container: HTMLElement,
     private readonly callbacks: Viewer3DEngineCallbacks = {},
+    loadExample = true,
   ) {
     this.camera = new THREE.PerspectiveCamera(CAMERA_FOV, this.containerAspect(), CAMERA_NEAR, CAMERA_FAR);
 
@@ -148,7 +149,7 @@ export class Viewer3DEngine {
 
     this.renderer.setAnimationLoop(this.animate);
 
-    void this.initializeExample();
+    void this.initialize(loadExample);
   }
 
   requestPointerLock(): void {
@@ -365,9 +366,9 @@ export class Viewer3DEngine {
     await this.loadFloorplanFromSvgText(await this.exampleSvg);
   }
 
-  private async initializeExample(): Promise<void> {
+  private async initialize(loadExample: boolean): Promise<void> {
     try {
-      await this.loadExampleFloorplan();
+      await (loadExample ? this.loadExampleFloorplan() : Promise.resolve());
       if (!this.disposed) this.callbacks.onReady?.();
     } catch (error) {
       if (!this.disposed) this.callbacks.onError?.(error);

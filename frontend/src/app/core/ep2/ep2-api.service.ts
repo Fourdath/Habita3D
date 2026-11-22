@@ -2,6 +2,7 @@ import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http'
 import { Injectable, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import type { CatalogStatus, FloorPreferences, FloorSuggestions, Page, PriceHistory, Project, ProjectBudget, ProjectRoom, ProjectSummary, Publication, RoomInput, SuggestionAcceptance } from './ep2.types';
+import type { FloorplanRoomInput, ProjectFloorplan } from './ep2.types';
 
 @Injectable({ providedIn: 'root' })
 export class Ep2ApiService {
@@ -27,8 +28,13 @@ export class Ep2ApiService {
   deleteRoom(id: number, roomId: string): Promise<void> { return firstValueFrom(this.http.delete<void>(this.roomUrl(id, roomId))); }
   budget(id: number): Promise<ProjectBudget> { return firstValueFrom(this.http.get<ProjectBudget>(`/api/projects/${id}/budget`)); }
 
-  saveProjectFloor(id: number, publicationKey: string, rooms: { id: string; name: string; areaM2: string }[]): Promise<Project> {
-    return firstValueFrom(this.http.patch<Project>(`/api/projects/${id}/floors`, { publicationKey, rooms }));
+  async saveProjectFloorplan(id: number, name: string, svg: string, rooms: FloorplanRoomInput[]): Promise<ProjectFloorplan> {
+    const { floorplan } = await firstValueFrom(this.http.put<{ floorplan: ProjectFloorplan }>(`/api/projects/${id}/floorplan`, { name, svg, rooms }));
+    return floorplan;
+  }
+
+  saveProjectFloor(id: number, publicationKey: string, rooms: FloorplanRoomInput[], floorplanRevision?: string): Promise<Project> {
+    return firstValueFrom(this.http.patch<Project>(`/api/projects/${id}/floors`, { publicationKey, rooms, floorplanRevision }));
   }
 
   suggestions(id: number, roomId: string, exclude: string[]): Promise<FloorSuggestions> {
@@ -69,6 +75,7 @@ export function apiError(error: unknown): string {
     if (error.status === 401) return 'La sesión venció o las credenciales no son correctas. Inicia sesión nuevamente.';
     if (error.status === 403) return 'Esta cuenta no tiene acceso a la operación.';
     if (error.status === 404) return 'No se encontró el proyecto o no pertenece a esta cuenta.';
+    if (error.status === 409 && error.error?.code === 'floorplan_changed') return 'El plano cambió. Abre el proyecto nuevamente.';
     if (error.status === 409) return 'Ya existe una cuenta con ese correo o hubo un conflicto al guardar.';
     if (error.status === 0) return 'No se pudo conectar con la aplicación. Comprueba tu conexión y vuelve a intentar.';
     if (error.status === 429) return 'Se alcanzó el límite de solicitudes. Espera un momento y vuelve a intentar.';

@@ -32,12 +32,24 @@ export interface ProjectSummary { id: number; name: string; budgetClp: number; c
 export interface Project extends ProjectSummary {
   rooms: ProjectRoom[];
   suggestionsEnabled?: boolean;
+  floorplan?: ProjectFloorplan | null;
+}
+export interface ProjectFloorplan {
+  name: string;
+  svg: string;
+  revision: string;
+}
+export interface FloorplanRoomInput {
+  id: string;
+  name: string;
+  areaM2: string;
 }
 export interface RoomInput {
   name: string; areaMode: 'area' | 'dimensions'; areaM2?: string; lengthM?: string; widthM?: string;
   wastePercent: string; budgetClp: number | null; sceneRoomId: string | null;
+  floorplanRevision?: string;
 }
-export interface ProjectRoom extends Omit<RoomInput, 'areaM2' | 'lengthM' | 'widthM'> {
+export interface ProjectRoom extends Omit<RoomInput, 'areaM2' | 'lengthM' | 'widthM' | 'floorplanRevision'> {
   id: string; projectId: number; areaM2: string | null; lengthM: string | null; widthM: string | null;
   publicationKey: string | null; publication: Publication | null;
   preferredCategory?: FloorCategory | null;

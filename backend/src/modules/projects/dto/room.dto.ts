@@ -4,6 +4,7 @@ import {
   IsInt,
   IsNotEmpty,
   IsString,
+  IsUUID,
   Matches,
   Max,
   MaxLength,
@@ -47,6 +48,10 @@ export class RoomDetailsDto {
   @IsNotEmpty()
   @MaxLength(100)
   sceneRoomId?: string | null;
+
+  @ValidateIf((_, value) => value !== undefined)
+  @IsUUID('4')
+  floorplanRevision?: string;
 }
 
 export class CreateRoomDto extends RoomDetailsDto {

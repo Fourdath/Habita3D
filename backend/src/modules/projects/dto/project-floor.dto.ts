@@ -6,9 +6,11 @@ import {
   IsArray,
   IsNotEmpty,
   IsString,
+  IsUUID,
   Matches,
   MaxLength,
   ValidateNested,
+  ValidateIf,
 } from 'class-validator';
 import { ExactDecimal, trimmed } from './project-fields.js';
 
@@ -29,11 +31,7 @@ class PlanRoomDto {
   areaM2!: string;
 }
 
-export class ProjectFloorDto {
-  @IsString()
-  @Matches(/^[a-f0-9]{64}$/)
-  publicationKey!: string;
-
+export class PlanRoomsDto {
   @IsArray()
   @ArrayMinSize(1)
   @ArrayMaxSize(100)
@@ -41,4 +39,14 @@ export class ProjectFloorDto {
   @ValidateNested({ each: true })
   @Type(() => PlanRoomDto)
   rooms!: PlanRoomDto[];
+}
+
+export class ProjectFloorDto extends PlanRoomsDto {
+  @IsString()
+  @Matches(/^[a-f0-9]{64}$/)
+  publicationKey!: string;
+
+  @ValidateIf((_, value) => value !== undefined)
+  @IsUUID('4')
+  floorplanRevision?: string;
 }

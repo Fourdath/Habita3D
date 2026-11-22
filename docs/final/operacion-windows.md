@@ -13,7 +13,7 @@ El entorno Compose publica el sitio en `http://127.0.0.1:8080` por defecto. La d
 
 ## Verificación de la demo
 
-1. En el navegador, entra en **Mis proyectos**. Registra una cuenta ficticia e inicia sesión. Crea un proyecto con presupuesto y una habitación con superficie. Vincula la habitación a un recinto del plano de ejemplo.
+1. En el navegador, entra en **Mis proyectos**. Registra una cuenta ficticia e inicia sesión. Crea un proyecto con presupuesto y sube un SVG de CubiCasa de hasta 1 MB en **Plano de tu proyecto**. El visor se abre con ese archivo. Un proyecto vacío incorpora sus recintos y superficies. Si ya hay habitaciones, vincúlalas desde el editor de cada habitación.
 2. Comprueba que aparezcan las sugerencias de la API, revisa los motivos, las cajas y el costo. Cambia la preferencia de tienda o tipo y verifica que se actualicen las tarjetas. Si el costo cambió, confirma el nuevo monto antes de guardar. Prueba descartar una opción y desactivar las sugerencias. El catálogo y el presupuesto deben seguir disponibles.
 3. Abre **Ver proyecto en 3D** y toca un piso para seleccionar su recinto. En **Cambiar producto del catálogo**, guarda la misma publicación en toda la casa o una distinta en la habitación seleccionada. La opción de toda la casa crea los recintos que falten en el proyecto y conserva las áreas registradas. El costo se calcula en cajas completas por habitación con precios guardados de las tiendas. Recarga para comprobar la selección.
 4. En el visor libre carga un SVG y luego abre el visor del proyecto. Comprueba que el piso corresponda al recinto del plano de ejemplo y vuelve al visor libre. En móvil comprueba los controles táctiles y la vista general con gestos.

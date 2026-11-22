@@ -18,6 +18,25 @@
         @if (!projects().length && !projectListFailed()) { <p class="ep2-notice">Crea un proyecto para añadir habitaciones y elegir sus pisos.</p> }
         @if (projectLoading()) { <p role="status">Cargando proyecto y presupuesto…</p> }
         @if (project(); as active) {
+          <section class="ep2-card ep2-plan" aria-labelledby="project-plan-title">
+            <h2 id="project-plan-title">Plano de tu proyecto</h2>
+            @if (floorplan(); as plan) {
+              <p>{{ plan.name }}</p>
+              <div class="ep2-actions">
+                <a class="ep2-primary" routerLink="/viewer-3d" [queryParams]="{ project: active.id, room: selectedRoomId() }">Editar plano en 3D</a>
+              </div>
+            } @else {
+              <p>Sube tu plano para abrirlo en 3D y editar sus recintos.</p>
+            }
+            <label class="ep2-plan-file">
+              {{ floorplan() ? 'Reemplazar plano SVG' : 'Elegir plano SVG' }}
+              <input type="file" accept=".svg,image/svg+xml" [disabled]="busy() || projectLoading()" aria-describedby="project-plan-format" (change)="onProjectFloorplanSelected($event)" />
+            </label>
+            <p class="ep2-hint" id="project-plan-format">SVG de CubiCasa, hasta 1 MB.
+              @if (floorplan() && active.rooms.length) { Si cambias el dibujo, se conservan las habitaciones, sus medidas y pisos. Podrás volver a vincularlas en el nuevo plano. }
+            </p>
+            @if (sceneError()) { <p class="ep2-error" role="alert">{{ sceneError() }}</p> }
+          </section>
           <section class="ep2-card">
             <div class="ep2-section-head"><div><span class="ep2-eyebrow">DISTRIBUCIÓN Y SUPERFICIES</span><h2>{{ active.name }}</h2></div><div class="ep2-actions"><button type="button" [disabled]="busy()" (click)="editProject()">Editar proyecto</button><button type="button" [disabled]="busy()" (click)="confirmDelete.set('project')">Eliminar proyecto</button></div></div>
             @if (confirmDelete() === 'project') { <div class="ep2-notice"><p>Se eliminarán este proyecto y sus habitaciones. El catálogo y el historial se conservan.</p><div class="ep2-actions"><button type="button" [disabled]="busy()" (click)="deleteProject()">Confirmar eliminación</button><button type="button" (click)="confirmDelete.set(null)">Cancelar</button></div></div> }
@@ -36,16 +55,10 @@
               }
             </div>
             <button type="button" class="ep2-primary" [disabled]="busy() || active.rooms.length >= 100" (click)="editRoom(null)">+ Añadir habitación</button>
-            @if (sceneError()) { <p class="ep2-notice">{{ sceneError() }}</p> }
             @if (showRoomForm()) { <app-room-editor [room]="editingRoom()" [sceneRooms]="sceneRooms()" [busy]="busy()" (save)="saveRoom($event)" (cancelEdit)="showRoomForm.set(false)" /> }
           </section>
-          @if (!active.rooms.length) {
-            <div class="ep2-card ep2-actions">
-              <a class="ep2-primary" routerLink="/viewer-3d" [queryParams]="{ project: active.id }">Abrir plano y elegir piso para toda la casa</a>
-            </div>
-          }
           @if (selectedRoom(); as room) {
-            <section class="ep2-card ep2-selection"><div><span class="ep2-eyebrow">HABITACIÓN SELECCIONADA</span><h2>{{ room.name }}</h2><p>{{ room.publication?.name ?? 'Elige un piso en el catálogo de abajo.' }}</p><p class="ep2-hint">La apariencia 3D es orientativa y no reproduce exactamente el producto comercial.</p></div><div class="ep2-actions"><a class="ep2-primary" routerLink="/viewer-3d" [queryParams]="{ project: active.id, room: room.id }">Ver proyecto en 3D →</a>@if (room.publicationKey) { <button type="button" [disabled]="busy()" (click)="chooseFloor(null)">Quitar piso</button> }</div></section>
+            <section class="ep2-card ep2-selection"><div><span class="ep2-eyebrow">HABITACIÓN SELECCIONADA</span><h2>{{ room.name }}</h2><p>{{ room.publication?.name ?? 'Elige un piso en el catálogo de abajo.' }}</p><p class="ep2-hint">La apariencia 3D es orientativa y no reproduce exactamente el producto comercial.</p></div><div class="ep2-actions">@if (floorplan()) { <a class="ep2-primary" routerLink="/viewer-3d" [queryParams]="{ project: active.id, room: room.id }">Ver habitación en 3D →</a> }@if (room.publicationKey) { <button type="button" [disabled]="busy()" (click)="chooseFloor(null)">Quitar piso</button> }</div></section>
             <app-floor-suggestions [projectId]="active.id" [room]="room" [enabled]="active.suggestionsEnabled ?? true"
               [busy]="busy() || projectLoading()" (preferencesSaved)="saveRoomResult($event)" (floorAccepted)="useSuggestedFloor($event)"
               (pendingChange)="suggestionPending.set($event)" (openCatalog)="focusCatalog()" />

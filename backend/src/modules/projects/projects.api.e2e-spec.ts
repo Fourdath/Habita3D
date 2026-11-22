@@ -97,6 +97,7 @@ describe('EP2 projects authorization and DTOs (HTTP)', () => {
     ['get', '/api/projects/1'],
     ['patch', '/api/projects/1'],
     ['delete', '/api/projects/1'],
+    ['put', '/api/projects/1/floorplan'],
     ['get', '/api/projects/1/budget'],
     ['patch', '/api/projects/1/suggestions/settings'],
     ['get', `/api/projects/1/rooms/${roomId}/suggestions`],

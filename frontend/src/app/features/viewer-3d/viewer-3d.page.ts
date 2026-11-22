@@ -4,11 +4,11 @@ import { IonContent, IonSpinner } from '@ionic/angular';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Ep2ApiService, apiError, money } from '../../core/ep2/ep2-api.service';
 import { SessionService } from '../../core/ep2/session.service';
-import type { Project, ProjectBudget, Publication, SceneRoom } from '../../core/ep2/ep2.types';
+import type { Project, ProjectBudget, ProjectFloorplan, Publication, SceneRoom } from '../../core/ep2/ep2.types';
 
 import type { ConstructionBudgetSummary } from '../../core/budget/budget.types';
 import type { InteriorStyleId } from '../../core/interior-style/interior-style.types';
-import { readFloorplanFile } from '../../core/floorplan/floorplan-file';
+import { readFloorplanFile, validateProjectFloorplanSvg } from '../../core/floorplan/floorplan-file';
 
 import { VIEWER_ENGINE_FACTORY, type ViewerEngine } from './engine/viewer-engine.factory';
 import { CONSTRUCTION_VIEW_LEGEND } from './engine/construction-board-view';
@@ -63,6 +63,8 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
   readonly projectId = signal<number | null>(null);
   readonly projectRoomId = signal<string | null>(null);
   readonly project = signal<Project | null>(null);
+  readonly projectFloorplan = signal<ProjectFloorplan | null>(null);
+  readonly modelReady = computed(() => this.status() === 'ready' && (!this.projectMode() || !!this.project()));
   readonly projectBudget = signal<ProjectBudget | null>(null);
   readonly projectLoading = signal(false);
   readonly projectError = signal('');
@@ -131,7 +133,7 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
   private loadedSvg: string | null | undefined = null;
   private sceneProjectMode = false;
   private pendingScene = Promise.resolve();
-  private previewProjectId: number | null = null;
+  private previewFloorplanRevision: string | null = null;
 
   constructor() {
     effect(() => {
@@ -144,21 +146,6 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
   }
 
   ngAfterViewInit(): void {
-    try {
-      this.engine = this.createEngine(this.canvasHostRef.nativeElement, {
-        onReady: () => {
-          this.status.set('ready');
-          this.refreshStyleState();
-          void this.loadActiveProject();
-        },
-        onError: (error) => this.handleError(error),
-        onPointerLockChange: (locked) => this.pointerLocked.set(locked),
-        onRoomPick: roomId => this.pickSceneRoom(roomId),
-        onPointerLockError: () => this.walkError.set('El navegador no permitió controlar el mouse. Intenta de nuevo desde «Comenzar recorrido» o abre el visor en tu navegador habitual.'),
-      });
-    } catch (error) {
-      this.handleError(error);
-    }
     this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(params => {
       const raw = params.get('project');
       const id = raw && /^[1-9]\d*$/.test(raw) && Number(raw) <= 2147483647 ? Number(raw) : null;
@@ -173,6 +160,25 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
       this.floorAppearanceError.set('');
       if (this.status() === 'ready' && (modeChanged || saved && !this.project())) void this.loadActiveProject();
     });
+    if (this.projectMode()) {
+      this.loadedSvg = undefined;
+      this.modelName.set('Proyecto');
+    }
+    try {
+      this.engine = this.createEngine(this.canvasHostRef.nativeElement, {
+        onReady: () => {
+          this.status.set('ready');
+          this.refreshStyleState();
+          void this.loadActiveProject();
+        },
+        onError: (error) => this.handleError(error),
+        onPointerLockChange: (locked) => this.pointerLocked.set(locked),
+        onRoomPick: roomId => this.pickSceneRoom(roomId),
+        onPointerLockError: () => this.walkError.set('El navegador no permitió controlar el mouse. Intenta de nuevo desde «Comenzar recorrido» o abre el visor en tu navegador habitual.'),
+      }, !this.projectMode());
+    } catch (error) {
+      this.handleError(error);
+    }
   }
 
   ngOnDestroy(): void {
@@ -310,6 +316,10 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
     const project = this.project();
     const room = this.selectedProjectRoom();
     if (this.floorUpdating() || this.projectLoading() || !project || (!wholeHouse && (!room || room.publicationKey === publication.publicationKey))) return;
+    if (wholeHouse && this.unmappedRooms().length) {
+      this.floorCatalogError.set('Vincula las habitaciones existentes al plano antes de aplicar el piso a toda la casa.');
+      return;
+    }
     const request = this.projectRequest;
     this.floorUpdating.set(true);
     this.floorCatalogMessage.set('');
@@ -319,7 +329,7 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
       const updated = wholeHouse
         ? await this.api.saveProjectFloor(project.id, publication.publicationKey, this.sceneRooms().map(scene => ({
             id: scene.id, name: scene.name.slice(0, 120), areaM2: scene.areaM2.toFixed(6),
-          })))
+          })), this.projectFloorplan()?.revision)
         : await this.api.saveRoom(project.id, { publicationKey: publication.publicationKey }, room!.id).then(updatedRoom => ({
             ...project, rooms: project.rooms.map(item => item.id === updatedRoom.id ? updatedRoom : item),
           }));
@@ -349,48 +359,60 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
   async loadActiveProject(): Promise<void> {
     const request = ++this.projectRequest;
     const saved = this.projectMode();
-    const freePlan = saved ? null : this.freePlan;
-    const targetSvg = freePlan?.svgText ?? null;
+    const freePlan = this.freePlan;
+    this.projectFloorplan.set(null);
     this.project.set(null); this.projectBudget.set(null); this.projectError.set(''); this.projectBudgetError.set(''); this.captureWarning.set(''); this.unmappedRooms.set([]);
-    const resetScene = saved || this.sceneProjectMode || this.loadedSvg !== targetSvg || this.projectLoading() || this.loadingFloorplan();
+    const resetScene = saved || this.sceneProjectMode || this.loadedSvg !== (freePlan?.svgText ?? null) || this.projectLoading() || this.loadingFloorplan();
     this.projectLoading.set(resetScene);
     try {
-      if (resetScene) {
-        await this.updateScene(async () => {
-          if (request !== this.projectRequest) return;
-          await this.engine?.setRoomFloorSelections([]);
-          if (request !== this.projectRequest) return;
-          await this.showGeometry(targetSvg);
-          this.sceneProjectMode = saved;
-        });
-      }
-      if (request !== this.projectRequest) return;
-      this.modelName.set(freePlan?.name ?? EXAMPLE_MODEL_NAME);
       if (!saved) {
-        if (this.freeFloorPreviews().size) await this.updateScene(async () => {
-          if (request === this.projectRequest) await this.applyFloorVisuals(null, this.freeFloorPreviews());
-        });
+        if (resetScene || this.freeFloorPreviews().size) {
+          await this.updateScene(async () => {
+            if (request !== this.projectRequest) return;
+            await this.engine?.setRoomFloorSelections([]);
+            if (request !== this.projectRequest) return;
+            await this.showGeometry(freePlan?.svgText ?? null);
+            if (request !== this.projectRequest) return;
+            this.sceneProjectMode = false;
+            await this.applyFloorVisuals(null, this.freeFloorPreviews());
+          });
+        }
+        if (request === this.projectRequest) this.modelName.set(freePlan?.name ?? EXAMPLE_MODEL_NAME);
         return;
       }
+      this.modelName.set('Proyecto');
       const id = this.projectId();
       if (id === null) { this.projectError.set('El identificador del proyecto no es válido. Abre el proyecto desde Mis proyectos.'); return; }
-      if (this.previewProjectId !== id) {
-        this.previewProjectId = id;
-        this.projectFloorPreviews.set(new Map());
-        this.projectWallColors.set(ORIGINAL_WALLS);
-      }
       if (!this.session.user()) await this.session.restore();
       if (request !== this.projectRequest) return;
       if (!this.session.user()) { this.projectError.set('Inicia sesión en Mis proyectos para recuperar esta vivienda y sus pisos.'); return; }
       const project = await this.api.project(id);
       if (request !== this.projectRequest) return;
-      this.refreshUnmappedRooms(project);
+      const plan = project.floorplan;
+      this.modelName.set(project.name);
+      if (!plan) {
+        this.projectError.set('Sube un plano SVG de CubiCasa para editar este proyecto en 3D.');
+        return;
+      }
+      validateProjectFloorplanSvg(plan.svg);
+      if (this.previewFloorplanRevision !== plan.revision) {
+        this.previewFloorplanRevision = plan.revision;
+        this.projectFloorPreviews.set(new Map());
+        this.projectWallColors.set(ORIGINAL_WALLS);
+      }
       await this.updateScene(async () => {
         if (request !== this.projectRequest) return;
+        await this.engine?.setRoomFloorSelections([]);
+        if (request !== this.projectRequest) return;
+        await this.showGeometry(plan.svg);
+        if (request !== this.projectRequest) return;
+        this.sceneProjectMode = true;
+        this.refreshUnmappedRooms(project);
         await this.applyFloorVisuals(project, this.projectFloorPreviews());
       });
       if (request !== this.projectRequest) return;
-      this.project.set(project); this.modelName.set(project.name);
+      this.projectFloorplan.set(plan);
+      this.project.set(project);
       const [budget, status] = await Promise.allSettled([this.api.budget(id), this.api.status()]);
       if (request !== this.projectRequest) return;
       this.showProjectBudget(budget);

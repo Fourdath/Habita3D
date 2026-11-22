@@ -7,6 +7,7 @@ import {
   Param,
   ParseIntPipe,
   ParseUUIDPipe,
+  Put,
   Patch,
   Post,
   Query,
@@ -19,6 +20,7 @@ import { SessionAuthGuard } from '../auth/session-auth.guard.js';
 import { CreateProjectDto } from './dto/create-project.dto.js';
 import { PreviewProjectDto } from './dto/preview-project.dto.js';
 import { ProjectFloorDto } from './dto/project-floor.dto.js';
+import { ProjectFloorplanDto } from './dto/project-floorplan.dto.js';
 import { CreateRoomDto, UpdateRoomDto } from './dto/room.dto.js';
 import {
   AcceptFloorSuggestionDto,
@@ -148,6 +150,16 @@ export class ProjectsController {
     @Param('id', ParseIntPipe) id: number,
   ) {
     return this.projects.findOne(request.authenticatedUser.id, id);
+  }
+
+  @Put(':id/floorplan')
+  @UseGuards(SessionAuthGuard)
+  saveFloorplan(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: ProjectFloorplanDto,
+  ) {
+    return this.projects.saveFloorplan(request.authenticatedUser.id, id, dto);
   }
 
   @Patch(':id')
