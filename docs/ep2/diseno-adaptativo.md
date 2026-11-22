@@ -1,5 +1,9 @@
 # Diseño preliminar de la capacidad adaptativa
 
+La entrega final implementa reglas acordadas después de este diseño. Consultar
+el [ADR 0004](../adr/0004-sugerencias-por-habitacion.md) y el [contrato
+vigente](../final/contrato-sugerencias.md) para integrar la aplicación.
+
 Entregable 8 de la EP2: especificación preliminar de la capacidad adaptativa que se
 implementará en el Módulo 3. En la EP2 **no se implementa el motor**: este documento
 define qué se adaptará, con qué datos y cómo se evaluará, a partir de lo que ya existe

@@ -8,7 +8,8 @@ param(
 $ErrorActionPreference = 'Stop'
 if ($Version -notmatch '^[a-f0-9]{40}$') { throw 'Version must be a full Git commit SHA.' }
 if ($env:TF_VAR_database_password.Length -lt 16) { throw 'Configure STAGING_DATABASE_PASSWORD in the protected environment.' }
-if ($env:TF_VAR_materials_api_token.Length -lt 24 -or $env:TF_VAR_materials_api_token.StartsWith('replace-')) {
+if ($env:TF_VAR_materials_api_token.Length -lt 24 -or $env:TF_VAR_materials_api_token.Length -gt 256 -or
+    $env:TF_VAR_materials_api_token.StartsWith('replace-')) {
     throw 'Configure STAGING_MATERIALS_API_TOKEN in the protected environment.'
 }
 if (-not [IO.Path]::IsPathFullyQualified($StateDirectory)) {

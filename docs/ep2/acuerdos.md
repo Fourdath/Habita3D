@@ -84,8 +84,8 @@ de cada SKU; una fotografía comercial no garantiza una textura repetible.
 - Alojamiento **completamente gratuito ($0) y sin tarjeta bancaria**. Actualización:
   se prevé usar el computador Windows de un integrante para la demo local;
   la puesta en marcha del conjunto sigue por validar. Figma es la referencia de diseño.
-- El profesor no entregó observaciones de EP1. Documentar esa situación y resolver
-  los pendientes técnicos verificados sin atribuirlos a comentarios docentes.
+- Se incorporó posteriormente la retroalimentación de EP1. La [guía final](../final/README.md#retroalimentación-de-ep1)
+  vincula las tres observaciones docentes con cambios y evidencias.
 - El integrante encargado de la interfaz trabaja sobre su computador y compartió
   lo que está en el repositorio. No se dispone todavía de un enlace externo al prototipo.
   Se coordinará su actualización y enlace; las pantallas actuales sirven como referencia.
@@ -114,7 +114,7 @@ de cada SKU; una fotografía comercial no garantiza una textura repetible.
 | 12. Cobertura | Hasta diez publicaciones por categoría y tienda; máximo cuarenta. |
 | 13. Historial y vigencia | Historial de precios informativo; presupuesto siempre con los últimos precios; sin versiones de presupuesto. |
 | 13.1. Frecuencia y presentación | 08:00, 12:00 y 16:00, hora de Chile; Última comprobación en DD/MM/AAAA HH:MM. |
-| 14. Retroalimentación EP1 | No hubo comentarios del profesor. |
+| 14. Retroalimentación EP1 | Justificar la arquitectura, separar CI y CD y profundizar Python. |
 | 15–16. Diseño/prototipo | Actualizar el diseño existente; referencia actual en el repositorio y enlace pendiente de coordinación. |
 | 17. Filtros | Tipo de piso, tienda y precio por m². |
 

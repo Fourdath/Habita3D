@@ -1,6 +1,6 @@
 # Modelo de datos de Habita3D
 
-Actualizado para EP2 el 24/10/2026. El esquema ejecutable está en
+Actualizado para el bloque 1 de la entrega final. El esquema ejecutable está en
 [Prisma](../../backend/prisma/schema.prisma), con migraciones aditivas en
 [`backend/prisma/migrations`](../../backend/prisma/migrations). NestJS administra
 PostgreSQL; FastAPI devuelve resultados procesados y no escribe estas tablas.
@@ -22,6 +22,7 @@ erDiagram
         int id PK
         int ownerId FK
         bigint budgetClp
+        boolean suggestionsEnabled
     }
     Room {
         string id PK
@@ -34,6 +35,8 @@ erDiagram
         decimal wastePercent
         bigint budgetClp
         string sceneRoomId
+        string preferredCategory
+        string preferredSource
     }
     Publication {
         string publicationKey PK
