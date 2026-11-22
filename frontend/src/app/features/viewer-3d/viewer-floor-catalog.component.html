@@ -21,10 +21,19 @@
           <p>{{ money(product.pricePerBoxClp) }} por caja · {{ product.coveragePerBoxM2 }} m² por caja</p>
           @if (product.availability === 'unknown') { <p>Disponibilidad sin confirmar.</p> }
         }
-        <button type="button" class="save-floor" (click)="save()"
-          [disabled]="busy() || loading() || failedPage() !== null || !pendingProduct() || pendingKey() === currentKey()">
-          {{ busy() ? 'Guardando…' : 'Guardar piso en la habitación' }}
-        </button>
+        @if (roomId()) {
+          <button type="button" (click)="save()"
+            [disabled]="busy() || loading() || failedPage() !== null || !pendingProduct() || pendingKey() === currentKey()">
+            Guardar piso en esta habitación
+          </button>
+        }
+        @if (wholeHouseCount()) {
+          <button type="button" class="save-floor" (click)="saveWholeHouse()"
+            [disabled]="busy() || loading() || failedPage() !== null || !pendingProduct()">
+            Guardar piso en toda la casa
+          </button>
+          <p>Reemplaza la selección de los {{ wholeHouseCount() }} recintos del plano. Añade los que aún falten en el proyecto.</p>
+        }
       } @else if (!loading() && failedPage() === null) {
         <p role="status">{{ result.total ? 'Esta página no tiene productos con precio y cobertura por caja.' : 'El catálogo guardado está vacío.' }}</p>
       }

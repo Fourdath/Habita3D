@@ -75,8 +75,10 @@ async function buildSurfaceMaterial(
   rendererMaxAnisotropy: number,
   defaultColor: number,
 ): Promise<THREE.Material> {
-  if (!spec) {
-    return new THREE.MeshStandardMaterial({ color: defaultColor, roughness: 0.9, metalness: 0, side: THREE.DoubleSide });
+  if (!spec?.texturePath) {
+    return new THREE.MeshStandardMaterial({
+      color: spec?.fallbackColor ?? defaultColor, roughness: spec?.roughness ?? 0.9, metalness: 0, side: THREE.DoubleSide,
+    });
   }
 
   try {

@@ -59,6 +59,19 @@
 .studio__project-floor img { width: 100%; max-height: 160px; object-fit: contain; border-radius: 6px; background: #f5f6f2; }
 .studio [role='alert'].studio__error, .studio__project-floor [role='alert'], .studio__project-context [role='alert'] { color: #8d3030; }
 .studio__plan-note { font-size: 10px; line-height: 1.6; color: #687662; }
+.studio__link { color: #245442; font-size: 12px; font-weight: 600; text-decoration: underline !important; text-underline-offset: 3px; }
+.studio__finish-editor { display: grid; gap: 16px; scroll-margin-top: 14px; }
+.studio__boards { display: grid; gap: 12px; padding-bottom: 18px; border-bottom: 1px solid #e1e5dc; }
+.studio__boards h2 { font-size: 23px; }
+.studio__boards p, .studio__wall-paint { color: #536b5b; font-size: 12px; line-height: 1.55; }
+.studio__boards ul { display: grid; gap: 12px; padding: 0; margin: 0; list-style: none; }
+.studio__boards li { display: flex; gap: 8px; align-items: flex-start; font-size: 12px; }
+.studio__swatch { flex: 0 0 18px; height: 18px; border: 1px solid #52695a; border-radius: 4px; }
+.studio__wall-paint summary { min-height: 44px; padding: 10px; border: 1px solid #cbd7c8; border-radius: 7px; font-weight: 600; cursor: pointer; }
+.studio__wall-paint-fields { display: grid; grid-template-columns: 1fr; gap: 8px; padding-top: 8px; }
+.studio__wall-paint-fields label { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.studio__wall-paint-fields input { width: 48px; height: 40px; border: 1px solid #cbd7c8; border-radius: 6px; background: white; }
+.studio__secondary { min-height: 42px; padding: 8px; border: 1px solid #cbd7c8; border-radius: 7px; background: white; color: #245442; font-size: 12px !important; }
 .studio__primary { display: flex; align-items: center; justify-content: space-between; gap: 16px; width: 100%; padding: 15px 18px; border: 0; border-radius: 7px; background: #245442; color: white; font-size: 13px; }
 .studio__primary:hover:not(:disabled) { background: #183b2e; }
 .studio__primary span { font-size: 20px; }
@@ -85,6 +98,7 @@
   .viewer-3d { flex: 0 0 clamp(226px, 41dvh, 410px); }
   .viewer-3d__heading { top: 20px; left: 20px; }
   .viewer-3d__views { top: 115px; left: 20px; }
+  .viewer-3d__views button { padding-inline: 9px; }
   .viewer-3d__tools { left: 14px; top: 48%; }
   .viewer-3d__help { bottom: 25px; font-size: 10px; padding: 10px; }
   .studio__sidebar { width: 100%; flex: 1 1 auto; min-height: 0; border-left: 0; border-top: 1px solid #e1e5dc; }

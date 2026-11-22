@@ -9,12 +9,6 @@ interface MaterialSwatch {
   image: string;
 }
 
-interface SampleBudgetLine {
-  label: string;
-  quantity: string;
-  subtotal: string;
-}
-
 @Component({
   selector: 'app-home-tools',
   templateUrl: 'home-tools.component.html',
@@ -31,18 +25,4 @@ export class HomeToolsComponent {
     { name: 'Laminado', use: 'Piso · Industrial', image: 'assets/home/materials/laminate_floor_02.webp' },
     { name: 'Ladrillo', use: 'Fachada · Industrial', image: 'assets/home/materials/brick_wall_003.webp' },
   ];
-
-  /**
-   * Illustrative lines for a 70 m² house with the Nordic style, using the demo unit
-   * prices from interior-style-catalog.ts (quantities include 10 % waste).
-   * Not a quote — the viewer computes real quantities from the loaded plan.
-   */
-  readonly sampleBudget: readonly SampleBudgetLine[] = [
-    { label: 'Piso de roble claro', quantity: '77,0 m²', subtotal: '$1.455.300' },
-    { label: 'Terminación interior', quantity: '105,6 m²', subtotal: '$728.640' },
-    { label: 'Estuco exterior', quantity: '56,1 m²', subtotal: '$723.690' },
-    { label: 'Cielo blanco', quantity: '77,0 m²', subtotal: '$454.300' },
-  ];
-
-  readonly sampleTotal = '$3.361.930';
 }

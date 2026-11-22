@@ -53,6 +53,7 @@ export class ProjectsPage implements OnInit {
   private budgetRequest = 0;
   private requestedProject: number | null = null;
   private requestedRoom: string | null = null;
+  private requestedNewProject = false;
   readonly projectForm = new FormGroup({ name: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.maxLength(120)] }), budgetClp: new FormControl(200000, { nonNullable: true, validators: [Validators.required, Validators.min(0), Validators.max(1e15), Validators.pattern(/^\d+$/)] }) });
 
   ngOnInit(): void {
@@ -60,8 +61,10 @@ export class ProjectsPage implements OnInit {
       const raw = params.get('project');
       this.requestedProject = raw && /^[1-9]\d*$/.test(raw) && Number(raw) <= 2147483647 ? Number(raw) : null;
       this.requestedRoom = params.get('room');
+      this.requestedNewProject = params.get('nuevo') === '1';
       if (this.initialized && this.session.user()) {
-        if (this.requestedProject !== this.project()?.id) void this.openProject(this.requestedProject);
+        if (this.requestedNewProject) this.newProject();
+        else if (this.requestedProject !== (this.project()?.id ?? null)) void this.openProject(this.requestedProject);
         else this.selectedRoomId.set(this.project()?.rooms.some(room => room.id === this.requestedRoom) ? this.requestedRoom : this.project()?.rooms[0]?.id ?? null);
       }
     });
@@ -71,7 +74,11 @@ export class ProjectsPage implements OnInit {
   async initialize(): Promise<void> {
     this.error.set(''); this.loading.set(true); this.projectListFailed.set(false);
     try {
-      if (this.session.user()) { await this.reloadProjects(); await this.openProject(this.requestedProject); }
+      if (this.session.user()) {
+        await this.reloadProjects();
+        await this.openProject(this.requestedProject);
+        if (this.requestedNewProject) this.newProject();
+      }
     } catch (error) { this.projectListFailed.set(true); this.handleError(error); }
     finally { this.initialized = true; this.loading.set(false); }
     try { this.sceneRooms.set(await this.scenePlan.rooms()); }

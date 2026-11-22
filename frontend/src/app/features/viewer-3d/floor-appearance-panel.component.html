@@ -44,6 +44,9 @@
     </fieldset>
 
     @if (finish() || tint()) {
+      @if (allowWholeHouse()) {
+        <button type="button" class="floor-appearance__reset" [disabled]="busy()" (click)="applyToWholeHouse.emit()">Previsualizar este piso en toda la casa</button>
+      }
       <button type="button" class="floor-appearance__reset" [disabled]="busy()" (click)="appearanceReset.emit()">Restablecer apariencia</button>
     }
   }

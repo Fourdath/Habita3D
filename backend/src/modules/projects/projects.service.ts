@@ -9,6 +9,7 @@ import type { Project, Room, Prisma } from '../../generated/prisma/client.js';
 import { PythonService } from '../../integrations/python/python.service.js';
 import { serializePublication } from '../materials/publication-view.js';
 import { CreateProjectDto } from './dto/create-project.dto.js';
+import type { ProjectFloorDto } from './dto/project-floor.dto.js';
 import { CreateRoomDto, UpdateRoomDto } from './dto/room.dto.js';
 import { UpdateProjectDto } from './dto/update-project.dto.js';
 
@@ -263,6 +264,80 @@ export class ProjectsService {
         include: { publication: true },
       });
       return serializeRoom(room);
+    });
+  }
+
+  async applyProjectFloor(userId: number, id: number, dto: ProjectFloorDto) {
+    return this.prisma.$transaction(async (tx) => {
+      await this.owned(tx, userId, id);
+      const product = await tx.publication.findUnique({
+        where: { publicationKey: dto.publicationKey },
+      });
+      if (
+        !product ||
+        product.availability === 'unavailable' ||
+        product.saleUnit !== 'box' ||
+        product.pricePerBoxClp <= 0 ||
+        !product.coveragePerBoxM2?.gt(0)
+      ) {
+        throw new BadRequestException(
+          'Elige un piso disponible con precio y cobertura por caja',
+        );
+      }
+      const existing = await tx.room.findMany({
+        where: { projectId: id },
+        select: { sceneRoomId: true },
+      });
+      const planIds = new Set(dto.rooms.map((room) => room.id));
+      const attached = existing.flatMap((room) =>
+        room.sceneRoomId && planIds.has(room.sceneRoomId)
+          ? [room.sceneRoomId]
+          : [],
+      );
+      const linked = new Set(attached);
+      if (linked.size !== attached.length) {
+        throw new BadRequestException(
+          'Corrige los recintos vinculados a más de una habitación',
+        );
+      }
+      const missing = dto.rooms.filter((room) => !linked.has(room.id));
+      if (existing.length + missing.length > 100)
+        throw new BadRequestException(
+          'Un proyecto admite hasta 100 habitaciones',
+        );
+      if (missing.length)
+        await tx.room.createMany({
+          data: missing.map((room) => ({
+            projectId: id,
+            sceneRoomId: room.id,
+            name: room.name,
+            areaMode: 'area',
+            areaM2: String(room.areaM2),
+            publicationKey: dto.publicationKey,
+          })),
+        });
+      if (linked.size)
+        await tx.room.updateMany({
+          where: {
+            projectId: id,
+            sceneRoomId: { in: [...linked] },
+            OR: [
+              { publicationKey: null },
+              { publicationKey: { not: dto.publicationKey } },
+            ],
+          },
+          data: { publicationKey: dto.publicationKey },
+        });
+      const project = await tx.project.findUniqueOrThrow({
+        where: { id },
+        include: {
+          rooms: {
+            include: { publication: true },
+            orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+          },
+        },
+      });
+      return serializeProject(project);
     });
   }
 

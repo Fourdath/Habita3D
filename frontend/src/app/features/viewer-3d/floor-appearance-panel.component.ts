@@ -14,11 +14,13 @@ export class FloorAppearancePanelComponent {
   readonly finish = input<FloorFinishId | null>(null);
   readonly tint = input<string | null>(null);
   readonly busy = input(false);
+  readonly allowWholeHouse = input(false);
 
   readonly roomChange = output<string>();
   readonly finishChange = output<FloorFinishId | null>();
   readonly tintChange = output<string | null>();
   readonly appearanceReset = output<void>();
+  readonly applyToWholeHouse = output<void>();
 
   readonly finishes = FLOOR_FINISHES;
   readonly tints = [

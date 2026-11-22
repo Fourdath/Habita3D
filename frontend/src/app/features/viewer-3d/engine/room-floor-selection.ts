@@ -6,6 +6,7 @@ import type { RoomSemanticType } from '../../../core/floorplan/room-semantic.typ
 import type { MaterialId } from '../../../core/materials/material.types';
 import { FLOOR_FINISHES, type FloorFinishId } from './floor-finishes';
 import { MaterialRegistry } from './materials/material-registry';
+import { createTintedSurfaceMaterial, isSurfaceTint } from './materials/tinted-surface-material';
 
 export interface RoomFloorSelection {
   sceneRoomId: string;
@@ -47,8 +48,8 @@ function resolveSelectionMaterial(category: FloorCategory | undefined, style: In
 
 function roomFloorMaterial(mesh: THREE.Mesh, base: THREE.Material, tint?: string): THREE.Material {
   const previous = tintedFloors.get(mesh);
-  if (base instanceof THREE.MeshStandardMaterial && tint && /^#[\da-f]{6}$/i.test(tint)) {
-    const material = previous?.base === base ? previous.material : createTintedMaterial(base);
+  if (base instanceof THREE.MeshStandardMaterial && isSurfaceTint(tint)) {
+    const material = previous?.base === base ? previous.material : createTintedSurfaceMaterial(base);
     if (previous && previous.material !== material) previous.material.dispose();
     material.color.set(tint);
     tintedFloors.set(mesh, { base, material });
@@ -56,21 +57,6 @@ function roomFloorMaterial(mesh: THREE.Mesh, base: THREE.Material, tint?: string
   }
   releaseRoomFloorTint(mesh);
   return base;
-}
-
-function createTintedMaterial(base: THREE.MeshStandardMaterial): THREE.MeshStandardMaterial {
-  const material = base.clone();
-  // Preserve texture contrast while letting the chosen hue replace the original one.
-  material.onBeforeCompile = shader => {
-    const luminanceMap = THREE.ShaderChunk.map_fragment.replace('diffuseColor *= sampledDiffuseColor;', `
-      float detail = dot(sampledDiffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));
-      sampledDiffuseColor.rgb = vec3(mix(0.47, 1.28, sqrt(clamp(detail, 0.0, 1.0))));
-      diffuseColor *= sampledDiffuseColor;
-    `);
-    shader.fragmentShader = shader.fragmentShader.replace('#include <map_fragment>', luminanceMap);
-  };
-  material.customProgramCacheKey = () => 'floor-tint-luminance';
-  return material;
 }
 
 function releaseRoomFloorTint(mesh: THREE.Mesh): void {

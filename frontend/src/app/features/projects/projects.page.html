@@ -39,6 +39,11 @@
             @if (sceneError()) { <p class="ep2-notice">{{ sceneError() }}</p> }
             @if (showRoomForm()) { <app-room-editor [room]="editingRoom()" [sceneRooms]="sceneRooms()" [busy]="busy()" (save)="saveRoom($event)" (cancelEdit)="showRoomForm.set(false)" /> }
           </section>
+          @if (!active.rooms.length) {
+            <div class="ep2-card ep2-actions">
+              <a class="ep2-primary" routerLink="/viewer-3d" [queryParams]="{ project: active.id }">Abrir plano y elegir piso para toda la casa</a>
+            </div>
+          }
           @if (selectedRoom(); as room) {
             <section class="ep2-card ep2-selection"><div><span class="ep2-eyebrow">HABITACIÓN SELECCIONADA</span><h2>{{ room.name }}</h2><p>{{ room.publication?.name ?? 'Elige un piso en el catálogo de abajo.' }}</p><p class="ep2-hint">La apariencia 3D es orientativa y no reproduce exactamente el producto comercial.</p></div><div class="ep2-actions"><a class="ep2-primary" routerLink="/viewer-3d" [queryParams]="{ project: active.id, room: room.id }">Ver proyecto en 3D →</a>@if (room.publicationKey) { <button type="button" [disabled]="busy()" (click)="chooseFloor(null)">Quitar piso</button> }</div></section>
             <app-floor-suggestions [projectId]="active.id" [room]="room" [enabled]="active.suggestionsEnabled ?? true"

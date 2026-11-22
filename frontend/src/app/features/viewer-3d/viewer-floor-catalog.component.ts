@@ -14,7 +14,9 @@ export class ViewerFloorCatalogComponent {
   readonly roomId = input<string | null>(null);
   readonly currentKey = input<string | null>(null);
   readonly busy = input(false);
+  readonly wholeHouseCount = input(0);
   readonly choose = output<Publication>();
+  readonly chooseWholeHouse = output<Publication>();
 
   readonly catalog = signal<Page<Publication> | null>(null);
   readonly loading = signal(false);
@@ -64,6 +66,14 @@ export class ViewerFloorCatalogComponent {
     this.choiceEmitted = true;
     queueMicrotask(() => { this.choiceEmitted = false; });
     this.choose.emit(product);
+  }
+
+  saveWholeHouse(): void {
+    const product = this.pendingProduct();
+    if (this.busy() || this.loading() || this.failedPage() !== null || this.choiceEmitted || !product || !this.wholeHouseCount()) return;
+    this.choiceEmitted = true;
+    queueMicrotask(() => { this.choiceEmitted = false; });
+    this.chooseWholeHouse.emit(product);
   }
 }
 

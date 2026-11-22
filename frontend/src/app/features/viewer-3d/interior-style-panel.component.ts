@@ -3,7 +3,8 @@ import { IonSpinner } from '@ionic/angular';
 
 import { formatClp } from '../../core/budget/budget-calculator';
 import type { ConstructionBudgetSummary } from '../../core/budget/budget.types';
-import { listInteriorStyles } from '../../core/interior-style/interior-style-catalog';
+import { getStyleProductMap } from '../../core/budget/construction-product.catalog';
+import { getInteriorStyle, listInteriorStyles } from '../../core/interior-style/interior-style-catalog';
 import type { InteriorStyleId } from '../../core/interior-style/interior-style.types';
 
 /**
@@ -33,10 +34,20 @@ export class InteriorStylePanelComponent {
   readonly styleChange = output<InteriorStyleId>();
 
   readonly styles = listInteriorStyles();
+  readonly selectedStyle = computed(() => getInteriorStyle(this.styleId()));
   readonly showBudget = signal(false);
-  readonly formattedTotal = computed(() => formatClp(this.budget().totalClp));
+  readonly demoItems = computed(() => {
+    const budget = this.budget();
+    const floorProduct = getStyleProductMap(budget.styleId).ceramicFloor;
+    return budget.items.filter(item => item.productId !== floorProduct);
+  });
+  readonly formattedTotal = computed(() => formatClp(this.demoItems().reduce((total, item) => total + item.subtotalClp, 0)));
 
   readonly formatClp = formatClp;
+
+  swatch(color: number): string {
+    return `#${color.toString(16).padStart(6, '0')}`;
+  }
 
   onSelectStyle(id: InteriorStyleId): void {
     if (id !== this.styleId()) {

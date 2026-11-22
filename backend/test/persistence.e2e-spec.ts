@@ -206,6 +206,37 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === 'true')('EP2 PostgreSQL persis
     expect(budgetCalls).toBeGreaterThan(0);
   });
 
+  it('assigns one catalogue floor to all plan rooms atomically and does not duplicate them on retries', async () => {
+    const owner = await register('whole-house-owner');
+    const other = await register('whole-house-other');
+    const server = app.getHttpServer();
+    const created = await request(server).post('/api/projects').set('Authorization', owner)
+      .send({ name: 'Piso para toda la vivienda', budgetClp: 200000 }).expect(201);
+    const path = `/api/projects/${created.body.id}`;
+    const room = await request(server).post(`${path}/rooms`).set('Authorization', owner)
+      .send({ name: 'Living medido', areaMode: 'area', areaM2: '10', sceneRoomId: 'living' }).expect(201);
+    const selected = fixture.publications.find(p => p.source === 'sodimac')!;
+    const selection = { publicationKey: selected.publication_key, rooms: [
+      { id: 'living', name: 'Living del plano', areaM2: '9' }, { id: 'bedroom', name: 'Dormitorio', areaM2: '10' },
+    ] };
+    const apply = (auth: string, body = selection) => request(server).patch(`${path}/floors`).set('Authorization', auth).send(body);
+    await apply(other).expect(404);
+    await apply(owner, { ...selection, publicationKey: '0'.repeat(64) }).expect(400);
+    await apply(owner, { ...selection, rooms: [selection.rooms[0], selection.rooms[0]] }).expect(400);
+    const unchanged = await request(server).get(path).set('Authorization', owner).expect(200);
+    expect(unchanged.body.rooms).toHaveLength(1);
+    expect(unchanged.body.rooms[0].publicationKey).toBeNull();
+    const responses = await Promise.all([apply(owner).expect(200), apply(owner).expect(200)]);
+    expect(responses[1].body.rooms).toEqual(responses[0].body.rooms);
+    expect(responses[0].body.rooms).toMatchObject([
+      { id: room.body.id, name: 'Living medido', areaM2: '10', publicationKey: selected.publication_key },
+      { sceneRoomId: 'bedroom', publicationKey: selected.publication_key },
+    ]);
+    const budget = await request(server).get(`${path}/budget`).set('Authorization', owner).expect(200);
+    expect(budget.body.total_cost_clp).toBe(120000);
+    expect(budget.body.rooms).toHaveLength(2);
+  });
+
   it('uses real database locks to exclude concurrent acquisition and records transport failure', async () => {
     holdCapture = true;
     const running = request(app.getHttpServer()).post('/api/captures').set('X-Materials-Token', operatorToken).set('X-Request-ID', tag).send({}).then(r => r);

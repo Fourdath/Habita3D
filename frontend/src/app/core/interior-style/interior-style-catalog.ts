@@ -22,17 +22,11 @@ const INDUSTRIAL_BUDGET_ITEMS: BudgetItem[] = [
   { id: 'industrial-lights', name: 'Plafón negro de luz cálida', category: 'Iluminación', unit: 'unidad', quantitySource: 'lightCount', quantity: 1, unitPriceClp: 24990 },
 ];
 
-/**
- * Fixed catalog: 'none' (the plain default look already built by floorplan-geometry.ts),
- * 'nordic', and 'industrial'. Palette/texture choices per DESIGN spec: IKEA-style warm
- * Scandinavian for nordic (https://www.ikea.com/us/en/ideas/styles/scandinavian/), and
- * concrete/brick residential-industrial for industrial
- * (https://www.archdaily.com/tag/concrete-interiors).
- */
 const INTERIOR_STYLE_CATALOG: Record<InteriorStyleId, InteriorStyle> = {
   none: {
     id: 'none',
     name: 'Sin diseño',
+    facadeLabel: 'Acabado neutro',
     palette: { primary: 0xe4ded2, secondary: 0xb9ab97, accent: 0x9aa58f },
     interiorWallMaterial: null,
     exteriorWallMaterial: null,
@@ -46,6 +40,7 @@ const INTERIOR_STYLE_CATALOG: Record<InteriorStyleId, InteriorStyle> = {
   nordic: {
     id: 'nordic',
     name: 'Nórdico',
+    facadeLabel: 'Estuco claro y marcos blancos',
     palette: { primary: 0xf3f0e8, secondary: 0xd8cdbe, accent: 0x9aa58f },
     interiorWallMaterial: { texturePath: 'assets/textures/white_stucco', tileMeters: 2, fallbackColor: 0xf3f0e8, roughness: 0.92, normalScale: 0.22 },
     exteriorWallMaterial: { texturePath: 'assets/textures/white_stucco', tileMeters: 1.5, fallbackColor: 0xe7e1d5, roughness: 0.96, normalScale: 0.4 },
@@ -59,6 +54,7 @@ const INTERIOR_STYLE_CATALOG: Record<InteriorStyleId, InteriorStyle> = {
   industrial: {
     id: 'industrial',
     name: 'Industrial',
+    facadeLabel: 'Ladrillo visto y marcos negros',
     palette: { primary: 0xb2b0aa, secondary: 0x303234, accent: 0x804b38 },
     interiorWallMaterial: { texturePath: 'assets/textures/rough_concrete', tileMeters: 2.5, fallbackColor: 0xb2b0aa, roughness: 0.9, normalScale: 0.35 },
     exteriorWallMaterial: { texturePath: 'assets/textures/brick_wall_003', tileMeters: 2, fallbackColor: 0x8b6350, roughness: 0.92, normalScale: 0.55 },
@@ -69,6 +65,34 @@ const INTERIOR_STYLE_CATALOG: Record<InteriorStyleId, InteriorStyle> = {
     lighting: { roomLightColor: 0xffb86b, roomLightIntensity: 28, fixtureColor: 0x1f2224, fixtureEmissiveIntensity: 1.8 },
     budgetItems: INDUSTRIAL_BUDGET_ITEMS,
   },
+  mediterranean: {
+    id: 'mediterranean',
+    name: 'Mediterráneo',
+    facadeLabel: 'Estuco arena y marcos azul índigo',
+    palette: { primary: 0xf6ecda, secondary: 0xb86543, accent: 0x315b79 },
+    interiorWallMaterial: { tileMeters: 1.5, fallbackColor: 0xf6ecda, roughness: 0.94 },
+    exteriorWallMaterial: { tileMeters: 1.6, fallbackColor: 0xd2ad7c, roughness: 0.97 },
+    floorMaterial: { tileMeters: 1.2, fallbackColor: 0xb86543, roughness: 0.78 },
+    ceilingMaterial: { tileMeters: 2, fallbackColor: 0xf7f7f5, roughness: 0.98 },
+    trimColor: 0xfbfaf6,
+    windowFrameColor: 0x315b79,
+    lighting: { roomLightColor: 0xffd5a1, roomLightIntensity: 31, fixtureColor: 0xf6ecda, fixtureEmissiveIntensity: 1.5 },
+    budgetItems: [],
+  },
+  contemporary: {
+    id: 'contemporary',
+    name: 'Contemporáneo',
+    facadeLabel: 'Piedra grafito y marcos negros',
+    palette: { primary: 0xaabda9, secondary: 0xc5c4c3, accent: 0x484c50 },
+    interiorWallMaterial: { tileMeters: 1.6, fallbackColor: 0xaabda9, roughness: 0.89 },
+    exteriorWallMaterial: { tileMeters: 1.8, fallbackColor: 0x484c50, roughness: 0.92 },
+    floorMaterial: { texturePath: 'assets/textures/rough_concrete', tileMeters: 1.8, fallbackColor: 0xc5c4c3, roughness: 0.76, normalScale: 0.15 },
+    ceilingMaterial: { tileMeters: 2, fallbackColor: 0xf7f7f5, roughness: 0.98 },
+    trimColor: 0x34373a,
+    windowFrameColor: 0x202326,
+    lighting: { roomLightColor: 0xffead4, roomLightIntensity: 29, fixtureColor: 0xf2eee6, fixtureEmissiveIntensity: 1.3 },
+    budgetItems: [],
+  },
 };
 
 export function getInteriorStyle(id: InteriorStyleId): InteriorStyle {
@@ -76,5 +100,5 @@ export function getInteriorStyle(id: InteriorStyleId): InteriorStyle {
 }
 
 export function listInteriorStyles(): InteriorStyle[] {
-  return [INTERIOR_STYLE_CATALOG.none, INTERIOR_STYLE_CATALOG.nordic, INTERIOR_STYLE_CATALOG.industrial];
+  return Object.values(INTERIOR_STYLE_CATALOG);
 }

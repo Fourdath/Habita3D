@@ -10,9 +10,11 @@ import { resolveFloorplanSpawn } from '../../../core/floorplan/floorplan-spawn';
 import { polygonArea } from '../../../core/floorplan/geometry-utils';
 import type { WallSurfaceOverride } from '../../../core/materials/material.types';
 
+import { ConstructionBoardView } from './construction-board-view';
 import { EnvironmentManager } from './environment/environment-manager';
 import { FloorplanSceneManager } from './floorplan-scene-manager';
 import { InteriorStyleManager } from './interior-style/interior-style-manager';
+import { InteriorWallColorPreview } from './interior-wall-colors';
 import { KeyboardMovementInput } from './movement-input';
 import { MaterialRegistry } from './materials/material-registry';
 import { PlayerController } from './player-controller';
@@ -20,6 +22,8 @@ import { PointerLockLookInput } from './pointer-lock-look-input';
 import { TouchWalkInput, type WalkDirection } from './touch-walk-input';
 import { OverviewController } from './overview-controller';
 import { applyRoomFloorSelections, type RoomFloorSelection } from './room-floor-selection';
+import { pickVisibleRoom, RoomPicker } from './room-picker';
+import { RoomSelectionHighlight } from './room-selection-highlight';
 import type { SceneRoom } from '../../../core/ep2/ep2.types';
 import { disposeObject3D } from './three-object-disposal';
 import {
@@ -30,7 +34,7 @@ import {
   STEPS_PER_FRAME,
   PLAYER_CAPSULE_RADIUS,
 } from './viewer-3d.constants';
-import type { MovementInputSource, Viewer3DEngineCallbacks } from './viewer-3d.types';
+import type { InteriorWallColors, MovementInputSource, Viewer3DEngineCallbacks } from './viewer-3d.types';
 
 /**
  * Three.js engine for the first-person walkthrough. Loads a CubiCasa floor plan, turns
@@ -62,6 +66,15 @@ export class Viewer3DEngine {
   private readonly touchInput: TouchWalkInput;
   private readonly player: PlayerController;
   private readonly overview: OverviewController;
+  private readonly roomPicker: RoomPicker;
+  private readonly roomHighlight = new RoomSelectionHighlight(this.scene);
+  private readonly wallColorPreview = new InteriorWallColorPreview();
+  private readonly constructionBoardView = new ConstructionBoardView();
+  private selectedSceneRoom: string | null = null;
+  private interiorWallColors: InteriorWallColors = { all: null, rooms: new Map() };
+  private constructionView = false;
+  private surfaceUpdate = 0;
+  private surfaceUpdating = false;
   private viewMode: 'walk' | 'overview' = 'overview';
   private readonly overviewGrid = new THREE.GridHelper(200, 200, 0xc8cec5, 0xe0e4dd);
   private exteriorFog: THREE.Fog | THREE.FogExp2 | null = null;
@@ -119,6 +132,11 @@ export class Viewer3DEngine {
       getState: () => this.touchInput.enabled ? this.touchInput.getState() : this.movementInput.getState(),
     });
     this.overview = new OverviewController(this.renderer.domElement);
+    this.roomPicker = new RoomPicker(this.renderer.domElement, (x, y) => {
+      if (this.viewMode !== 'overview' || this.surfaceUpdating) return;
+      const roomId = pickVisibleRoom(this.floorplanScene.currentGroup, this.overview.camera, this.renderer.domElement.getBoundingClientRect(), x, y);
+      if (roomId) this.callbacks.onRoomPick?.(roomId);
+    });
     this.exteriorFog = this.scene.fog;
     this.overviewGrid.position.y = -0.06;
     this.scene.add(this.overviewGrid);
@@ -151,10 +169,32 @@ export class Viewer3DEngine {
     if (mode === 'overview') this.touchInput.setEnabled(false);
     if (mode === 'overview' && document.pointerLockElement === this.renderer.domElement) document.exitPointerLock();
     this.overview.setEnabled(mode === 'overview');
+    this.roomPicker.setEnabled(mode === 'overview');
     this.environment.setOverviewMode(mode === 'overview');
     this.overviewGrid.visible = mode === 'overview';
     this.scene.background = mode === 'overview' ? new THREE.Color(0xf5f6f2) : null;
     this.scene.fog = mode === 'overview' ? new THREE.Fog(0xf5f6f2, 35, 110) : this.exteriorFog;
+    this.updateRoomHighlight();
+    this.updateConstructionView();
+  }
+
+  setSelectedSceneRoom(sceneRoomId: string | null): void {
+    if (this.disposed || this.selectedSceneRoom === sceneRoomId) return;
+    this.selectedSceneRoom = sceneRoomId;
+    this.updateRoomHighlight();
+  }
+
+  setInteriorWallColors(colors: InteriorWallColors): void {
+    if (this.disposed) return;
+    this.interiorWallColors = { all: colors.all, rooms: new Map(colors.rooms) };
+    this.wallColorPreview.apply(this.floorplanScene.currentGroup, this.interiorWallColors);
+  }
+
+  setConstructionView(enabled: boolean): void {
+    if (this.disposed || this.constructionView === enabled) return;
+    this.constructionView = enabled;
+    if (enabled && this.viewMode === 'overview') this.frameOverview();
+    this.updateConstructionView();
   }
 
   frameOverview(top = false): void {
@@ -183,6 +223,10 @@ export class Viewer3DEngine {
    */
   async loadFloorplanFromSvgText(svgText: string): Promise<void> {
     if (this.disposed) return;
+    await this.updateSurfaces(() => this.replaceFloorplan(svgText));
+  }
+
+  private async replaceFloorplan(svgText: string): Promise<void> {
     const floorplan = await this.floorplanScene.load(svgText, this.interiorStyle.currentStyle);
     if (!floorplan || this.disposed) return;
     this.currentFloorplan = floorplan;
@@ -209,12 +253,14 @@ export class Viewer3DEngine {
    */
   async applyInteriorStyle(styleId: InteriorStyleId): Promise<void> {
     if (this.disposed) return;
-    await this.interiorStyle.applyStyle(
-      styleId,
-      this.floorplanScene.currentGroup,
-      this.renderer.capabilities.getMaxAnisotropy(),
-    );
-    await this.applyRoomFloors();
+    await this.updateSurfaces(async () => {
+      await this.interiorStyle.applyStyle(
+        styleId,
+        this.floorplanScene.currentGroup,
+        this.renderer.capabilities.getMaxAnisotropy(),
+      );
+      await this.applyRoomFloors();
+    });
   }
 
   getSceneRooms(): SceneRoom[] {
@@ -258,6 +304,10 @@ export class Viewer3DEngine {
     this.movementInput.dispose();
     this.lookInput.dispose();
     this.touchInput.dispose();
+    this.roomPicker.dispose();
+    this.roomHighlight.dispose();
+    this.wallColorPreview.dispose();
+    this.constructionBoardView.dispose();
     this.overview.dispose();
     this.overviewGrid.dispose();
     this.interiorStyle.dispose();
@@ -276,6 +326,32 @@ export class Viewer3DEngine {
   private rebuildCollisions(): void {
     this.worldOctree.clear();
     this.worldOctree.fromGraphNode(this.collidables);
+  }
+
+  private async updateSurfaces(update: () => Promise<void>): Promise<void> {
+    const request = ++this.surfaceUpdate;
+    this.surfaceUpdating = true;
+    this.updateConstructionView();
+    this.updateRoomHighlight();
+    try {
+      await update();
+    } finally {
+      if (!this.disposed && request === this.surfaceUpdate) {
+        this.surfaceUpdating = false;
+        this.wallColorPreview.apply(this.floorplanScene.currentGroup, this.interiorWallColors);
+        this.updateRoomHighlight();
+        this.updateConstructionView();
+      }
+    }
+  }
+
+  private updateRoomHighlight(): void {
+    const selected = this.viewMode === 'overview' && !this.surfaceUpdating ? this.selectedSceneRoom : null;
+    this.roomHighlight.show(this.floorplanScene.currentGroup, selected);
+  }
+
+  private updateConstructionView(): void {
+    this.constructionBoardView.setEnabled(this.viewMode === 'overview' && !this.surfaceUpdating && this.constructionView, this.floorplanScene.currentGroup);
   }
 
   async loadExampleFloorplan(): Promise<void> {

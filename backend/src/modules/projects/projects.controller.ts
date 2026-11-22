@@ -17,6 +17,7 @@ import type { AuthenticatedRequest } from '../auth/session-auth.guard.js';
 import { SessionAuthGuard } from '../auth/session-auth.guard.js';
 import { CreateProjectDto } from './dto/create-project.dto.js';
 import { PreviewProjectDto } from './dto/preview-project.dto.js';
+import { ProjectFloorDto } from './dto/project-floor.dto.js';
 import { CreateRoomDto, UpdateRoomDto } from './dto/room.dto.js';
 import { UpdateProjectDto } from './dto/update-project.dto.js';
 import { ProjectPreviewService } from './project-preview.service.js';
@@ -97,6 +98,20 @@ export class ProjectsController {
     @Body() dto: CreateRoomDto,
   ) {
     return this.projects.createRoom(request.authenticatedUser.id, id, dto);
+  }
+
+  @Patch(':id/floors')
+  @UseGuards(SessionAuthGuard)
+  applyProjectFloor(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: ProjectFloorDto,
+  ) {
+    return this.projects.applyProjectFloor(
+      request.authenticatedUser.id,
+      id,
+      dto,
+    );
   }
 
   @Patch(':id/rooms/:roomId')

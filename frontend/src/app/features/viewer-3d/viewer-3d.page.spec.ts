@@ -18,6 +18,7 @@ const engine = {
   setTouchWalkEnabled: vi.fn(), setTouchDirection: vi.fn(), loadExampleFloorplan: vi.fn(),
   loadFloorplanFromSvgText: vi.fn(), applyInteriorStyle: vi.fn(), dispose: vi.fn(),
   getSceneRooms: vi.fn((): SceneRoom[] => []), setRoomFloorSelections: vi.fn().mockResolvedValue(undefined),
+  setSelectedSceneRoom: vi.fn(), setInteriorWallColors: vi.fn(), setConstructionView: vi.fn(),
 };
 
 describe('Viewer3DPage', () => {
@@ -265,6 +266,25 @@ describe('Viewer3DPage', () => {
     component.selectAppearanceRoom('living');
     expect(component.activeFloorPreview()?.tint).toBe('#aab5c2');
   });
+  it('selects a room from the scene and applies color by room or to the whole interior', () => {
+    engine.getSceneRooms.mockReturnValue([
+      { id: 'living', name: 'Living', areaM2: 12 }, { id: 'kitchen', name: 'Cocina', areaM2: 8 },
+    ]);
+    ready();
+    engine.callbacks.onRoomPick?.('kitchen');
+    fixture.detectChanges();
+    expect(component.appearanceRoomId()).toBe('kitchen');
+    expect(engine.setSelectedSceneRoom).toHaveBeenLastCalledWith('kitchen');
+    component.paintInterior('all', '#dfcdb0');
+    component.paintInterior('room', '#829b90');
+    fixture.detectChanges();
+    expect(engine.setInteriorWallColors).toHaveBeenLastCalledWith({ all: '#dfcdb0', rooms: new Map([['kitchen', '#829b90']]) });
+    component.toggleConstructionView();
+    engine.callbacks.onRoomPick?.('living');
+    expect(component.appearanceRoomId()).toBe('kitchen');
+    component.onFrameOverview(true);
+    expect(engine.setConstructionView.mock.calls).toEqual([[true], [false]]);
+  });
   it('saves a different catalogue floor from the project viewer and refreshes its budget', async () => {
     engine.getSceneRooms.mockReturnValue([{ id: 'scene-test', name: 'Living', areaM2: 12 }]);
     ready();
@@ -287,6 +307,24 @@ describe('Viewer3DPage', () => {
     expect(component.selectedProjectRoom()?.publicationKey).toBe(publication.publicationKey);
     expect(engine.setRoomFloorSelections).toHaveBeenLastCalledWith([expect.objectContaining({ sceneRoomId: 'scene-test', finishId: 'marble' })]);
     expect(component.activeFloorPreview()).toBeUndefined();
+    expect(budget).toHaveBeenCalledTimes(2);
+  });
+  it('uses the scene areas and saves a catalogue floor for a new whole-house project', async () => {
+    engine.getSceneRooms.mockReturnValue([{ id: 'selection-a', name: 'Living', areaM2: 8.125 }]);
+    ready();
+    const api = TestBed.inject(Ep2ApiService);
+    TestBed.inject(SessionService).user.set({ id: 1, email: 'demo@example.test' });
+    vi.spyOn(api, 'project').mockResolvedValue({ ...TEST_PROJECT, rooms: [] });
+    const budget = vi.spyOn(api, 'budget').mockResolvedValue(TEST_BUDGET);
+    vi.spyOn(api, 'status').mockResolvedValue(TEST_STATUS);
+    component.projectMode.set(true);
+    component.projectId.set(TEST_PROJECT.id);
+    await component.loadActiveProject();
+    const updated = { ...TEST_PROJECT, rooms: [{ ...TEST_PROJECT.rooms[0], sceneRoomId: 'selection-a', publication: TEST_PUBLICATION }] };
+    const bulk = vi.spyOn(api, 'saveProjectFloor').mockResolvedValue(updated);
+    await component.saveCatalogFloor(TEST_PUBLICATION, true);
+    expect(bulk).toHaveBeenCalledWith(TEST_PROJECT.id, TEST_PUBLICATION.publicationKey, [{ id: 'selection-a', name: 'Living', areaM2: '8.125000' }]);
+    expect(component.project()).toEqual(updated);
     expect(budget).toHaveBeenCalledTimes(2);
   });
   it('preserves a chosen finish when moving between overview and walkthrough', async () => {

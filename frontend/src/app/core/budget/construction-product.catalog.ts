@@ -15,6 +15,9 @@ export const CONSTRUCTION_PRODUCT_CATALOG: Record<ConstructionProductId, Constru
   CERAMIC_NORDIC_FLOOR: { id: 'CERAMIC_NORDIC_FLOOR', name: 'Cerámica piso 60 × 60 (nórdico)', category: 'Revestimientos', unit: 'caja', tileWidthMeters: 0.6, tileHeightMeters: 0.6, tilesPerBox: 4, wasteFactor: 1.1, unitPriceClp: 18990, isDemoPrice: true, priceSource: 'demo' },
   CERAMIC_INDUSTRIAL_WALL: { id: 'CERAMIC_INDUSTRIAL_WALL', name: 'Cerámica muro 30 × 60 (industrial)', category: 'Revestimientos', unit: 'caja', tileWidthMeters: 0.3, tileHeightMeters: 0.6, tilesPerBox: 8, wasteFactor: 1.1, unitPriceClp: 14990, isDemoPrice: true, priceSource: 'demo' },
   CERAMIC_INDUSTRIAL_FLOOR: { id: 'CERAMIC_INDUSTRIAL_FLOOR', name: 'Cerámica piso 60 × 60 (industrial)', category: 'Revestimientos', unit: 'caja', tileWidthMeters: 0.6, tileHeightMeters: 0.6, tilesPerBox: 4, wasteFactor: 1.1, unitPriceClp: 21990, isDemoPrice: true, priceSource: 'demo' },
+  CERAMIC_MEDITERRANEAN_WALL: { id: 'CERAMIC_MEDITERRANEAN_WALL', name: 'Cerámica muro 30 × 30 (azul)', category: 'Revestimientos', unit: 'caja', tileWidthMeters: 0.3, tileHeightMeters: 0.3, tilesPerBox: 16, wasteFactor: 1.1, unitPriceClp: 14990, isDemoPrice: true, priceSource: 'demo' },
+  CERAMIC_MEDITERRANEAN_FLOOR: { id: 'CERAMIC_MEDITERRANEAN_FLOOR', name: 'Cerámica piso 30 × 30 (terracota)', category: 'Revestimientos', unit: 'caja', tileWidthMeters: 0.3, tileHeightMeters: 0.3, tilesPerBox: 16, wasteFactor: 1.1, unitPriceClp: 18990, isDemoPrice: true, priceSource: 'demo' },
+  CERAMIC_CONTEMPORARY_FLOOR: { id: 'CERAMIC_CONTEMPORARY_FLOOR', name: 'Cerámica piso 60 × 60 (marmoleada)', category: 'Revestimientos', unit: 'caja', tileWidthMeters: 0.6, tileHeightMeters: 0.6, tilesPerBox: 4, wasteFactor: 1.1, unitPriceClp: 21990, isDemoPrice: true, priceSource: 'demo' },
   CONCRETE_M3: { id: 'CONCRETE_M3', name: 'Hormigón in situ (volumen aproximado)', category: 'Obra gruesa', unit: 'm3', unitPriceClp: 125000, isDemoPrice: true, priceSource: 'demo' },
 };
 
@@ -29,6 +32,8 @@ export const STYLE_PRODUCT_MAP: Record<InteriorStyleId, StyleProductMap> = {
   none: { baseboard: 'BASEBOARD_WHITE', ceramicWall: null, ceramicFloor: null },
   nordic: { baseboard: 'BASEBOARD_WHITE', ceramicWall: 'CERAMIC_NORDIC_WALL', ceramicFloor: 'CERAMIC_NORDIC_FLOOR' },
   industrial: { baseboard: 'BASEBOARD_DARK', ceramicWall: 'CERAMIC_INDUSTRIAL_WALL', ceramicFloor: 'CERAMIC_INDUSTRIAL_FLOOR' },
+  mediterranean: { baseboard: 'BASEBOARD_WHITE', ceramicWall: 'CERAMIC_MEDITERRANEAN_WALL', ceramicFloor: 'CERAMIC_MEDITERRANEAN_FLOOR' },
+  contemporary: { baseboard: 'BASEBOARD_DARK', ceramicWall: 'CERAMIC_NORDIC_WALL', ceramicFloor: 'CERAMIC_CONTEMPORARY_FLOOR' },
 };
 
 export const getStyleProductMap = (styleId: InteriorStyleId): StyleProductMap =>

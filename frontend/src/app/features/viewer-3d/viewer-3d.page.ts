@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, DestroyRef, ElementRef, OnDestroy, ViewChild, computed, inject, signal } from '@angular/core';
+import { AfterViewInit, Component, DestroyRef, ElementRef, OnDestroy, ViewChild, computed, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { IonContent, IonSpinner } from '@ionic/angular';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -11,9 +11,10 @@ import type { InteriorStyleId } from '../../core/interior-style/interior-style.t
 import { readFloorplanFile } from '../../core/floorplan/floorplan-file';
 
 import { VIEWER_ENGINE_FACTORY, type ViewerEngine } from './engine/viewer-engine.factory';
+import { CONSTRUCTION_VIEW_LEGEND } from './engine/construction-board-view';
 import { finishForPublication, type FloorFinishId } from './engine/floor-finishes';
 import type { RoomFloorSelection } from './engine/room-floor-selection';
-import type { ViewerStatus } from './engine/viewer-3d.types';
+import type { InteriorWallColors, ViewerStatus } from './engine/viewer-3d.types';
 import type { WalkDirection } from './engine/touch-walk-input';
 import { FloorAppearancePanelComponent } from './floor-appearance-panel.component';
 import { InteriorStylePanelComponent } from './interior-style-panel.component';
@@ -26,6 +27,8 @@ interface FloorPreview {
   finishId?: FloorFinishId;
   tint?: string;
 }
+
+const ORIGINAL_WALLS: InteriorWallColors = { all: null, rooms: new Map() };
 
 @Component({
   selector: 'app-viewer-3d',
@@ -42,6 +45,8 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
   readonly walkError = signal<string | null>(null);
   readonly viewMode = signal<'walk' | 'overview'>('overview');
   readonly topView = signal(false);
+  readonly constructionView = signal(false);
+  readonly constructionLegend = CONSTRUCTION_VIEW_LEGEND;
   readonly modelName = signal(EXAMPLE_MODEL_NAME);
   readonly modelSummary = signal({ roomCount: 0, areaM2: 0 });
   readonly pointerLockSupported = typeof HTMLElement.prototype.requestPointerLock === 'function';
@@ -64,15 +69,21 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
   readonly projectBudgetError = signal('');
   readonly captureWarning = signal('');
   readonly unmappedRooms = signal<string[]>([]);
-  readonly selectedProjectRoom = computed(() => this.project()?.rooms.find(room => room.id === this.projectRoomId()) ?? this.project()?.rooms[0] ?? null);
+  private readonly pickedProjectSceneRoom = signal<string | null>(null);
+  readonly selectedProjectRoom = computed(() => {
+    const rooms = this.project()?.rooms ?? [];
+    const picked = this.pickedProjectSceneRoom();
+    return picked ? rooms.find(room => room.sceneRoomId === picked) ?? null
+      : rooms.find(room => room.id === this.projectRoomId()) ?? rooms[0] ?? null;
+  });
   readonly selectedRoomBudget = computed(() => this.projectBudget()?.rooms.find(room => room.room_id === this.selectedProjectRoom()?.id) ?? null);
   readonly money = money;
-  private readonly sceneRooms = signal<SceneRoom[]>([]);
+  readonly sceneRooms = signal<SceneRoom[]>([]);
   private readonly freeFloorRoomId = signal<string | null>(null);
   private readonly freeFloorPreviews = signal(new Map<string, FloorPreview>());
   private readonly projectFloorPreviews = signal(new Map<string, FloorPreview>());
   readonly appearanceRooms = computed(() => this.projectMode()
-    ? this.sceneRooms().filter(room => room.id === this.selectedProjectRoom()?.sceneRoomId)
+    ? this.sceneRooms().filter(room => room.id === (this.pickedProjectSceneRoom() ?? this.selectedProjectRoom()?.sceneRoomId))
     : this.sceneRooms());
   readonly appearanceRoomId = computed(() => {
     const rooms = this.appearanceRooms();
@@ -87,6 +98,12 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
   readonly floorAppearanceError = signal('');
   readonly floorCatalogMessage = signal('');
   readonly floorCatalogError = signal('');
+  private readonly freeWallColors = signal(ORIGINAL_WALLS);
+  private readonly projectWallColors = signal(ORIGINAL_WALLS);
+  readonly activeWallColors = computed(() => this.projectMode() ? this.projectWallColors() : this.freeWallColors());
+  readonly wallPaint = signal('#e6ded0');
+  readonly activeWallRoom = computed(() => this.appearanceRooms().find(room => room.id === this.appearanceRoomId()));
+  readonly roomWallOverride = computed(() => this.activeWallColors().rooms.get(this.appearanceRoomId() ?? ''));
 
   readonly loadingFloorplan = signal(false);
   readonly floorplanError = signal<string | null>(null);
@@ -116,6 +133,16 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
   private pendingScene = Promise.resolve();
   private previewProjectId: number | null = null;
 
+  constructor() {
+    effect(() => {
+      const id = this.appearanceRoomId();
+      const colors = this.activeWallColors();
+      if (this.status() !== 'ready') return;
+      this.engine?.setSelectedSceneRoom(id);
+      this.engine?.setInteriorWallColors(colors);
+    });
+  }
+
   ngAfterViewInit(): void {
     try {
       this.engine = this.createEngine(this.canvasHostRef.nativeElement, {
@@ -126,6 +153,7 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
         },
         onError: (error) => this.handleError(error),
         onPointerLockChange: (locked) => this.pointerLocked.set(locked),
+        onRoomPick: roomId => this.pickSceneRoom(roomId),
         onPointerLockError: () => this.walkError.set('El navegador no permitió controlar el mouse. Intenta de nuevo desde «Comenzar recorrido» o abre el visor en tu navegador habitual.'),
       });
     } catch (error) {
@@ -139,6 +167,7 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
       this.projectMode.set(saved);
       this.projectId.set(id);
       this.projectRoomId.set(params.get('room'));
+      this.pickedProjectSceneRoom.set(null);
       this.floorCatalogMessage.set('');
       this.floorCatalogError.set('');
       this.floorAppearanceError.set('');
@@ -175,6 +204,7 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
 
   onViewModeChange(mode: 'walk' | 'overview'): void {
     if (mode === 'overview') this.touchWalk.set(false);
+    if (mode === 'walk' && this.constructionView()) this.toggleConstructionView(false);
     this.engine?.setViewMode(mode);
     this.viewMode.set(mode);
   }
@@ -188,8 +218,25 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
   }
 
   onFrameOverview(top = false): void {
+    if (this.constructionView()) this.toggleConstructionView(false);
     this.topView.set(top);
     this.engine?.frameOverview(top);
+  }
+
+  toggleConstructionView(enabled = true): void {
+    this.constructionView.set(enabled);
+    this.engine?.setConstructionView(enabled);
+    if (!enabled) return;
+    this.topView.set(false);
+    requestAnimationFrame(() => {
+      if (this.constructionView()) {
+        this.canvasHostRef.nativeElement.closest('.studio')?.querySelector('#board-title')?.scrollIntoView?.({ block: 'nearest' });
+      }
+    });
+  }
+
+  boardLine(productId: typeof CONSTRUCTION_VIEW_LEGEND[number]['productId']) {
+    return (line: ConstructionBudgetSummary['items'][number]) => line.productId === productId;
   }
 
   onZoom(factor: number): void {
@@ -198,7 +245,43 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
 
   async selectProjectRoom(event: Event): Promise<void> {
     const room = (event.target as HTMLSelectElement).value;
+    this.pickedProjectSceneRoom.set(null);
     await this.router.navigate([], { relativeTo: this.route, queryParams: { project: this.projectId(), room }, replaceUrl: true });
+  }
+
+  private pickSceneRoom(roomId: string): void {
+    if (this.constructionView() || this.projectLoading() || this.floorUpdating() || this.loadingFloorplan()) return;
+    if (!this.sceneRooms().some(room => room.id === roomId)) return;
+    if (this.projectMode()) {
+      this.pickedProjectSceneRoom.set(roomId);
+      const linked = this.selectedProjectRoom();
+      if (linked && linked.id !== this.projectRoomId()) {
+        void this.router.navigate([], { relativeTo: this.route, queryParams: { project: this.projectId(), room: linked.id }, replaceUrl: true });
+      }
+    } else this.selectAppearanceRoom(roomId);
+    this.floorAppearanceError.set('');
+    this.floorCatalogError.set('');
+    this.floorCatalogMessage.set('');
+    this.canvasHostRef.nativeElement.closest('.studio')?.querySelector('#floor-editor')?.scrollIntoView?.({ block: 'nearest' });
+  }
+
+  updateWallPaint(event: Event): void {
+    const value = (event.target as HTMLInputElement).value;
+    if (/^#[a-f0-9]{6}$/i.test(value)) this.wallPaint.set(value);
+  }
+
+  paintInterior(scope: 'room' | 'all', color: string | null = this.wallPaint()): void {
+    const source = this.projectMode() ? this.projectWallColors : this.freeWallColors;
+    if (scope === 'all') {
+      source.set({ all: color, rooms: new Map() });
+      return;
+    }
+    const id = this.appearanceRoomId();
+    if (!id) return;
+    const rooms = new Map(source().rooms);
+    if (color) rooms.set(id, color);
+    else rooms.delete(id);
+    source.set({ all: source().all, rooms });
   }
 
   selectAppearanceRoom(roomId: string): void {
@@ -219,26 +302,34 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
     return this.updateFloorAppearance({});
   }
 
-  async saveCatalogFloor(publication: Publication): Promise<void> {
+  previewFloorThroughoutHouse(): Promise<void> {
+    return this.updateFloorAppearance(this.activeFloorPreview() ?? {}, this.sceneRooms().map(room => room.id));
+  }
+
+  async saveCatalogFloor(publication: Publication, wholeHouse = false): Promise<void> {
     const project = this.project();
     const room = this.selectedProjectRoom();
-    if (this.floorUpdating() || this.projectLoading() || !project || !room || room.publicationKey === publication.publicationKey) return;
+    if (this.floorUpdating() || this.projectLoading() || !project || (!wholeHouse && (!room || room.publicationKey === publication.publicationKey))) return;
     const request = this.projectRequest;
     this.floorUpdating.set(true);
     this.floorCatalogMessage.set('');
     this.floorCatalogError.set('');
     this.floorAppearanceError.set('');
     try {
-      const updatedRoom = await this.api.saveRoom(project.id, { publicationKey: publication.publicationKey }, room.id);
+      const updated = wholeHouse
+        ? await this.api.saveProjectFloor(project.id, publication.publicationKey, this.sceneRooms().map(scene => ({
+            id: scene.id, name: scene.name.slice(0, 120), areaM2: scene.areaM2.toFixed(6),
+          })))
+        : await this.api.saveRoom(project.id, { publicationKey: publication.publicationKey }, room!.id).then(updatedRoom => ({
+            ...project, rooms: project.rooms.map(item => item.id === updatedRoom.id ? updatedRoom : item),
+          }));
       if (request !== this.projectRequest) return;
-      const updated = { ...project, rooms: project.rooms.map(item => item.id === updatedRoom.id ? updatedRoom : item) };
       this.project.set(updated);
-      this.floorCatalogMessage.set('Piso guardado en la habitación.');
-      if (updatedRoom.sceneRoomId) {
-        const previews = new Map(this.projectFloorPreviews());
-        previews.delete(updatedRoom.sceneRoomId);
-        this.projectFloorPreviews.set(previews);
-      }
+      this.floorCatalogMessage.set(wholeHouse ? 'Piso guardado en todos los recintos del plano.' : 'Piso guardado en la habitación.');
+      const previews = new Map(this.projectFloorPreviews());
+      for (const scene of wholeHouse ? this.sceneRooms() : this.sceneRooms().filter(item => item.id === room?.sceneRoomId)) previews.delete(scene.id);
+      this.projectFloorPreviews.set(previews);
+      this.refreshUnmappedRooms(updated);
       const [appearance, budget] = await Promise.allSettled([
         this.updateScene(async () => {
           if (request === this.projectRequest) await this.applyFloorVisuals(updated, this.projectFloorPreviews());
@@ -286,14 +377,14 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
       if (this.previewProjectId !== id) {
         this.previewProjectId = id;
         this.projectFloorPreviews.set(new Map());
+        this.projectWallColors.set(ORIGINAL_WALLS);
       }
       if (!this.session.user()) await this.session.restore();
       if (request !== this.projectRequest) return;
       if (!this.session.user()) { this.projectError.set('Inicia sesión en Mis proyectos para recuperar esta vivienda y sus pisos.'); return; }
       const project = await this.api.project(id);
       if (request !== this.projectRequest) return;
-      const sceneIds = new Set(this.sceneRooms().map(room => room.id));
-      this.unmappedRooms.set(project.rooms.filter(room => !room.sceneRoomId || !sceneIds.has(room.sceneRoomId)).map(room => room.name));
+      this.refreshUnmappedRooms(project);
       await this.updateScene(async () => {
         if (request !== this.projectRequest) return;
         await this.applyFloorVisuals(project, this.projectFloorPreviews());
@@ -344,6 +435,7 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
           await this.engine.setRoomFloorSelections([]);
           this.freeFloorPreviews.set(new Map());
         }
+        if (geometryChanged) this.freeWallColors.set(ORIGINAL_WALLS);
         this.freePlan = { svgText, name: file.name.replace(/\.svg$/i, '') };
         if (request !== this.projectRequest) return;
         this.modelName.set(this.freePlan.name);
@@ -389,14 +481,16 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
     });
   }
 
-  private async updateFloorAppearance(preview: FloorPreview): Promise<void> {
+  private async updateFloorAppearance(preview: FloorPreview, rooms?: string[]): Promise<void> {
     const sceneRoomId = this.appearanceRoomId();
     if (!sceneRoomId || this.floorUpdating() || this.projectLoading() || this.loadingFloorplan() || this.interiorStyleLoading()) return;
     const saved = this.projectMode();
     const source = saved ? this.projectFloorPreviews : this.freeFloorPreviews;
     const next = new Map(source());
-    if (preview.finishId || preview.tint) next.set(sceneRoomId, preview);
-    else next.delete(sceneRoomId);
+    for (const id of rooms ?? [sceneRoomId]) {
+      if (preview.finishId || preview.tint) next.set(id, preview);
+      else next.delete(id);
+    }
     const request = this.projectRequest;
     this.floorUpdating.set(true);
     this.floorAppearanceError.set('');
@@ -433,6 +527,11 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
   private showProjectBudget(result: PromiseSettledResult<ProjectBudget>): void {
     this.projectBudget.set(result.status === 'fulfilled' ? result.value : null);
     this.projectBudgetError.set(result.status === 'rejected' ? apiError(result.reason) : '');
+  }
+
+  private refreshUnmappedRooms(project: Project): void {
+    const sceneIds = new Set(this.sceneRooms().map(room => room.id));
+    this.unmappedRooms.set(project.rooms.filter(room => !room.sceneRoomId || !sceneIds.has(room.sceneRoomId)).map(room => room.name));
   }
 
   private updateScene(update: () => Promise<void>): Promise<void> {

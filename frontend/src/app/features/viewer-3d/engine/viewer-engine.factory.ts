@@ -5,7 +5,8 @@ import type { Viewer3DEngineCallbacks } from './viewer-3d.types';
 export type ViewerEngine = Pick<Viewer3DEngine,
   'dispose' | 'setViewMode' | 'requestPointerLock' | 'frameOverview' | 'zoomOverview' |
   'setTouchWalkEnabled' | 'setTouchDirection' | 'loadExampleFloorplan' | 'loadFloorplanFromSvgText' |
-  'applyInteriorStyle' | 'getBudget' | 'getModelSummary' | 'getSceneRooms' | 'setRoomFloorSelections'>;
+  'applyInteriorStyle' | 'getBudget' | 'getModelSummary' | 'getSceneRooms' | 'setRoomFloorSelections' |
+  'setSelectedSceneRoom' | 'setInteriorWallColors' | 'setConstructionView'>;
 
 /** Angular boundary: the page can be exercised without a WebGL context. */
 export const VIEWER_ENGINE_FACTORY = new InjectionToken<

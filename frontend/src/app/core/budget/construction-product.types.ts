@@ -8,6 +8,9 @@ export type ConstructionProductId =
   | 'CERAMIC_NORDIC_FLOOR'
   | 'CERAMIC_INDUSTRIAL_WALL'
   | 'CERAMIC_INDUSTRIAL_FLOOR'
+  | 'CERAMIC_MEDITERRANEAN_WALL'
+  | 'CERAMIC_MEDITERRANEAN_FLOOR'
+  | 'CERAMIC_CONTEMPORARY_FLOOR'
   | 'CONCRETE_M3';
 
 /** How the product is actually sold in Chile — the unit the purchase quantity counts. */

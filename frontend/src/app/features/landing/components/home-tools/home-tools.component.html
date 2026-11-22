@@ -16,7 +16,7 @@
           </p>
           <ul class="specs">
             <li>Primera persona · WASD + mouse</li>
-            <li>Vista general · órbita y planta</li>
+            <li>Vista general, planta y planchas</li>
             <li>Vivienda de ejemplo incluida</li>
           </ul>
           <a class="h3d-btn h3d-btn--light" routerLink="/viewer-3d">
@@ -41,8 +41,8 @@
         <p class="kicker">Catálogo</p>
         <h3 id="tool-mat">Materiales y terminaciones</h3>
         <p>
-          Elige un estilo interior —Nórdico o Industrial— y observa pisos, muros, fachada,
-          ventanas e iluminación con texturas realistas.
+          Cambia pisos y muros por recinto. Prueba los estilos Nórdico, Industrial,
+          Mediterráneo y Contemporáneo con sus fachadas.
         </p>
         <ul class="swatches">
           @for (swatch of swatches; track swatch.name) {
@@ -56,34 +56,14 @@
       </article>
 
       <article class="tool budget" appReveal="200" aria-labelledby="tool-budget">
-        <div class="budget-head">
-          <p class="kicker">Estimación</p>
-          <span class="chip">Precios de demostración</span>
-        </div>
-        <h3 id="tool-budget">Presupuestos orientativos</h3>
+        <p class="kicker">Presupuesto</p>
+        <h3 id="tool-budget">Compra de pisos y estimación de planchas</h3>
         <p>
-          Las cantidades salen de las superficies del modelo: m² de piso, muros y cielo,
-          metros de guardapolvo, puertas y ventanas.
+          Tus proyectos calculan cajas y costos con los precios guardados del catálogo de Sodimac y Easy.
+          La vista de planchas identifica los muros de la vivienda y estima cuánto material requieren.
         </p>
-        <table>
-          <caption>Ejemplo ilustrativo: vivienda de 70 m² con estilo Nórdico</caption>
-          <tbody>
-            @for (line of sampleBudget; track line.label) {
-              <tr>
-                <th scope="row">{{ line.label }}</th>
-                <td>{{ line.quantity }}</td>
-                <td>{{ line.subtotal }}</td>
-              </tr>
-            }
-          </tbody>
-          <tfoot>
-            <tr>
-              <th scope="row" colspan="2">Total parcial (CLP)</th>
-              <td>{{ sampleTotal }}</td>
-            </tr>
-          </tfoot>
-        </table>
-        <p class="fine">Valores ilustrativos. No constituyen una cotización ni reflejan precios de tiendas.</p>
+        <p class="fine">Precios de demostración en planchas y revestimientos.</p>
+        <a class="h3d-btn h3d-btn--ghost" routerLink="/projects">Abrir presupuesto de pisos</a>
       </article>
     </div>
   </div>

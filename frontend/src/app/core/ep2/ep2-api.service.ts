@@ -27,6 +27,10 @@ export class Ep2ApiService {
   deleteRoom(id: number, roomId: string): Promise<void> { return firstValueFrom(this.http.delete<void>(this.roomUrl(id, roomId))); }
   budget(id: number): Promise<ProjectBudget> { return firstValueFrom(this.http.get<ProjectBudget>(`/api/projects/${id}/budget`)); }
 
+  saveProjectFloor(id: number, publicationKey: string, rooms: { id: string; name: string; areaM2: string }[]): Promise<Project> {
+    return firstValueFrom(this.http.patch<Project>(`/api/projects/${id}/floors`, { publicationKey, rooms }));
+  }
+
   suggestions(id: number, roomId: string, exclude: string[]): Promise<FloorSuggestions> {
     const params = new HttpParams({ fromObject: { exclude } });
     return firstValueFrom(this.http.get<FloorSuggestions>(`${this.roomUrl(id, roomId)}/suggestions`, { params }));
