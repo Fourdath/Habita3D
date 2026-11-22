@@ -22,6 +22,11 @@ export type MaterialId =
   | 'NORDIC_EXTERIOR_LIGHT'
   | 'INDUSTRIAL_WALL_CREAM'
   | 'INDUSTRIAL_FLOOR_WOOD_DARK'
+  | 'FLOOR_TILE_TERRACOTTA'
+  | 'FLOOR_TILE_MARBLE'
+  | 'FLOOR_TILE_WOOD'
+  | 'FLOOR_LAMINATE_ASH'
+  | 'FLOOR_CONCRETE_SMOOTH'
   | 'INDUSTRIAL_WALL_BRICK_EXPOSED'
   | 'INDUSTRIAL_WALL_CONCRETE_VISIBLE'
   | 'INDUSTRIAL_BATH_WALL_TILE_GRAY'
@@ -63,6 +68,7 @@ export interface ProceduralTextureSpec {
   grout?: string;
   /** Tile size in meters, [width, height] — only for kind 'tile'. */
   tile?: [number, number];
+  pattern?: 'marble' | 'wood';
 }
 
 export interface MaterialDefinition {

@@ -90,10 +90,10 @@
           <div class="studio__intro">
             <span class="studio__eyebrow">TU ESPACIO, TUS IDEAS</span>
             <h2>{{ projectMode() ? 'Tu proyecto, en 3D.' : 'Imagina cómo quieres vivir.' }}</h2>
-            <p>{{ projectMode() ? 'Pisos guardados por habitación. Apariencia orientativa; no reproduce la textura exacta del producto.' : 'Observa tu casa desde fuera, prueba terminaciones y luego entra a recorrerla.' }}</p>
+            <p>{{ projectMode() ? 'Prueba acabados por habitación y cambia el piso guardado desde el catálogo.' : 'Elige un recinto y prueba distintos pisos y colores antes de recorrerlo.' }}</p>
           </div>
           @if (projectMode()) {
-            <section class="studio__project-floor" aria-label="Selección de pisos del proyecto">
+            <section class="studio__project-context" aria-label="Habitación del proyecto">
               <a routerLink="/projects" [queryParams]="{ project: projectId(), room: selectedProjectRoom()?.id }">← Administrar habitaciones y pisos</a>
               <a routerLink="/viewer-3d">Abrir visor libre</a>
               @if (projectLoading()) { <p role="status">Recuperando pisos guardados…</p> }
@@ -101,12 +101,34 @@
               @if (projectError()) { <p role="alert">{{ projectError() }}</p><button type="button" (click)="loadActiveProject()">Reintentar</button> }
               @if (project(); as saved) {
                 <label for="project-room">Habitación del proyecto</label>
-                <select id="project-room" (change)="selectProjectRoom($event)">
+                <select id="project-room" [disabled]="floorUpdating()" (change)="selectProjectRoom($event)">
                   @for (room of saved.rooms; track room.id) { <option [value]="room.id" [selected]="selectedProjectRoom()?.id === room.id">{{ room.name }}</option> }
                 </select>
                 @if (unmappedRooms().length) { <p>Sin vínculo en este plano: {{ unmappedRooms().join(', ') }}. Vincula sus espacios desde Mis proyectos.</p> }
-                @if (selectedProjectRoom(); as room) {
+              }
+            </section>
+          }
+          @if (status() === 'ready' && appearanceRooms().length) {
+            <app-floor-appearance-panel
+              [rooms]="appearanceRooms()"
+              [selectedRoomId]="appearanceRoomId()"
+              [finish]="activeFloorPreview()?.finishId ?? null"
+              [tint]="activeFloorPreview()?.tint ?? null"
+              [busy]="floorUpdating() || projectLoading() || interiorStyleLoading() || loadingFloorplan()"
+              (roomChange)="selectAppearanceRoom($event)"
+              (finishChange)="changeFloorFinish($event)"
+              (tintChange)="changeFloorTint($event)"
+              (appearanceReset)="resetFloorAppearance()"
+            />
+          }
+          @if (floorAppearanceError()) { <p class="studio__error" role="alert">{{ floorAppearanceError() }}</p> }
+          @if (selectedProjectRoom(); as room) {
+            <section class="studio__project-floor" aria-label="Piso guardado y presupuesto">
                   <h3>{{ room.name }}</h3>
+                  <app-viewer-floor-catalog [roomId]="room.id" [currentKey]="room.publicationKey"
+                    [busy]="floorUpdating() || projectLoading()" (choose)="saveCatalogFloor($event)" />
+                  @if (floorCatalogMessage()) { <p role="status">{{ floorCatalogMessage() }}</p> }
+                  @if (floorCatalogError()) { <p role="alert">{{ floorCatalogError() }}</p> }
                   @if (room.publication; as floor) {
                     @if (floor.imageUrl) { <img [src]="floor.imageUrl" [alt]="floor.name" referrerpolicy="no-referrer" /> }
                     <strong>{{ floor.name }}</strong><p>{{ floor.seller }} · {{ floor.category === 'ceramic' ? 'Cerámica' : 'Flotante laminado' }}</p>
@@ -117,10 +139,8 @@
                     <a [href]="floor.productUrl" target="_blank" rel="noopener noreferrer">Ver publicación real ↗</a>
                     @if (selectedRoomBudget(); as cost) { <p>Cajas: {{ cost.boxes ?? 'Pendiente' }} · Costo: {{ money(cost.cost_clp) }}</p> }
                   } @else { <p>Esta habitación aún no tiene un piso elegido.</p> }
-                }
                 @if (projectBudget(); as costs) { <p><strong>Total de pisos: {{ money(costs.total_cost_clp) }}</strong></p>@if (costs.total_cost_clp === null) { <p>Presupuesto parcial. Hay selecciones o datos pendientes.</p> }<p>Solo compra de pisos; no incluye instalación.</p> }
                 @if (projectBudgetError()) { <p role="alert">{{ projectBudgetError() }}</p> }
-              }
             </section>
           }
           <div class="studio__model">
@@ -136,7 +156,7 @@
             <app-interior-style-panel
               [showDemoBudget]="!projectMode()"
               [styleId]="interiorStyleId()"
-              [loading]="interiorStyleLoading() || loadingFloorplan() || projectLoading()"
+              [loading]="interiorStyleLoading() || loadingFloorplan() || projectLoading() || floorUpdating()"
               [errorMessage]="interiorStyleError()"
               [budget]="budget()"
               (styleChange)="onInteriorStyleChange($event)"
@@ -145,7 +165,7 @@
             <div class="studio__floorplan">
               <label class="studio__upload" [class.studio__upload--busy]="loadingFloorplan() || interiorStyleLoading()">
                 <span aria-hidden="true">↥</span> {{ loadingFloorplan() ? 'Cargando plano…' : 'Cargar mi plano SVG' }}
-                <input type="file" accept=".svg" aria-label="Cargar mi plano SVG" [disabled]="loadingFloorplan() || interiorStyleLoading()" (change)="onFloorplanFileSelected($event)" />
+                <input type="file" accept=".svg" aria-label="Cargar mi plano SVG" [disabled]="loadingFloorplan() || interiorStyleLoading() || floorUpdating()" (change)="onFloorplanFileSelected($event)" />
               </label>
               <p>Tu plano se procesa en este dispositivo.</p>
               @if (floorplanError()) { <p class="studio__error" role="alert">{{ floorplanError() }}</p> }
@@ -154,7 +174,7 @@
           }
           </div>
           <div class="studio__enter">
-            <button type="button" class="studio__primary" [disabled]="status() !== 'ready' || loadingFloorplan() || interiorStyleLoading() || projectLoading()" (click)="onStartClick($event)">Recorrer la casa <span aria-hidden="true">→</span></button>
+            <button type="button" class="studio__primary" [disabled]="status() !== 'ready' || loadingFloorplan() || interiorStyleLoading() || projectLoading() || floorUpdating()" (click)="onStartClick($event)">Recorrer la casa <span aria-hidden="true">→</span></button>
             <p>Descubre el interior en primera persona.</p>
           </div>
         </aside>

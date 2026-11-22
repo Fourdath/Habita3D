@@ -228,8 +228,9 @@ export class Viewer3DEngine {
 
   private async applyRoomFloors(): Promise<void> {
     const request = ++this.roomFloorRequest;
-    await applyRoomFloorSelections(this.floorplanScene.currentGroup, this.roomFloorSelections, this.interiorStyle.currentStyle, this.materialRegistry,
-      () => !this.disposed && request === this.roomFloorRequest);
+    const house = this.floorplanScene.currentGroup;
+    await applyRoomFloorSelections(house, this.roomFloorSelections, this.interiorStyle.currentStyle, this.materialRegistry,
+      () => !this.disposed && request === this.roomFloorRequest && house === this.floorplanScene.currentGroup);
   }
 
   /** Applies explicit side-specific accents while preserving the current geometry. */

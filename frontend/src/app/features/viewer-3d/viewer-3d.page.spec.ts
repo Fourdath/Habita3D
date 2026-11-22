@@ -9,6 +9,7 @@ import { Ep2ApiService } from '../../core/ep2/ep2-api.service';
 import { SessionService } from '../../core/ep2/session.service';
 import type { SceneRoom } from '../../core/ep2/ep2.types';
 import { TEST_BUDGET, TEST_PROJECT, TEST_PUBLICATION, TEST_STATUS } from '../../core/ep2/ep2.fixtures';
+import { finishForPublication } from './engine/floor-finishes';
 
 const engine = {
   fail: false,
@@ -25,6 +26,7 @@ describe('Viewer3DPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     engine.fail = false;
+    engine.getSceneRooms.mockReset().mockReturnValue([]);
     engine.loadFloorplanFromSvgText.mockResolvedValue(undefined);
     engine.applyInteriorStyle.mockResolvedValue(undefined);
     TestBed.configureTestingModule({ providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(), {
@@ -202,9 +204,12 @@ describe('Viewer3DPage', () => {
 
     expect(engine.loadExampleFloorplan).toHaveBeenCalledOnce();
     const exampleLoad = engine.loadExampleFloorplan.mock.invocationCallOrder[0];
-    expect(exampleLoad).toBeLessThan(engine.getSceneRooms.mock.invocationCallOrder[0]);
+    expect(exampleLoad).toBeLessThan(engine.getSceneRooms.mock.invocationCallOrder.at(-1)!);
     expect(exampleLoad).toBeLessThan(engine.setRoomFloorSelections.mock.invocationCallOrder.at(-1)!);
-    expect(engine.setRoomFloorSelections).toHaveBeenLastCalledWith([{ sceneRoomId: 'scene-test', publicationKey: TEST_PUBLICATION.publicationKey, category: 'ceramic' }]);
+    expect(engine.setRoomFloorSelections).toHaveBeenLastCalledWith([expect.objectContaining({
+      sceneRoomId: 'scene-test', publicationKey: TEST_PUBLICATION.publicationKey, category: 'ceramic',
+      finishId: finishForPublication('ceramic', TEST_PUBLICATION.name),
+    })]);
     expect(component.modelName()).toBe(TEST_PROJECT.name);
 
     component.projectMode.set(false);
@@ -235,12 +240,54 @@ describe('Viewer3DPage', () => {
 
     component.projectMode.set(false);
     await component.loadActiveProject();
+    const sceneReads = engine.getSceneRooms.mock.calls.length;
     respond(TEST_PROJECT);
     await loading;
     expect(component.modelName()).toBe('Mi casa');
     expect(component.project()).toBeNull();
-    expect(engine.getSceneRooms).not.toHaveBeenCalled();
+    expect(engine.getSceneRooms).toHaveBeenCalledTimes(sceneReads);
     expect(engine.setRoomFloorSelections).toHaveBeenLastCalledWith([]);
+  });
+  it('applies floor design and color independently in each free room and resets only the active room', async () => {
+    engine.getSceneRooms.mockReturnValue([
+      { id: 'living', name: 'Living', areaM2: 12 }, { id: 'kitchen', name: 'Cocina', areaM2: 8 },
+    ]);
+    ready();
+    await component.changeFloorFinish('marble');
+    await component.changeFloorTint('#aab5c2');
+    component.selectAppearanceRoom('kitchen');
+    await component.changeFloorFinish('terracotta');
+    expect(engine.setRoomFloorSelections).toHaveBeenLastCalledWith([
+      { sceneRoomId: 'living', finishId: 'marble', tint: '#aab5c2' }, { sceneRoomId: 'kitchen', finishId: 'terracotta' },
+    ]);
+    await component.resetFloorAppearance();
+    expect(engine.setRoomFloorSelections).toHaveBeenLastCalledWith([{ sceneRoomId: 'living', finishId: 'marble', tint: '#aab5c2' }]);
+    component.selectAppearanceRoom('living');
+    expect(component.activeFloorPreview()?.tint).toBe('#aab5c2');
+  });
+  it('saves a different catalogue floor from the project viewer and refreshes its budget', async () => {
+    engine.getSceneRooms.mockReturnValue([{ id: 'scene-test', name: 'Living', areaM2: 12 }]);
+    ready();
+    const api = TestBed.inject(Ep2ApiService);
+    TestBed.inject(SessionService).user.set({ id: 1, email: 'demo@example.test' });
+    vi.spyOn(api, 'project').mockResolvedValue(TEST_PROJECT);
+    const budget = vi.spyOn(api, 'budget').mockResolvedValue(TEST_BUDGET);
+    vi.spyOn(api, 'status').mockResolvedValue(TEST_STATUS);
+    component.projectMode.set(true);
+    component.projectId.set(TEST_PROJECT.id);
+    await component.loadActiveProject();
+
+    const publication = { ...TEST_PUBLICATION, name: 'Cerámica Carrara', publicationKey: 'b'.repeat(64) };
+    const room = { ...TEST_PROJECT.rooms[0], publicationKey: publication.publicationKey, publication };
+    const save = vi.spyOn(api, 'saveRoom').mockResolvedValue(room);
+    await component.changeFloorFinish('terracotta');
+    expect(save).not.toHaveBeenCalled();
+    await component.saveCatalogFloor(publication);
+    expect(save).toHaveBeenCalledWith(TEST_PROJECT.id, { publicationKey: publication.publicationKey }, room.id);
+    expect(component.selectedProjectRoom()?.publicationKey).toBe(publication.publicationKey);
+    expect(engine.setRoomFloorSelections).toHaveBeenLastCalledWith([expect.objectContaining({ sceneRoomId: 'scene-test', finishId: 'marble' })]);
+    expect(component.activeFloorPreview()).toBeUndefined();
+    expect(budget).toHaveBeenCalledTimes(2);
   });
   it('preserves a chosen finish when moving between overview and walkthrough', async () => {
     ready();

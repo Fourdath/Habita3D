@@ -15,11 +15,11 @@ El entorno Compose publica el sitio en `http://127.0.0.1:8080` por defecto. La d
 
 1. En el navegador, entra en **Mis proyectos**. Registra una cuenta ficticia e inicia sesión. Crea un proyecto con presupuesto y una habitación con superficie. Vincula la habitación a un recinto del plano de ejemplo.
 2. Comprueba que aparezcan las sugerencias de la API, revisa los motivos, las cajas y el costo. Cambia la preferencia de tienda o tipo y verifica que se actualicen las tarjetas. Si el costo cambió, confirma el nuevo monto antes de guardar. Prueba descartar una opción y desactivar las sugerencias. El catálogo y el presupuesto deben seguir disponibles.
-3. Elige y guarda un piso. Comprueba el presupuesto y abre **Ver proyecto en 3D**. Vuelve al proyecto y recarga. Verifica el mismo recinto, la selección guardada y la fecha de los datos del catálogo.
+3. Abre **Ver proyecto en 3D**. En **Apariencia del piso**, prueba un acabado y un color en el recinto vinculado. En **Cambiar producto del catálogo**, selecciona y guarda una publicación para actualizar el piso del proyecto y su presupuesto. Vuelve al proyecto y recarga para verificar la selección.
 4. En el visor libre carga un SVG y luego abre el visor del proyecto. Comprueba que el piso corresponda al recinto del plano de ejemplo y vuelve al visor libre. En móvil comprueba los controles táctiles y la vista general con gestos.
 5. Instala la PWA, espera que termine la primera carga y prueba el visor de ejemplo sin red. Comprueba el aviso de los flujos que requieren servidor y reintenta al reconectar. En Android instala el APK de depuración y repite inicio de sesión, habitaciones, sugerencias, presupuesto y visor en el mismo staging.
 
-El precio estima cajas completas. La textura 3D representa la categoría del piso. La disponibilidad «sin confirmar» indica que la fuente no confirmó el stock. La muestra está limitada a cerámica y laminado de Sodimac y Easy para La Florida.
+El precio estima cajas completas. El visor representa cada publicación con un material aproximado según su categoría y los acabados reconocibles en su nombre. Los cambios de **Apariencia del piso** duran mientras se usa el visor. Guardar un producto del catálogo conserva la selección y el presupuesto del proyecto. La disponibilidad «sin confirmar» indica que la fuente no confirmó el stock. La muestra está limitada a cerámica y laminado de Sodimac y Easy para La Florida.
 
 ## Staging por GitHub Actions
 

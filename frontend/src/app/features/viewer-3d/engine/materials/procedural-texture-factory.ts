@@ -39,13 +39,20 @@ export function drawProceduralTexture(definition: MaterialDefinition): Procedura
     albedo.fillRect(0, 0, SIZE, SIZE);
     height.fillStyle = '#404040';
     height.fillRect(0, 0, SIZE, SIZE);
-    const groutPx = Math.max(2, Math.round(Math.min(cellWidth, cellHeight) * 0.035));
+    const groutPx = Math.max(2, Math.round(Math.min(cellWidth, cellHeight) * 0.015));
+    const faceWidth = cellWidth - groutPx * 2;
+    const faceHeight = cellHeight - groutPx * 2;
     for (let row = 0; row < rows; row++) {
       for (let column = 0; column < columns; column++) {
-        albedo.fillStyle = shadeHex(spec.color, 1 + (Math.random() - 0.5) * 0.05);
-        albedo.fillRect(column * cellWidth + groutPx, row * cellHeight + groutPx, cellWidth - groutPx * 2, cellHeight - groutPx * 2);
+        const x = column * cellWidth + groutPx;
+        const y = row * cellHeight + groutPx;
+        const seed = row * columns + column + 1;
+        const random = tileRandom(seed);
+        albedo.fillStyle = shadeHex(spec.color, 1 + (random() - 0.5) * (spec.pattern === 'wood' ? 0.13 : 0.07));
+        albedo.fillRect(x, y, faceWidth, faceHeight);
+        if (spec.pattern) drawTilePattern(albedo, spec.pattern, x, y, faceWidth, faceHeight, random);
         height.fillStyle = '#c8c8c8';
-        height.fillRect(column * cellWidth + groutPx, row * cellHeight + groutPx, cellWidth - groutPx * 2, cellHeight - groutPx * 2);
+        height.fillRect(x, y, faceWidth, faceHeight);
       }
     }
     speckle(albedo, 0.02, 900);
@@ -83,6 +90,64 @@ export function drawProceduralTexture(definition: MaterialDefinition): Procedura
     normal: spec.kind === 'paint' ? null : normalFromHeight(heightCanvas),
     roughness: null,
   };
+}
+
+function tileRandom(seed: number): () => number {
+  let state = Math.imul(seed, 0x9e3779b1);
+  return () => {
+    state ^= state << 13;
+    state ^= state >>> 17;
+    state ^= state << 5;
+    return (state >>> 0) / 0x100000000;
+  };
+}
+
+function drawTilePattern(
+  context: CanvasRenderingContext2D,
+  pattern: 'marble' | 'wood',
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  random: () => number,
+): void {
+  context.save();
+  context.translate(x, y);
+  context.beginPath();
+  context.rect(0, 0, width, height);
+  context.clip();
+  if (pattern === 'wood') drawWoodGrain(context, width, height, random);
+  else drawMarbleVeins(context, width, height, random);
+  context.restore();
+}
+
+function drawWoodGrain(context: CanvasRenderingContext2D, width: number, height: number, random: () => number): void {
+  for (let strand = 0; strand < 42; strand++) {
+    const x = random() * width;
+    const drift = width * (random() - 0.5) * 0.19;
+    context.beginPath();
+    context.moveTo(x, 0);
+    context.bezierCurveTo(x + drift, height * 0.3, x - drift, height * 0.72, x + drift * 0.6, height);
+    context.lineWidth = 0.65 + random() * 2.2;
+    context.strokeStyle = strand % 4 === 0 ? 'rgba(255,244,220,.18)' : `rgba(61,38,23,${0.03 + random() * 0.18})`;
+    context.stroke();
+  }
+}
+
+function drawMarbleVeins(context: CanvasRenderingContext2D, width: number, height: number, random: () => number): void {
+  for (let vein = 0; vein < 7; vein++) {
+    const start = height * (random() * 1.6 - 0.65);
+    const drop = height * (0.36 + random() * 0.46);
+    context.beginPath();
+    context.moveTo(-8, start);
+    context.bezierCurveTo(width * 0.34, start + drop * 0.46, width * 0.42, start + drop * 0.13, width + 8, start + drop);
+    context.lineWidth = 5 + random() * 13;
+    context.strokeStyle = 'rgba(119,112,112,.075)';
+    context.stroke();
+    context.lineWidth = 0.8 + random() * 2.4;
+    context.strokeStyle = `rgba(124,115,118,${0.13 + random() * 0.23})`;
+    context.stroke();
+  }
 }
 
 function speckle(context: CanvasRenderingContext2D, strength: number, count: number): void {

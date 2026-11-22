@@ -4,25 +4,34 @@ import { IonContent, IonSpinner } from '@ionic/angular';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Ep2ApiService, apiError, money } from '../../core/ep2/ep2-api.service';
 import { SessionService } from '../../core/ep2/session.service';
-import type { Project, ProjectBudget } from '../../core/ep2/ep2.types';
+import type { Project, ProjectBudget, Publication, SceneRoom } from '../../core/ep2/ep2.types';
 
 import type { ConstructionBudgetSummary } from '../../core/budget/budget.types';
 import type { InteriorStyleId } from '../../core/interior-style/interior-style.types';
 import { readFloorplanFile } from '../../core/floorplan/floorplan-file';
 
 import { VIEWER_ENGINE_FACTORY, type ViewerEngine } from './engine/viewer-engine.factory';
+import { finishForPublication, type FloorFinishId } from './engine/floor-finishes';
+import type { RoomFloorSelection } from './engine/room-floor-selection';
 import type { ViewerStatus } from './engine/viewer-3d.types';
 import type { WalkDirection } from './engine/touch-walk-input';
+import { FloorAppearancePanelComponent } from './floor-appearance-panel.component';
 import { InteriorStylePanelComponent } from './interior-style-panel.component';
+import { ViewerFloorCatalogComponent } from './viewer-floor-catalog.component';
 import { BrandMarkComponent } from '../landing/components/brand-mark.component';
 
 const EXAMPLE_MODEL_NAME = 'Vivienda de demostración';
+
+interface FloorPreview {
+  finishId?: FloorFinishId;
+  tint?: string;
+}
 
 @Component({
   selector: 'app-viewer-3d',
   templateUrl: 'viewer-3d.page.html',
   styleUrls: ['viewer-3d.page.scss'],
-  imports: [IonContent, IonSpinner, InteriorStylePanelComponent, RouterLink, BrandMarkComponent],
+  imports: [IonContent, IonSpinner, FloorAppearancePanelComponent, InteriorStylePanelComponent, ViewerFloorCatalogComponent, RouterLink, BrandMarkComponent],
 })
 export class Viewer3DPage implements AfterViewInit, OnDestroy {
   @ViewChild('canvasHost', { static: true })
@@ -58,6 +67,26 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
   readonly selectedProjectRoom = computed(() => this.project()?.rooms.find(room => room.id === this.projectRoomId()) ?? this.project()?.rooms[0] ?? null);
   readonly selectedRoomBudget = computed(() => this.projectBudget()?.rooms.find(room => room.room_id === this.selectedProjectRoom()?.id) ?? null);
   readonly money = money;
+  private readonly sceneRooms = signal<SceneRoom[]>([]);
+  private readonly freeFloorRoomId = signal<string | null>(null);
+  private readonly freeFloorPreviews = signal(new Map<string, FloorPreview>());
+  private readonly projectFloorPreviews = signal(new Map<string, FloorPreview>());
+  readonly appearanceRooms = computed(() => this.projectMode()
+    ? this.sceneRooms().filter(room => room.id === this.selectedProjectRoom()?.sceneRoomId)
+    : this.sceneRooms());
+  readonly appearanceRoomId = computed(() => {
+    const rooms = this.appearanceRooms();
+    return rooms.find(room => room.id === this.freeFloorRoomId())?.id ?? rooms[0]?.id ?? null;
+  });
+  readonly activeFloorPreview = computed(() => {
+    const previews = this.projectMode() ? this.projectFloorPreviews() : this.freeFloorPreviews();
+    const roomId = this.appearanceRoomId();
+    return roomId ? previews.get(roomId) : undefined;
+  });
+  readonly floorUpdating = signal(false);
+  readonly floorAppearanceError = signal('');
+  readonly floorCatalogMessage = signal('');
+  readonly floorCatalogError = signal('');
 
   readonly loadingFloorplan = signal(false);
   readonly floorplanError = signal<string | null>(null);
@@ -85,6 +114,7 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
   private loadedSvg: string | null | undefined = null;
   private sceneProjectMode = false;
   private pendingScene = Promise.resolve();
+  private previewProjectId: number | null = null;
 
   ngAfterViewInit(): void {
     try {
@@ -102,11 +132,17 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
       this.handleError(error);
     }
     this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(params => {
-      this.projectMode.set(params.has('project'));
       const raw = params.get('project');
-      this.projectId.set(raw && /^[1-9]\d*$/.test(raw) && Number(raw) <= 2147483647 ? Number(raw) : null);
+      const id = raw && /^[1-9]\d*$/.test(raw) && Number(raw) <= 2147483647 ? Number(raw) : null;
+      const saved = params.has('project');
+      const modeChanged = saved !== this.projectMode() || id !== this.projectId();
+      this.projectMode.set(saved);
+      this.projectId.set(id);
       this.projectRoomId.set(params.get('room'));
-      if (this.status() === 'ready') void this.loadActiveProject();
+      this.floorCatalogMessage.set('');
+      this.floorCatalogError.set('');
+      this.floorAppearanceError.set('');
+      if (this.status() === 'ready' && (modeChanged || saved && !this.project())) void this.loadActiveProject();
     });
   }
 
@@ -127,7 +163,7 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
   }
 
   onStartClick(event?: MouseEvent): void {
-    if (this.status() !== 'ready' || this.loadingFloorplan() || this.interiorStyleLoading() || this.projectLoading()) return;
+    if (this.status() !== 'ready' || this.loadingFloorplan() || this.interiorStyleLoading() || this.projectLoading() || this.floorUpdating()) return;
     this.walkError.set(null);
     const touched = event && 'pointerType' in event && event.pointerType === 'touch';
     const coarsePointer = window.matchMedia?.('(pointer: coarse)').matches === true;
@@ -165,6 +201,60 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
     await this.router.navigate([], { relativeTo: this.route, queryParams: { project: this.projectId(), room }, replaceUrl: true });
   }
 
+  selectAppearanceRoom(roomId: string): void {
+    if (this.projectMode() || !this.sceneRooms().some(room => room.id === roomId)) return;
+    this.freeFloorRoomId.set(roomId);
+    this.floorAppearanceError.set('');
+  }
+
+  changeFloorFinish(finishId: FloorFinishId | null): Promise<void> {
+    return this.updateFloorAppearance({ ...this.activeFloorPreview(), finishId: finishId ?? undefined });
+  }
+
+  changeFloorTint(tint: string | null): Promise<void> {
+    return this.updateFloorAppearance({ ...this.activeFloorPreview(), tint: tint ?? undefined });
+  }
+
+  resetFloorAppearance(): Promise<void> {
+    return this.updateFloorAppearance({});
+  }
+
+  async saveCatalogFloor(publication: Publication): Promise<void> {
+    const project = this.project();
+    const room = this.selectedProjectRoom();
+    if (this.floorUpdating() || this.projectLoading() || !project || !room || room.publicationKey === publication.publicationKey) return;
+    const request = this.projectRequest;
+    this.floorUpdating.set(true);
+    this.floorCatalogMessage.set('');
+    this.floorCatalogError.set('');
+    this.floorAppearanceError.set('');
+    try {
+      const updatedRoom = await this.api.saveRoom(project.id, { publicationKey: publication.publicationKey }, room.id);
+      if (request !== this.projectRequest) return;
+      const updated = { ...project, rooms: project.rooms.map(item => item.id === updatedRoom.id ? updatedRoom : item) };
+      this.project.set(updated);
+      this.floorCatalogMessage.set('Piso guardado en la habitación.');
+      if (updatedRoom.sceneRoomId) {
+        const previews = new Map(this.projectFloorPreviews());
+        previews.delete(updatedRoom.sceneRoomId);
+        this.projectFloorPreviews.set(previews);
+      }
+      const [appearance, budget] = await Promise.allSettled([
+        this.updateScene(async () => {
+          if (request === this.projectRequest) await this.applyFloorVisuals(updated, this.projectFloorPreviews());
+        }),
+        this.api.budget(project.id),
+      ]);
+      if (request !== this.projectRequest) return;
+      if (appearance.status === 'rejected') this.floorAppearanceError.set('El piso se guardó. Reabre el visor para actualizar el modelo.');
+      this.showProjectBudget(budget);
+    } catch (error) {
+      if (request === this.projectRequest) this.floorCatalogError.set(apiError(error));
+    } finally {
+      this.floorUpdating.set(false);
+    }
+  }
+
   async loadActiveProject(): Promise<void> {
     const request = ++this.projectRequest;
     const saved = this.projectMode();
@@ -185,29 +275,36 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
       }
       if (request !== this.projectRequest) return;
       this.modelName.set(freePlan?.name ?? EXAMPLE_MODEL_NAME);
-      if (!saved) return;
+      if (!saved) {
+        if (this.freeFloorPreviews().size) await this.updateScene(async () => {
+          if (request === this.projectRequest) await this.applyFloorVisuals(null, this.freeFloorPreviews());
+        });
+        return;
+      }
       const id = this.projectId();
       if (id === null) { this.projectError.set('El identificador del proyecto no es válido. Abre el proyecto desde Mis proyectos.'); return; }
+      if (this.previewProjectId !== id) {
+        this.previewProjectId = id;
+        this.projectFloorPreviews.set(new Map());
+      }
       if (!this.session.user()) await this.session.restore();
       if (request !== this.projectRequest) return;
       if (!this.session.user()) { this.projectError.set('Inicia sesión en Mis proyectos para recuperar esta vivienda y sus pisos.'); return; }
       const project = await this.api.project(id);
       if (request !== this.projectRequest) return;
-      const sceneIds = new Set(this.engine?.getSceneRooms().map(room => room.id));
-      const selected = project.rooms.filter(room => room.sceneRoomId && room.publication);
+      const sceneIds = new Set(this.sceneRooms().map(room => room.id));
       this.unmappedRooms.set(project.rooms.filter(room => !room.sceneRoomId || !sceneIds.has(room.sceneRoomId)).map(room => room.name));
       await this.updateScene(async () => {
         if (request !== this.projectRequest) return;
-        await this.engine?.setRoomFloorSelections(selected.filter(room => sceneIds.has(room.sceneRoomId!)).map(room => ({ sceneRoomId: room.sceneRoomId!, publicationKey: room.publication!.publicationKey, category: room.publication!.category })));
+        await this.applyFloorVisuals(project, this.projectFloorPreviews());
       });
       if (request !== this.projectRequest) return;
       this.project.set(project); this.modelName.set(project.name);
       const [budget, status] = await Promise.allSettled([this.api.budget(id), this.api.status()]);
       if (request !== this.projectRequest) return;
-      if (budget.status === 'fulfilled') this.projectBudget.set(budget.value);
-      else {
-        this.projectBudgetError.set(apiError(budget.reason));
-        if (!this.session.user()) { this.project.set(null); this.projectError.set(apiError(budget.reason)); await this.clearRoomFloors(request); }
+      this.showProjectBudget(budget);
+      if (budget.status === 'rejected' && !this.session.user()) {
+        this.project.set(null); this.projectError.set(apiError(budget.reason)); await this.clearRoomFloors(request);
       }
       if (status.status === 'rejected') this.captureWarning.set('No se pudo comprobar el estado de actualización. Revisa las fechas guardadas de cada piso.');
       else if (status.value.latestJob?.status === 'failed' || status.value.groups.some(group => ['failed', 'partial'].includes(group.status))) this.captureWarning.set('La actualización falló o fue incompleta. Se muestran los últimos precios válidos con su fecha anterior.');
@@ -231,7 +328,7 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0] ?? null;
     input.value = '';
-    if (!file || this.projectMode() || this.projectLoading() || this.loadingFloorplan()) {
+    if (!file || this.projectMode() || this.projectLoading() || this.loadingFloorplan() || this.floorUpdating()) {
       return;
     }
 
@@ -241,7 +338,12 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
       const svgText = await readFloorplanFile(file);
       await this.updateScene(async () => {
         if (request !== this.projectRequest || !this.engine) return;
+        const geometryChanged = svgText !== this.loadedSvg;
         await this.showGeometry(svgText);
+        if (geometryChanged && this.freeFloorPreviews().size) {
+          await this.engine.setRoomFloorSelections([]);
+          this.freeFloorPreviews.set(new Map());
+        }
         this.freePlan = { svgText, name: file.name.replace(/\.svg$/i, '') };
         if (request !== this.projectRequest) return;
         this.modelName.set(this.freePlan.name);
@@ -287,6 +389,52 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
     });
   }
 
+  private async updateFloorAppearance(preview: FloorPreview): Promise<void> {
+    const sceneRoomId = this.appearanceRoomId();
+    if (!sceneRoomId || this.floorUpdating() || this.projectLoading() || this.loadingFloorplan() || this.interiorStyleLoading()) return;
+    const saved = this.projectMode();
+    const source = saved ? this.projectFloorPreviews : this.freeFloorPreviews;
+    const next = new Map(source());
+    if (preview.finishId || preview.tint) next.set(sceneRoomId, preview);
+    else next.delete(sceneRoomId);
+    const request = this.projectRequest;
+    this.floorUpdating.set(true);
+    this.floorAppearanceError.set('');
+    try {
+      await this.updateScene(async () => {
+        if (request === this.projectRequest) await this.applyFloorVisuals(this.project(), next);
+      });
+      if (request === this.projectRequest) source.set(next);
+    } catch {
+      if (request === this.projectRequest) this.floorAppearanceError.set('No se pudo aplicar el acabado. Vuelve a intentarlo.');
+    } finally {
+      this.floorUpdating.set(false);
+    }
+  }
+
+  private async applyFloorVisuals(project: Project | null, previews: ReadonlyMap<string, FloorPreview>): Promise<void> {
+    const sceneIds = new Set(this.sceneRooms().map(room => room.id));
+    const selections: RoomFloorSelection[] = [];
+    for (const room of project?.rooms ?? []) {
+      const sceneRoomId = room.sceneRoomId;
+      if (!sceneRoomId || !sceneIds.has(sceneRoomId) || !room.publication) continue;
+      const publication = room.publication;
+      const preview = previews.get(sceneRoomId);
+      selections.push({ sceneRoomId, publicationKey: publication.publicationKey, category: publication.category,
+        finishId: preview?.finishId ?? finishForPublication(publication.category, publication.name), tint: preview?.tint });
+    }
+    const selected = new Set(selections.map(selection => selection.sceneRoomId));
+    for (const [sceneRoomId, preview] of previews) {
+      if (sceneIds.has(sceneRoomId) && !selected.has(sceneRoomId)) selections.push({ sceneRoomId, ...preview });
+    }
+    await this.engine?.setRoomFloorSelections(selections);
+  }
+
+  private showProjectBudget(result: PromiseSettledResult<ProjectBudget>): void {
+    this.projectBudget.set(result.status === 'fulfilled' ? result.value : null);
+    this.projectBudgetError.set(result.status === 'rejected' ? apiError(result.reason) : '');
+  }
+
   private updateScene(update: () => Promise<void>): Promise<void> {
     const next = this.pendingScene.then(update);
     this.pendingScene = next.catch(() => undefined);
@@ -299,6 +447,11 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
     }
     this.budget.set(this.engine.getBudget());
     this.modelSummary.set(this.engine.getModelSummary());
+    const sceneRooms = this.engine.getSceneRooms();
+    this.sceneRooms.set(sceneRooms);
+    if (!this.projectMode() && !sceneRooms.some(room => room.id === this.freeFloorRoomId())) {
+      this.freeFloorRoomId.set(sceneRooms[0]?.id ?? null);
+    }
   }
 
   private handleError(error: unknown): void {

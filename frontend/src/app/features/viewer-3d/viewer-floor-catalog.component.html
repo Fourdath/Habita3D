@@ -1,0 +1,40 @@
+<details (toggle)="onToggle($event)">
+  <summary>Cambiar producto del catálogo</summary>
+  <div class="floor-catalog" [attr.aria-busy]="loading()">
+    @if (loading()) { <p role="status">Cargando productos guardados…</p> }
+    @if (failedPage(); as page) {
+      <p role="alert">No se pudo consultar el catálogo guardado.</p>
+      <button type="button" [disabled]="busy()" (click)="load(page)">Reintentar catálogo</button>
+    }
+    @if (catalog(); as result) {
+      @if (products().length) {
+        <label>Producto de piso
+          <select [ngModel]="pendingProduct()?.publicationKey ?? ''" (ngModelChange)="setPending($event)"
+            [disabled]="busy() || loading() || failedPage() !== null">
+            <option value="">Selecciona un producto</option>
+            @for (product of products(); track product.publicationKey) {
+              <option [value]="product.publicationKey">{{ product.name }} · {{ product.source === 'easy' ? 'Easy' : 'Sodimac' }}</option>
+            }
+          </select>
+        </label>
+        @if (pendingProduct(); as product) {
+          <p>{{ money(product.pricePerBoxClp) }} por caja · {{ product.coveragePerBoxM2 }} m² por caja</p>
+          @if (product.availability === 'unknown') { <p>Disponibilidad sin confirmar.</p> }
+        }
+        <button type="button" class="save-floor" (click)="save()"
+          [disabled]="busy() || loading() || failedPage() !== null || !pendingProduct() || pendingKey() === currentKey()">
+          {{ busy() ? 'Guardando…' : 'Guardar piso en la habitación' }}
+        </button>
+      } @else if (!loading() && failedPage() === null) {
+        <p role="status">{{ result.total ? 'Esta página no tiene productos con precio y cobertura por caja.' : 'El catálogo guardado está vacío.' }}</p>
+      }
+      @if (pageCount() > 1) {
+        <nav class="floor-pages" aria-label="Páginas de productos">
+          <button type="button" [disabled]="busy() || loading() || failedPage() !== null || result.page <= 1" (click)="load(result.page - 1)">Anterior</button>
+          <span>Pág. {{ result.page }} de {{ pageCount() }}</span>
+          <button type="button" [disabled]="busy() || loading() || failedPage() !== null || result.page >= pageCount()" (click)="load(result.page + 1)">Siguiente</button>
+        </nav>
+      }
+    }
+  </div>
+</details>
