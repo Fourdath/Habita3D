@@ -42,7 +42,9 @@ model Room {
   wastePercent      Decimal      @default(10) @db.Decimal(9, 6)
   budgetClp         BigInt?
   publicationKey    String?
-  publication       Publication? @relation(fields: [publicationKey], references: [publicationKey], onDelete: Restrict)
+  publication       Publication? @relation("RoomSelectedFloor", fields: [publicationKey], references: [publicationKey], onDelete: Restrict)
+  lastSuggestedPublicationKey String?
+  lastSuggestedPublication Publication? @relation("RoomSuggestedFloor", fields: [lastSuggestedPublicationKey], references: [publicationKey], onDelete: SetNull)
   sceneRoomId       String?
   preferredCategory String?
   preferredSource   String?
@@ -51,6 +53,7 @@ model Room {
 
   @@index([projectId])
   @@index([publicationKey])
+  @@index([lastSuggestedPublicationKey])
 }
 
 model User {
@@ -103,7 +106,8 @@ model Publication {
   lastRunId          String
   lastRun            CaptureRun         @relation(fields: [lastRunId], references: [runId], onDelete: Restrict)
   observations       PriceObservation[]
-  rooms              Room[]
+  rooms              Room[]             @relation("RoomSelectedFloor")
+  previouslySuggestedRooms Room[]      @relation("RoomSuggestedFloor")
   createdAt          DateTime           @default(now()) @db.Timestamptz(6)
   updatedAt          DateTime           @updatedAt @db.Timestamptz(6)
 

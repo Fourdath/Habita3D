@@ -52,6 +52,7 @@ export interface RoomInput {
 export interface ProjectRoom extends Omit<RoomInput, 'areaM2' | 'lengthM' | 'widthM' | 'floorplanRevision'> {
   id: string; projectId: number; areaM2: string | null; lengthM: string | null; widthM: string | null;
   publicationKey: string | null; publication: Publication | null;
+  lastSuggestedPublicationKey?: string | null;
   preferredCategory?: FloorCategory | null;
   preferredSource?: RetailSource | null;
 }

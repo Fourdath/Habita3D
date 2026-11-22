@@ -45,6 +45,8 @@ import { pointInPolygon, polygonCentroid } from '../../core/floorplan/geometry-u
     .room-map__room polygon {
       fill: #eff1ee; stroke: #aab9ae; stroke-width: 1; vector-effect: non-scaling-stroke;
     }
+    .room-map__room { -webkit-tap-highlight-color: transparent; }
+    .room-map__room:focus { outline: none; }
     .room-map__room text { fill: #596b61; font-weight: 650; pointer-events: none; }
     .room-map__room[role='button'] polygon { fill: #e0ebda; }
     .room-map__room[tabindex='0'] { cursor: pointer; }
@@ -53,7 +55,6 @@ import { pointInPolygon, polygonCentroid } from '../../core/floorplan/geometry-u
     }
     .room-map__room.room-map__room--selected polygon { fill: #245442; stroke: #183b2e; }
     .room-map__room.room-map__room--selected:hover polygon { fill: #306851; stroke: #183b2e; }
-    .room-map__room:focus-visible { outline: none; }
     .room-map__room:focus-visible polygon {
       stroke: #ab6b38; stroke-width: 3; stroke-dasharray: 6 3;
     }

@@ -177,6 +177,7 @@ export const floorSuggestionsOpenApi = {
             budgetClp: nullable('integer'),
             sceneRoomId: nullable('string'),
             publicationKey: { ...key, nullable: true },
+            lastSuggestedPublicationKey: { ...key, nullable: true },
             publication: nullable('object'),
             createdAt: dateTime,
             updatedAt: dateTime,

@@ -69,7 +69,7 @@ export class Viewer3DEngine {
   private readonly roomPicker: RoomPicker;
   private readonly roomHighlight = new RoomSelectionHighlight(this.scene);
   private readonly wallColorPreview = new InteriorWallColorPreview();
-  private readonly constructionBoardView = new ConstructionBoardView();
+  private readonly constructionBoardView: ConstructionBoardView;
   private selectedSceneRoom: string | null = null;
   private interiorWallColors: InteriorWallColors = { all: null, rooms: new Map() };
   private constructionView = false;
@@ -119,6 +119,7 @@ export class Viewer3DEngine {
     this.scene.add(this.collidables);
 
     this.materialRegistry = new MaterialRegistry(this.renderer.capabilities.getMaxAnisotropy());
+    this.constructionBoardView = new ConstructionBoardView(this.materialRegistry);
     this.floorplanScene = new FloorplanSceneManager(this.collidables, this.materialRegistry);
     this.environment = new EnvironmentManager(this.scene, this.collidables, this.materialRegistry);
     this.interiorStyle = new InteriorStyleManager(this.materialRegistry);
@@ -195,6 +196,7 @@ export class Viewer3DEngine {
     if (this.disposed || this.constructionView === enabled) return;
     this.constructionView = enabled;
     if (enabled && this.viewMode === 'overview') this.frameOverview();
+    this.updateRoomHighlight();
     this.updateConstructionView();
   }
 
@@ -347,12 +349,15 @@ export class Viewer3DEngine {
   }
 
   private updateRoomHighlight(): void {
-    const selected = this.viewMode === 'overview' && !this.surfaceUpdating ? this.selectedSceneRoom : null;
+    const selected = this.viewMode === 'overview' && !this.surfaceUpdating && !this.constructionView ? this.selectedSceneRoom : null;
     this.roomHighlight.show(this.floorplanScene.currentGroup, selected);
   }
 
   private updateConstructionView(): void {
-    this.constructionBoardView.setEnabled(this.viewMode === 'overview' && !this.surfaceUpdating && this.constructionView, this.floorplanScene.currentGroup);
+    const enabled = this.viewMode === 'overview' && !this.surfaceUpdating && this.constructionView;
+    void this.constructionBoardView.setEnabled(enabled, this.floorplanScene.currentGroup).catch(error => {
+      if (!this.disposed) console.warn('No se pudo preparar la textura de hormigón.', error);
+    });
   }
 
   async loadExampleFloorplan(): Promise<void> {

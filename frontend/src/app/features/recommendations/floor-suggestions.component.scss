@@ -1,3 +1,17 @@
+.suggestions__preview-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 42px;
+  padding: 6px 8px;
+  border: 1px solid #cbd7c8;
+  border-radius: 6px;
+  background: white;
+  color: #245442;
+  text-decoration: none;
+}
+
+.suggestions__preview-link:hover { background: #eef3e9; }
+
 .suggestions--compact {
   padding: 0 0 18px;
   border: 0;

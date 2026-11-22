@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import type { Viewer3DEngineCallbacks } from './engine/viewer-3d.types';
@@ -88,6 +88,45 @@ describe('Viewer3DPage', () => {
     expect(host.textContent).toContain(TEST_PUBLICATION.name);
     expect(host.textContent).not.toContain('Ver presupuesto estimado');
     expect(host.querySelector('input[type="file"]')).toBeNull();
+  });
+
+  it('previews a catalogue floor from a direct link without changing saved rooms or budget', async () => {
+    const api = TestBed.inject(Ep2ApiService);
+    const router = TestBed.inject(Router);
+    const storedRoom = { ...TEST_PROJECT.rooms[0], sceneRoomId: 'scene-a', publicationKey: TEST_PUBLICATION.publicationKey, publication: TEST_PUBLICATION };
+    const otherRoom = { ...storedRoom, id: 'other-room', sceneRoomId: 'scene-b' };
+    const project = { ...TEST_PROJECT, rooms: [storedRoom, otherRoom], floorplan: uploaded };
+    const alternative = { ...TEST_PUBLICATION, publicationKey: 'b'.repeat(64), name: 'Laminado de prueba', category: 'laminate' as const };
+    TestBed.inject(SessionService).user.set({ id: 1, email: 'operator@example.test' });
+    engine.getSceneRooms.mockReturnValue([
+      { id: 'scene-a', name: 'Recinto A', areaM2: 10 },
+      { id: 'scene-b', name: 'Recinto B', areaM2: 14 },
+    ]);
+    vi.spyOn(api, 'project').mockResolvedValue(project);
+    vi.spyOn(api, 'budget').mockResolvedValue(TEST_BUDGET);
+    vi.spyOn(api, 'status').mockResolvedValue(TEST_STATUS);
+    vi.spyOn(api, 'suggestions').mockResolvedValue(TEST_SUGGESTIONS);
+    const getProduct = vi.spyOn(api, 'publication').mockResolvedValue(alternative);
+    const saveRoom = vi.spyOn(api, 'saveRoom');
+    const acceptSuggestion = vi.spyOn(api, 'acceptSuggestion');
+    await router.navigateByUrl(`/?project=${project.id}&room=${storedRoom.id}&preview=${alternative.publicationKey}`);
+    ready();
+    await vi.waitFor(() => expect(component.suggestedFloorPreview()?.publication).toBe(alternative));
+    expect(getProduct).toHaveBeenCalledWith(alternative.publicationKey);
+    expect(engine.setRoomFloorSelections).toHaveBeenLastCalledWith([
+      expect.objectContaining({ sceneRoomId: 'scene-a', publicationKey: alternative.publicationKey, category: 'laminate' }),
+      expect.objectContaining({ sceneRoomId: 'scene-b', publicationKey: TEST_PUBLICATION.publicationKey }),
+    ]);
+    expect(component.project()?.rooms[0].publicationKey).toBe(TEST_PUBLICATION.publicationKey);
+    expect(component.projectBudget()).toBe(TEST_BUDGET);
+    expect(saveRoom).not.toHaveBeenCalled();
+    expect(acceptSuggestion).not.toHaveBeenCalled();
+    await component.closeFloorPreview();
+    await vi.waitFor(() => expect(component.suggestedFloorPreview()).toBeNull());
+    expect(engine.setRoomFloorSelections).toHaveBeenLastCalledWith([
+      expect.objectContaining({ sceneRoomId: 'scene-a', publicationKey: TEST_PUBLICATION.publicationKey }),
+      expect.objectContaining({ sceneRoomId: 'scene-b', publicationKey: TEST_PUBLICATION.publicationKey }),
+    ]);
   });
   it('enters the existing walkthrough only after an explicit action and returns to overview', () => {
     ready();

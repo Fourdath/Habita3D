@@ -30,6 +30,11 @@ interface FloorPreview {
   tint?: string;
 }
 
+interface SuggestedFloorPreview {
+  sceneRoomId: string;
+  publication: Publication;
+}
+
 const ORIGINAL_WALLS: InteriorWallColors = { all: null, rooms: new Map() };
 
 @Component({
@@ -102,6 +107,9 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
   readonly floorAppearanceError = signal('');
   readonly floorCatalogMessage = signal('');
   readonly floorCatalogError = signal('');
+  readonly suggestedFloorPreview = signal<SuggestedFloorPreview | null>(null);
+  readonly previewLoading = signal(false);
+  readonly previewError = signal('');
   private readonly freeWallColors = signal(ORIGINAL_WALLS);
   private readonly projectWallColors = signal(ORIGINAL_WALLS);
   readonly activeWallColors = computed(() => this.projectMode() ? this.projectWallColors() : this.freeWallColors());
@@ -130,6 +138,8 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
   private readonly api = inject(Ep2ApiService);
   private readonly session = inject(SessionService);
   private projectRequest = 0;
+  private previewRequest = 0;
+  private previewKey: string | null = null;
   private engine: ViewerEngine | null = null;
   private freePlan: { svgText: string; name: string } | null = null;
   private loadedSvg: string | null | undefined = null;
@@ -153,14 +163,23 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
       const id = raw && /^[1-9]\d*$/.test(raw) && Number(raw) <= 2147483647 ? Number(raw) : null;
       const saved = params.has('project');
       const modeChanged = saved !== this.projectMode() || id !== this.projectId();
+      const room = params.get('room');
+      const roomChanged = room !== this.projectRoomId();
+      const preview = params.get('preview');
+      const previewChanged = preview !== this.previewKey;
+      this.previewKey = preview;
       this.projectMode.set(saved);
       this.projectId.set(id);
-      this.projectRoomId.set(params.get('room'));
-      this.pickedProjectSceneRoom.set(null);
-      this.floorCatalogMessage.set('');
-      this.floorCatalogError.set('');
-      this.floorAppearanceError.set('');
-      if (this.status() === 'ready' && (modeChanged || saved && !this.project())) void this.loadActiveProject();
+      this.projectRoomId.set(room);
+      if (modeChanged || roomChanged) {
+        this.pickedProjectSceneRoom.set(null);
+        this.floorCatalogMessage.set('');
+        this.floorCatalogError.set('');
+        this.floorAppearanceError.set('');
+      }
+      if (this.status() !== 'ready') return;
+      if (modeChanged || saved && !this.project()) void this.loadActiveProject();
+      else if (saved && (roomChanged || previewChanged)) void this.syncFloorPreview();
     });
     if (this.projectMode()) {
       this.loadedSvg = undefined;
@@ -185,6 +204,7 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
 
   ngOnDestroy(): void {
     ++this.projectRequest;
+    ++this.previewRequest;
     this.engine?.dispose();
     this.engine = null;
   }
@@ -235,6 +255,7 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
     this.constructionView.set(enabled);
     this.engine?.setConstructionView(enabled);
     if (!enabled) return;
+    if (this.previewKey) void this.closeFloorPreview();
     this.topView.set(false);
     requestAnimationFrame(() => {
       if (this.constructionView()) {
@@ -266,6 +287,8 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
       const linked = this.selectedProjectRoom();
       if (linked && linked.id !== this.projectRoomId()) {
         void this.router.navigate([], { relativeTo: this.route, queryParams: { project: this.projectId(), room: linked.id }, replaceUrl: true });
+      } else if (!linked && this.previewKey) {
+        void this.closeFloorPreview();
       }
     } else this.selectAppearanceRoom(roomId);
     this.floorAppearanceError.set('');
@@ -364,6 +387,63 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
     }
   }
 
+  async closeFloorPreview(): Promise<void> {
+    await this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { preview: null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
+  }
+
+  private async syncFloorPreview(): Promise<void> {
+    const request = ++this.previewRequest;
+    const project = this.project();
+    const key = this.previewKey;
+    const restoring = this.previewLoading() || this.suggestedFloorPreview() !== null;
+    const current = () => request === this.previewRequest;
+    this.previewError.set('');
+    if (!project || !key && !restoring) return;
+    this.previewLoading.set(true);
+    try {
+      if (restoring) {
+        await this.updateScene(async () => {
+          if (current()) await this.applyFloorVisuals(project);
+        });
+        if (!current()) return;
+        this.suggestedFloorPreview.set(null);
+      }
+      if (!key) return;
+      const room = project.rooms.find(item => item.id === this.projectRoomId());
+      const sceneRoomId = room?.sceneRoomId;
+      if (!sceneRoomId || !this.sceneRooms().some(scene => scene.id === sceneRoomId)) {
+        this.previewError.set('Vincula la habitación al plano para previsualizar el piso.');
+        return;
+      }
+      if (!/^[a-f0-9]{64}$/.test(key)) {
+        this.previewError.set('La referencia del piso no es válida.');
+        return;
+      }
+      const publication = await this.api.publication(key);
+      if (!current()) return;
+      if (publication.publicationKey !== key || !['ceramic', 'laminate'].includes(publication.category) || publication.saleUnit !== 'box') {
+        this.previewError.set('Este producto no tiene un acabado de piso disponible.');
+        return;
+      }
+      const preview = { sceneRoomId, publication };
+      await this.updateScene(async () => {
+        if (!current()) return;
+        if (this.constructionView()) this.onFrameOverview();
+        await this.applyFloorVisuals(project, undefined, preview);
+      });
+      if (current()) this.suggestedFloorPreview.set(preview);
+    } catch {
+      if (current()) this.previewError.set('No se pudo mostrar el piso en 3D. Vuelve a abrir la vista previa.');
+    } finally {
+      if (current()) this.previewLoading.set(false);
+    }
+  }
+
   focusFloorCatalog(target: HTMLElement): void {
     const details = target.querySelector('details');
     if (details) details.open = true;
@@ -390,6 +470,10 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
   }
 
   private async applySavedFloors(updated: Project, request: number, message: string): Promise<void> {
+    if (this.previewKey) {
+      await this.closeFloorPreview();
+      if (request !== this.projectRequest) return;
+    }
     this.project.set(updated);
     this.floorCatalogMessage.set(message);
     this.projectBudget.set(null);
@@ -408,6 +492,10 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
 
   async loadActiveProject(): Promise<void> {
     const request = ++this.projectRequest;
+    ++this.previewRequest;
+    this.suggestedFloorPreview.set(null);
+    this.previewLoading.set(false);
+    this.previewError.set('');
     const saved = this.projectMode();
     const freePlan = this.freePlan;
     this.suggestionPending.set(false);
@@ -463,6 +551,7 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
       if (request !== this.projectRequest) return;
       this.projectFloorplan.set(plan);
       this.project.set(project);
+      if (this.previewKey) void this.syncFloorPreview();
       const [budget, status] = await Promise.allSettled([this.api.budget(id), this.api.status()]);
       if (request !== this.projectRequest) return;
       this.showProjectBudget(budget);
@@ -576,12 +665,13 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
     }
   }
 
-  private async applyFloorVisuals(project: Project | null, previews = this.freeFloorPreviews()): Promise<void> {
+  private async applyFloorVisuals(project: Project | null, previews = this.freeFloorPreviews(), suggested?: SuggestedFloorPreview): Promise<void> {
     const sceneIds = new Set(this.sceneRooms().map(room => room.id));
     const selections: RoomFloorSelection[] = [];
     if (project) {
       for (const room of project.rooms) {
-        const { sceneRoomId, publication } = room;
+        const { sceneRoomId } = room;
+        const publication = suggested?.sceneRoomId === sceneRoomId ? suggested.publication : room.publication;
         if (!sceneRoomId || !sceneIds.has(sceneRoomId) || !publication) continue;
         selections.push({
           sceneRoomId,

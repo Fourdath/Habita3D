@@ -76,6 +76,7 @@ function serializeRoom(room: RoomWithPublication) {
     wastePercent: room.wastePercent.toString(),
     budgetClp: room.budgetClp === null ? null : Number(room.budgetClp),
     publicationKey: room.publicationKey,
+    lastSuggestedPublicationKey: room.lastSuggestedPublicationKey ?? null,
     sceneRoomId: room.sceneRoomId,
     preferredCategory: room.preferredCategory,
     preferredSource: room.preferredSource,
@@ -624,11 +625,11 @@ export class ProjectsService {
           quoteTermsDigest(current.input, key) !== hash
         )
           return null;
-        if (current.room.publicationKey === key)
+        if (current.room.publicationKey === key && current.room.lastSuggestedPublicationKey === key)
           return serializeRoom(current.room);
         const room = await tx.room.update({
           where: { id: roomId, projectId: id },
-          data: { publicationKey: key },
+          data: { publicationKey: key, lastSuggestedPublicationKey: key },
           include: { publication: true },
         });
         return serializeRoom(room);

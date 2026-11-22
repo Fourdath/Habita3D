@@ -47,6 +47,19 @@
             }
           </nav>
 
+          @if (viewMode() === 'overview' && (previewLoading() || suggestedFloorPreview() || previewError())) {
+            <div class="viewer-3d__floor-preview">
+              @if (previewLoading()) {
+                <p role="status">Preparando vista previa del piso…</p>
+              } @else if (previewError()) {
+                <p role="alert">{{ previewError() }}</p>
+              } @else if (suggestedFloorPreview(); as preview) {
+                <p role="status"><strong>Vista previa de piso</strong><br />{{ preview.publication.name }}<br />El piso guardado y su presupuesto se conservan.</p>
+              }
+              <button type="button" class="studio__secondary" (click)="closeFloorPreview()">Cerrar vista previa</button>
+            </div>
+          }
+
           @if (viewMode() === 'overview') {
             <div class="viewer-3d__tools" role="group" aria-label="Controles del modelo">
               <button type="button" aria-label="Acercar" title="Acercar" (click)="onZoom(0.8)">+</button>
@@ -99,7 +112,7 @@
           @if (constructionView()) {
             <section class="studio__boards" aria-labelledby="board-title">
               <h2 id="board-title">Planchas por tipo de muro</h2>
-              <p>La cuadrícula marca el formato comercial de 1,20 × 2,40 m. El cálculo estima material; el replanteo de cortes depende de la instalación.</p>
+              <p>Vista de obra en bruto con muros y piso de hormigón. La cuadrícula representa planchas de 1,20 × 2,40 m para estimar el material.</p>
               <ul>
                 @for (entry of constructionLegend; track entry.productId) {
                   @let line = budget().items.find(boardLine(entry.productId));
@@ -130,6 +143,12 @@
                     @for (room of saved.rooms; track room.id) { <option [value]="room.id" [selected]="selectedProjectRoom()?.id === room.id">{{ room.name }}</option> }
                   </select>
                 }
+                @if (selectedProjectRoom(); as room) {
+                  @if (appearanceRooms().length && room.lastSuggestedPublicationKey && room.lastSuggestedPublicationKey !== room.publicationKey) {
+                    <a routerLink="/viewer-3d" [replaceUrl]="true"
+                      [queryParams]="{ project: saved.id, room: room.id, preview: room.lastSuggestedPublicationKey }">Ver última sugerencia en 3D</a>
+                  }
+                }
                 @if (activeWallRoom() && !selectedProjectRoom()) { <p>El recinto {{ activeWallRoom()?.name }} se puede añadir al elegir el piso para toda la casa.</p> }
                 @if (unmappedRooms().length) { <p>Sin vínculo en este plano: {{ unmappedRooms().join(', ') }}. Vincula sus espacios desde Mis proyectos.</p> }
               }
@@ -140,6 +159,7 @@
               @let room = selectedProjectRoom();
               @if (room) {
                 <app-floor-suggestions [compact]="true" [projectId]="saved.id" [room]="room" [enabled]="saved.suggestionsEnabled ?? true"
+                  [canPreview]="!!room.sceneRoomId && appearanceRooms().length > 0"
                   [busy]="projectFloorBusy()" (preferencesSaved)="saveFloorPreferences($event)" (floorAccepted)="useSuggestedFloor($event)"
                   (pendingChange)="suggestionPending.set($event)" (openCatalog)="focusFloorCatalog(projectCatalog)" />
               }

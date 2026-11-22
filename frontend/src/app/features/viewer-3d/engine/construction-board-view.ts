@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { sheetProductForFace, type SheetProductId } from '../../../core/budget/board-coverage';
 import { CONSTRUCTION_PRODUCT_CATALOG } from '../../../core/budget/construction-product.catalog';
 import type { ManifestWallFace } from '../../../core/budget/surface-manifest.types';
+import type { MaterialRegistry } from './materials/material-registry';
 
 export const CONSTRUCTION_VIEW_LEGEND = [
   { productId: 'GYPSUM_BOARD_ST_12_5', label: 'Yeso-cartón ST', color: '#edc87f', description: 'Cara interior de muros livianos en recintos secos.' },
@@ -11,39 +12,58 @@ export const CONSTRUCTION_VIEW_LEGEND = [
 ] as const satisfies readonly { productId: SheetProductId; label: string; color: string; description: string }[];
 
 type FaceClassification = Pick<ManifestWallFace, 'assemblyId' | 'environment' | 'roomSemantic'>;
+type ConcreteSurface = 'wall' | 'floor';
 
-/** Paints the built wall faces with their estimated board type and nominal stock grid. */
+/** Shows unfinished concrete and the board estimates without changing the saved finishes. */
 export class ConstructionBoardView {
   private house: THREE.Group | null = null;
+  private revision = 0;
   private readonly overlays: THREE.Mesh[] = [];
   private readonly materials = new Map<SheetProductId, THREE.MeshBasicMaterial>();
+  private readonly concreteMaterials = new Map<ConcreteSurface, THREE.Material>();
 
-  setEnabled(enabled: boolean, house: THREE.Group | null): void {
+  constructor(private readonly registry: Pick<MaterialRegistry, 'get'>) {}
+
+  async setEnabled(enabled: boolean, house: THREE.Group | null): Promise<void> {
     const target = enabled ? house : null;
     if (target === this.house) return;
     this.clear();
     this.house = target;
     if (!target) return;
+    const revision = this.revision;
 
     const faces: Array<{ mesh: THREE.Mesh; productId: SheetProductId }> = [];
+    const concrete: Record<ConcreteSurface, THREE.Mesh[]> = { wall: [], floor: [] };
     target.traverse(object => {
       if (!(object instanceof THREE.Mesh)) return;
       const kind = object.userData['semanticType'];
-      if (kind !== 'wall-finish' && kind !== 'exterior-finish') return;
-      const productId = sheetProductForFace(object.userData as FaceClassification);
-      if (productId) faces.push({ mesh: object, productId });
+      if (kind === 'floor-structure' || kind === 'room-floor') {
+        concrete.floor.push(object);
+      } else if (kind === 'wall-structure') {
+        concrete.wall.push(object);
+      } else if (kind === 'wall-finish' || kind === 'exterior-finish') {
+        const productId = sheetProductForFace(object.userData as FaceClassification);
+        if (productId) faces.push({ mesh: object, productId });
+        if (!productId || productId === 'EXTERIOR_FIBERCEMENT_BOARD') concrete.wall.push(object);
+      }
     });
 
     for (const { mesh, productId } of faces) {
-      const overlay = new THREE.Mesh(mesh.geometry, this.materialFor(productId));
-      overlay.name = `construction-board-${productId}`;
-      overlay.raycast = () => undefined;
+      const overlay = this.addOverlay(mesh, this.materialFor(productId), `construction-board-${productId}`);
       // The wall owns its geometry. The small offset clears the visible finish.
       const normals = mesh.geometry.getAttribute('normal');
       if (normals?.count) overlay.position.fromBufferAttribute(normals, 0).multiplyScalar(.002);
-      mesh.add(overlay);
-      this.overlays.push(overlay);
     }
+
+    await Promise.all((['wall', 'floor'] as const).map(async surface => {
+      if (!concrete[surface].length) return;
+      const base = await this.registry.get(surface === 'wall' ? 'INDUSTRIAL_WALL_CONCRETE_VISIBLE' : 'FLOOR_CONCRETE_SMOOTH');
+      if (revision !== this.revision) return;
+      const material = this.concreteMaterialFor(surface, base);
+      for (const mesh of concrete[surface]) {
+        this.addOverlay(mesh, material, `construction-concrete-${surface}`).receiveShadow = mesh.receiveShadow;
+      }
+    }));
   }
 
   dispose(): void {
@@ -53,12 +73,41 @@ export class ConstructionBoardView {
       material.dispose();
     }
     this.materials.clear();
+    for (const material of this.concreteMaterials.values()) material.dispose();
+    this.concreteMaterials.clear();
   }
 
   private clear(): void {
+    ++this.revision;
     for (const overlay of this.overlays) overlay.removeFromParent();
     this.overlays.length = 0;
     this.house = null;
+  }
+
+  private addOverlay(mesh: THREE.Mesh, material: THREE.Material, name: string): THREE.Mesh {
+    const overlay = new THREE.Mesh(mesh.geometry, material);
+    overlay.name = name;
+    overlay.raycast = () => undefined;
+    mesh.add(overlay);
+    this.overlays.push(overlay);
+    return overlay;
+  }
+
+  private concreteMaterialFor(surface: ConcreteSurface, base: THREE.Material): THREE.Material {
+    let material = this.concreteMaterials.get(surface);
+    if (!material) {
+      material = base.clone();
+      material.polygonOffset = true;
+      material.polygonOffsetFactor = -1;
+      material.polygonOffsetUnits = -1;
+      if (material instanceof THREE.MeshStandardMaterial) {
+        // Counter the warm design lighting while keeping the exposed concrete's grain.
+        material.color.setRGB(.30, .61, 1.4);
+        material.envMapIntensity = .3;
+      }
+      this.concreteMaterials.set(surface, material);
+    }
+    return material;
   }
 
   private materialFor(productId: SheetProductId): THREE.MeshBasicMaterial {
@@ -66,16 +115,18 @@ export class ConstructionBoardView {
     if (existing) return existing;
     const product = CONSTRUCTION_PRODUCT_CATALOG[productId];
     const color = CONSTRUCTION_VIEW_LEGEND.find(item => item.productId === productId)!.color;
-    const map = createBoardGrid(color, product.widthMeters ?? 1.2, product.heightMeters ?? 2.4);
+    const translucent = productId === 'EXTERIOR_FIBERCEMENT_BOARD';
+    const map = createBoardGrid(color, product.widthMeters ?? 1.2, product.heightMeters ?? 2.4, translucent);
     const material = new THREE.MeshBasicMaterial({
       map, toneMapped: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1,
+      transparent: translucent, depthWrite: !translucent,
     });
     this.materials.set(productId, material);
     return material;
   }
 }
 
-function createBoardGrid(color: string, widthM: number, heightM: number): THREE.DataTexture {
+function createBoardGrid(color: string, widthM: number, heightM: number, translucent: boolean): THREE.DataTexture {
   const width = 64;
   const height = 128;
   const pixels = new Uint8Array(width * height * 4);
@@ -88,7 +139,7 @@ function createBoardGrid(color: string, widthM: number, heightM: number): THREE.
       for (let channel = 0; channel < channels.length; channel++) {
         pixels[index + channel] = Math.round(channels[channel] * (seam ? .55 : 1));
       }
-      pixels[index + 3] = 255;
+      pixels[index + 3] = translucent ? (seam ? 210 : 25) : 255;
     }
   }
   const map = new THREE.DataTexture(pixels, width, height);

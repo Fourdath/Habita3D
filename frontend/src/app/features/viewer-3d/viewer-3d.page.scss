@@ -11,6 +11,28 @@
 
 .studio__room-budget p { margin: 0; }
 
+.viewer-3d__floor-preview {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  display: grid;
+  gap: 8px;
+  width: min(230px, calc(100% - 36px));
+  padding: 12px;
+  border: 1px solid #cbd7c8;
+  border-radius: 8px;
+  background: #fffffff5;
+  color: #245442;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.viewer-3d__floor-preview button { justify-self: start; }
+
+@media (max-width: 800px) {
+  .viewer-3d__floor-preview { top: auto; bottom: 62px; right: 12px; }
+}
+
 .viewer-3d__movement {
   position: absolute;
   bottom: max(16px, env(safe-area-inset-bottom));

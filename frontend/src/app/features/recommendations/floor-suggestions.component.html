@@ -72,6 +72,11 @@
               }
               <div class="ep2-actions">
                 <button class="ep2-primary" type="button" [disabled]="busy() || working() || !!priceChange() || room().publicationKey === item.publicationKey" (click)="accept(item)">{{ room().publicationKey === item.publicationKey ? 'Piso guardado' : 'Aceptar sugerencia' }}</button>
+                @if (canPreview() && !busy() && !working() && !priceChange()) {
+                  <a class="suggestions__preview-link" routerLink="/viewer-3d" [replaceUrl]="compact()"
+                    [queryParams]="{ project: projectId(), room: room().id, preview: item.publicationKey }"
+                    [attr.aria-label]="'Ver en 3D ' + item.name">Ver en 3D</a>
+                }
                 <button type="button" [disabled]="busy() || working() || !!priceChange()" (click)="dismiss(item)">Descartar sugerencia</button>
               </div>
             </div>

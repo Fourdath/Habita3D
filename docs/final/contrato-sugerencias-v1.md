@@ -94,6 +94,8 @@ Primer envío con `publicationKey` del ejemplo y `quoteId: "cotizacion-sintetica
 
 Angular muestra $80.000 y $85.000 y espera la decisión explícita. Si el usuario confirma, repite el POST con la cotización v2. Si el precio sigue vigente, la respuesta es `{"status":"accepted","room":{...}}` con `room` igual a la forma completa de la habitación devuelta en EP2, incluyendo `publication`, las preferencias y la nueva `publicationKey`. Angular actualiza la habitación y consulta de nuevo el presupuesto. Si el precio cambió de nuevo, se repite el mismo flujo de confirmación.
 
+`lastSuggestedPublicationKey` identifica la última sugerencia aceptada en esa habitación. Conserva su valor cuando se elige o se quita un piso desde el catálogo. Las habitaciones sin una sugerencia registrada devuelven `null`.
+
 ## Errores y estados
 
 | HTTP | Ejemplo de respuesta | Estado visible |

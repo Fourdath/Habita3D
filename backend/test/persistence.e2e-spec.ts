@@ -355,9 +355,13 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === 'true')('EP2 PostgreSQL persis
       quote: { totalClp: 72000, budgetExcessClp: 4000, imageUrl: update.image_url },
     });
     const afterConflict = await request(server).get(path).set('Authorization', owner).expect(200);
-    expect(afterConflict.body.rooms.find((r: { id: string }) => r.id === room.id)).toMatchObject({ ...prefs, publicationKey: null });
+    expect(afterConflict.body.rooms.find((r: { id: string }) => r.id === room.id))
+      .toMatchObject({ ...prefs, publicationKey: null, lastSuggestedPublicationKey: null });
     const accepted = await accept(conflict.body.quote.quoteId).expect(200);
-    expect(accepted.body).toMatchObject({ status: 'accepted', room: { ...prefs, publicationKey: product.publication_key } });
+    expect(accepted.body).toMatchObject({
+      status: 'accepted',
+      room: { ...prefs, publicationKey: product.publication_key, lastSuggestedPublicationKey: product.publication_key },
+    });
     const retry = await accept(conflict.body.quote.quoteId).expect(200);
     expect(retry.body.room).toEqual(accepted.body.room);
     await request(server).patch(`${path}/suggestions/settings`).set('Authorization', owner).send({ suggestionsEnabled: false }).expect(200);
@@ -366,6 +370,15 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === 'true')('EP2 PostgreSQL persis
     const current = await request(server).get(path).set('Authorization', owner).expect(200);
     expect(current.body.suggestionsEnabled).toBe(false);
     expect(current.body.rooms.find((r: { id: string }) => r.id === room.id).publicationKey).toBe(product.publication_key);
+
+    const alternate = fixture.publications.find(p => p.publication_key !== product.publication_key)!;
+    await request(server).patch(`${path}/rooms/${room.id}`).set('Authorization', owner)
+      .send({ publicationKey: alternate.publication_key }).expect(200);
+    const replaced = await request(server).get(path).set('Authorization', owner).expect(200);
+    expect(replaced.body.rooms.find((r: { id: string }) => r.id === room.id)).toMatchObject({
+      publicationKey: alternate.publication_key,
+      lastSuggestedPublicationKey: product.publication_key,
+    });
   });
 
   it('uses real database locks to exclude concurrent acquisition and records transport failure', async () => {

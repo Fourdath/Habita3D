@@ -35,6 +35,12 @@ export class ProjectsPage implements OnInit {
   readonly floorplan = computed<ProjectFloorplan | null>(() => this.project()?.floorplan ?? null);
   readonly selectedRoomId = signal<string | null>(null);
   readonly selectedRoom = computed(() => this.project()?.rooms.find(room => room.id === this.selectedRoomId()) ?? null);
+  readonly selectedRoomCost = computed(() => {
+    const room = this.selectedRoom();
+    const budget = this.budget();
+    if (!room?.publicationKey || !budget || budget.project_id !== room.projectId) return null;
+    return budget.rooms.find(row => row.room_id === room.id && row.publication_key === room.publicationKey) ?? null;
+  });
   readonly loading = signal(true);
   readonly projectLoading = signal(false);
   readonly budgetLoading = signal(false);
@@ -55,6 +61,7 @@ export class ProjectsPage implements OnInit {
   readonly money = money;
   private readonly area = new Intl.NumberFormat('es-CL', { maximumFractionDigits: 2 });
   private readonly catalogTarget = viewChild('catalogTarget', { read: ElementRef<HTMLElement> });
+  private readonly suggestionsTarget = viewChild('suggestionsTarget', { read: ElementRef<HTMLElement> });
   private initialized = false;
   private request = 0;
   private budgetRequest = 0;
@@ -120,6 +127,9 @@ export class ProjectsPage implements OnInit {
     return room.areaMode === 'area'
       ? `${this.area.format(Number(room.areaM2))} m²`
       : `${this.area.format(Number(room.lengthM))} × ${this.area.format(Number(room.widthM))} m`;
+  }
+  canPreviewRoom(room: ProjectRoom): boolean {
+    return !!this.floorplan() && this.sceneRoomNumbers().has(room.sceneRoomId ?? '');
   }
   async openProject(id: number | null, preferredRoom = this.requestedRoom): Promise<void> {
     const request = ++this.request;
@@ -236,6 +246,12 @@ export class ProjectsPage implements OnInit {
     this.saveRoomResult(room);
     this.confirmedSuggestionRoom.set(room.id);
     await this.refreshBudget();
+  }
+
+  focusSuggestions(): void {
+    const target = this.suggestionsTarget()?.nativeElement;
+    target?.focus({ preventScroll: true });
+    target?.scrollIntoView({ block: 'start' });
   }
 
   focusCatalog(): void {

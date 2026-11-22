@@ -1,6 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { Ep2ApiService } from '../../core/ep2/ep2-api.service';
 import { TEST_PROJECT, TEST_PUBLICATION, TEST_SUGGESTIONS } from '../../core/ep2/ep2.fixtures';
 import { SessionService } from '../../core/ep2/session.service';
@@ -16,6 +17,7 @@ describe('Final delivery suggestions', () => {
     vi.resetAllMocks();
     api.suggestions.mockResolvedValue(TEST_SUGGESTIONS);
     TestBed.configureTestingModule({ providers: [
+      provideRouter([]),
       { provide: Ep2ApiService, useValue: api },
       { provide: SessionService, useValue: { user: signal({ id: 1 }) } },
     ] });
@@ -61,6 +63,24 @@ describe('Final delivery suggestions', () => {
     expect(panel.getAttribute('aria-labelledby')).toBe('viewer-suggestions-title');
     expect(panel.querySelector('#viewer-suggestions-title')?.textContent).toContain(room.name);
     expect(panel.textContent).toContain('Aceptar sugerencia');
+  });
+
+  it('offers the same preview link for a saved suggestion and for a replacement', async () => {
+    fixture.componentRef.setInput('canPreview', true);
+    fixture.componentRef.setInput('room', { ...room, publicationKey: suggestion.publicationKey });
+    await fixture.whenStable();
+    const link = () => fixture.nativeElement.querySelector('a.suggestions__preview-link') as HTMLAnchorElement;
+    const destination = () => new URL(link().href);
+    expect(destination().pathname).toBe('/viewer-3d');
+    expect(destination().searchParams.get('project')).toBe('7');
+    expect(destination().searchParams.get('room')).toBe(room.id);
+    expect(destination().searchParams.get('preview')).toBe(suggestion.publicationKey);
+    expect(fixture.nativeElement.textContent).toContain('Piso guardado');
+    fixture.componentRef.setInput('room', { ...room, publicationKey: 'b'.repeat(64) });
+    await fixture.whenStable();
+    expect(destination().searchParams.get('preview')).toBe(suggestion.publicationKey);
+    expect(fixture.nativeElement.textContent).toContain('Aceptar sugerencia');
+    expect(api.acceptSuggestion).not.toHaveBeenCalled();
   });
 
   it('requires a new explicit acceptance after a price change', async () => {

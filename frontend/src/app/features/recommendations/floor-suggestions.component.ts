@@ -1,6 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, DestroyRef, effect, inject, input, output, signal, untracked } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { CatalogProductPhotoComponent } from '../../core/ep2/catalog-product-photo.component';
 import { apiError, chileDate, Ep2ApiService, money } from '../../core/ep2/ep2-api.service';
 import type { FloorCategory, FloorSuggestion, FloorSuggestions, ProjectRoom, RetailSource } from '../../core/ep2/ep2.types';
@@ -8,7 +9,7 @@ import { SuggestionDismissals } from './suggestion-dismissals.service';
 
 @Component({
   selector: 'app-floor-suggestions',
-  imports: [ReactiveFormsModule, CatalogProductPhotoComponent],
+  imports: [ReactiveFormsModule, CatalogProductPhotoComponent, RouterLink],
   templateUrl: './floor-suggestions.component.html',
   styleUrl: './floor-suggestions.component.scss',
 })
@@ -21,6 +22,7 @@ export class FloorSuggestionsComponent {
   readonly compact = input(false);
   readonly enabled = input(true);
   readonly busy = input(false);
+  readonly canPreview = input(false);
   readonly preferencesSaved = output<ProjectRoom>();
   readonly floorAccepted = output<ProjectRoom>();
   readonly pendingChange = output<boolean>();

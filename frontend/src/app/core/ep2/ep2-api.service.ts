@@ -12,6 +12,9 @@ export class Ep2ApiService {
     return firstValueFrom(this.http.get<Page<Publication>>('/api/materials', { params }));
   }
   status(): Promise<CatalogStatus> { return firstValueFrom(this.http.get<CatalogStatus>('/api/materials/status')); }
+  publication(key: string): Promise<Publication> {
+    return firstValueFrom(this.http.get<Publication>(`/api/materials/${encodeURIComponent(key)}`));
+  }
   history(key: string, page = 1): Promise<PriceHistory> {
     return firstValueFrom(this.http.get<PriceHistory>(`/api/materials/${encodeURIComponent(key)}/history`, { params: { page, limit: 20 } }));
   }

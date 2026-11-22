@@ -86,9 +86,31 @@
                       <h3>{{ room.name }}</h3>
                       <p>{{ roomDimensions(room) }} · adicional {{ room.wastePercent }} %</p>
                       <p>{{ room.publication?.name ?? 'Sin piso seleccionado' }}</p>
+                      @if (room.publicationKey) {
+                        @let cost = selectedRoomCost();
+                        @if (cost && cost.status === 'calculated') {
+                          <dl class="ep2-room-workspace__cost" aria-label="Costo y cajas del piso seleccionado">
+                            <div><dt>Costo para esta habitación</dt><dd>{{ money(cost.cost_clp) }}</dd></div>
+                            <div><dt>Cajas necesarias</dt><dd>{{ cost.boxes ?? 'Pendiente' }}</dd></div>
+                          </dl>
+                        } @else if (budgetLoading()) {
+                          <p class="ep2-hint">Calculando costo y cajas…</p>
+                        } @else if (cost?.reasons?.includes('missing_coverage')) {
+                          <p class="ep2-hint">Falta cobertura comprobada para calcular el costo y las cajas.</p>
+                        } @else {
+                          <p class="ep2-hint">Costo y cajas pendientes de verificar.</p>
+                        }
+                      }
                       <div class="ep2-actions">
                         @if (floorplan()) {
                           <a class="ep2-primary" routerLink="/viewer-3d" [queryParams]="{ project: active.id, room: room.id }">Ver habitación en 3D →</a>
+                        }
+                        @if (canPreviewRoom(room) && room.lastSuggestedPublicationKey && room.lastSuggestedPublicationKey !== room.publicationKey) {
+                          <a class="ep2-link" routerLink="/viewer-3d"
+                            [queryParams]="{ project: active.id, room: room.id, preview: room.lastSuggestedPublicationKey }">Ver última sugerencia en 3D</a>
+                        }
+                        @if (active.suggestionsEnabled !== false) {
+                          <button type="button" (click)="focusSuggestions()">Ver sugerencias</button>
                         }
                         @if (room.publicationKey) { <button type="button" [disabled]="busy()" (click)="chooseFloor(null)">Quitar piso</button> }
                       </div>
@@ -99,9 +121,12 @@
             </section>
           }
           @if (selectedRoom(); as room) {
-            <app-floor-suggestions [projectId]="active.id" [room]="room" [enabled]="active.suggestionsEnabled ?? true"
-              [busy]="busy() || projectLoading()" (preferencesSaved)="saveRoomResult($event)" (floorAccepted)="useSuggestedFloor($event)"
-              (pendingChange)="suggestionPending.set($event)" (openCatalog)="focusCatalog()" />
+            <div #suggestionsTarget tabindex="-1">
+              <app-floor-suggestions [projectId]="active.id" [room]="room" [enabled]="active.suggestionsEnabled ?? true"
+                [canPreview]="canPreviewRoom(room)" [busy]="busy() || projectLoading()"
+                (preferencesSaved)="saveRoomResult($event)" (floorAccepted)="useSuggestedFloor($event)"
+                (pendingChange)="suggestionPending.set($event)" (openCatalog)="focusCatalog()" />
+            </div>
             @if (confirmedSuggestionRoom() === room.id) {
               <p class="ep2-success" role="status">Piso guardado para {{ room.name }}.
                 @if (floorplan() && room.sceneRoomId) {
