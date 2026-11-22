@@ -5,7 +5,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { IonContent } from '@ionic/angular';
 import { Ep2ApiService, apiError, money } from '../../core/ep2/ep2-api.service';
 import { SessionService } from '../../core/ep2/session.service';
-import { ScenePlanService } from '../../core/ep2/scene-plan.service';
+import { ScenePlanService, type ScenePlan } from '../../core/ep2/scene-plan.service';
 import type { Project, ProjectBudget, ProjectFloorplan, ProjectRoom, ProjectSummary, Publication, RoomInput, SceneRoom } from '../../core/ep2/ep2.types';
 import { readFloorplanFile } from '../../core/floorplan/floorplan-file';
 import { BrandMarkComponent } from '../landing/components/brand-mark.component';
@@ -13,10 +13,11 @@ import { FloorSuggestionsComponent } from '../recommendations/floor-suggestions.
 import { BudgetPanelComponent } from './budget-panel.component';
 import { CatalogPanelComponent } from './catalog-panel.component';
 import { RoomEditorComponent } from './room-editor.component';
+import { ProjectRoomMapComponent } from './project-room-map.component';
 
 @Component({
   selector: 'app-projects', templateUrl: 'projects.page.html', styleUrls: ['projects.page.scss'],
-  imports: [IonContent, RouterLink, ReactiveFormsModule, BrandMarkComponent, BudgetPanelComponent, CatalogPanelComponent, RoomEditorComponent, FloorSuggestionsComponent],
+  imports: [IonContent, RouterLink, ReactiveFormsModule, BrandMarkComponent, BudgetPanelComponent, CatalogPanelComponent, RoomEditorComponent, FloorSuggestionsComponent, ProjectRoomMapComponent],
 })
 export class ProjectsPage implements OnInit {
   readonly session = inject(SessionService);
@@ -28,7 +29,9 @@ export class ProjectsPage implements OnInit {
   readonly projects = signal<ProjectSummary[]>([]);
   readonly project = signal<Project | null>(null);
   readonly budget = signal<ProjectBudget | null>(null);
-  readonly sceneRooms = signal<SceneRoom[]>([]);
+  readonly drawing = signal<ScenePlan | null>(null);
+  readonly sceneRooms = computed(() => this.drawing()?.rooms ?? []);
+  readonly sceneRoomNumbers = computed(() => new Map(this.sceneRooms().map((room, index) => [room.id, index + 1])));
   readonly floorplan = computed<ProjectFloorplan | null>(() => this.project()?.floorplan ?? null);
   readonly selectedRoomId = signal<string | null>(null);
   readonly selectedRoom = computed(() => this.project()?.rooms.find(room => room.id === this.selectedRoomId()) ?? null);
@@ -37,6 +40,7 @@ export class ProjectsPage implements OnInit {
   readonly budgetLoading = signal(false);
   private readonly mutating = signal(false);
   readonly suggestionPending = signal(false);
+  readonly confirmedSuggestionRoom = signal<string | null>(null);
   readonly busy = computed(() => this.mutating() || this.suggestionPending());
   readonly error = signal('');
   readonly budgetError = signal('');
@@ -49,6 +53,7 @@ export class ProjectsPage implements OnInit {
   readonly editingRoom = signal<ProjectRoom | null>(null);
   readonly confirmDelete = signal<string | null>(null);
   readonly money = money;
+  private readonly area = new Intl.NumberFormat('es-CL', { maximumFractionDigits: 2 });
   private readonly catalogTarget = viewChild('catalogTarget', { read: ElementRef<HTMLElement> });
   private initialized = false;
   private request = 0;
@@ -105,8 +110,16 @@ export class ProjectsPage implements OnInit {
     await this.router.navigate([], { relativeTo: this.route, queryParams: { project: id } });
   }
   async selectRoom(id: string): Promise<void> {
+    if (!this.project()?.rooms.some(room => room.id === id)) return;
+    if (id !== this.selectedRoomId()) this.notice.set('');
+    this.confirmedSuggestionRoom.set(null);
     this.selectedRoomId.set(id); this.showRoomForm.set(false); this.confirmDelete.set(null);
     await this.router.navigate([], { relativeTo: this.route, queryParams: { project: this.project()?.id, room: id }, replaceUrl: true });
+  }
+  roomDimensions(room: ProjectRoom): string {
+    return room.areaMode === 'area'
+      ? `${this.area.format(Number(room.areaM2))} m²`
+      : `${this.area.format(Number(room.lengthM))} × ${this.area.format(Number(room.widthM))} m`;
   }
   async openProject(id: number | null, preferredRoom = this.requestedRoom): Promise<void> {
     const request = ++this.request;
@@ -115,7 +128,8 @@ export class ProjectsPage implements OnInit {
       this.project.set(null);
       this.suggestionPending.set(false);
     }
-    this.sceneRooms.set([]);
+    this.drawing.set(null);
+    this.confirmedSuggestionRoom.set(null);
     this.sceneError.set('');
     this.budget.set(null); this.showRoomForm.set(false); this.showProjectForm.set(false); this.confirmDelete.set(null);
     this.budgetLoading.set(false); this.projectLoading.set(false);
@@ -127,7 +141,7 @@ export class ProjectsPage implements OnInit {
       this.project.set(project);
       this.selectedRoomId.set(project.rooms.some(room => room.id === preferredRoom) ? preferredRoom : project.rooms[0]?.id ?? null);
       try {
-        this.sceneRooms.set(project.floorplan ? this.scenePlan.rooms(project.floorplan.svg) : []);
+        this.drawing.set(project.floorplan ? this.scenePlan.parse(project.floorplan.svg) : null);
       } catch {
         this.sceneError.set('El plano guardado no se pudo interpretar. Puedes reemplazarlo por otro SVG.');
       }
@@ -148,14 +162,14 @@ export class ProjectsPage implements OnInit {
       let rooms: SceneRoom[];
       try {
         svg = await readFloorplanFile(file, true);
-        rooms = this.scenePlan.rooms(svg);
+        rooms = this.scenePlan.parse(svg).rooms;
       } catch (error) {
         if (this.project()?.id === id) this.sceneError.set(error instanceof Error ? error.message : 'No se pudo leer el plano.');
         return;
       }
       if (this.project()?.id !== id) return;
-      await this.api.saveProjectFloorplan(id, file.name.slice(0, 180), svg, rooms.map(room => ({
-        ...room, areaM2: room.areaM2.toFixed(6),
+      await this.api.saveProjectFloorplan(id, file.name.slice(0, 180), svg, rooms.map(({ id, name, areaM2 }) => ({
+        id, name, areaM2: areaM2.toFixed(6),
       })));
       if (this.project()?.id !== id) return;
       await this.router.navigate(['/viewer-3d'], { queryParams: { project: id } });
@@ -198,8 +212,10 @@ export class ProjectsPage implements OnInit {
   async chooseFloor(publication: Publication | null): Promise<void> {
     const project = this.project(), room = this.selectedRoom(); if (!project || !room) return;
     await this.mutate(async () => {
-      await this.api.saveRoom(project.id, { publicationKey: publication?.publicationKey ?? null }, room.id);
-      await this.openProject(project.id, room.id);
+      const updatedRoom = await this.api.saveRoom(project.id, { publicationKey: publication?.publicationKey ?? null }, room.id);
+      this.saveRoomResult(updatedRoom);
+      this.confirmedSuggestionRoom.set(null);
+      await this.refreshBudget();
       this.notice.set(publication ? 'Piso guardado para esta habitación. Abre el visor para ver su apariencia orientativa.' : 'Selección retirada de esta habitación.');
     });
   }
@@ -218,7 +234,7 @@ export class ProjectsPage implements OnInit {
 
   async useSuggestedFloor(room: ProjectRoom): Promise<void> {
     this.saveRoomResult(room);
-    this.notice.set('Piso guardado para esta habitación. Abre el visor para ver su apariencia orientativa.');
+    this.confirmedSuggestionRoom.set(room.id);
     await this.refreshBudget();
   }
 

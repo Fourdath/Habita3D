@@ -8,8 +8,7 @@ import { VIEWER_ENGINE_FACTORY } from './engine/viewer-engine.factory';
 import { Ep2ApiService } from '../../core/ep2/ep2-api.service';
 import { SessionService } from '../../core/ep2/session.service';
 import type { SceneRoom } from '../../core/ep2/ep2.types';
-import { TEST_BUDGET, TEST_PROJECT, TEST_PUBLICATION, TEST_STATUS } from '../../core/ep2/ep2.fixtures';
-import { finishForPublication } from './engine/floor-finishes';
+import { TEST_BUDGET, TEST_PROJECT, TEST_PUBLICATION, TEST_STATUS, TEST_SUGGESTIONS } from '../../core/ep2/ep2.fixtures';
 
 const uploaded = {
   name: 'Proyecto.svg',
@@ -217,7 +216,7 @@ describe('Viewer3DPage', () => {
     expect(projectLoad).toBeLessThan(engine.setRoomFloorSelections.mock.invocationCallOrder.at(-1)!);
     expect(engine.setRoomFloorSelections).toHaveBeenLastCalledWith([expect.objectContaining({
       sceneRoomId: 'scene-test', publicationKey: TEST_PUBLICATION.publicationKey, category: 'ceramic',
-      finishId: finishForPublication('ceramic', TEST_PUBLICATION.name),
+      publicationName: TEST_PUBLICATION.name,
     })]);
     expect(component.modelName()).toBe(TEST_PROJECT.name);
 
@@ -325,9 +324,59 @@ describe('Viewer3DPage', () => {
     await component.saveCatalogFloor(publication);
     expect(save).toHaveBeenCalledWith(TEST_PROJECT.id, { publicationKey: publication.publicationKey }, room.id);
     expect(component.selectedProjectRoom()?.publicationKey).toBe(publication.publicationKey);
-    expect(engine.setRoomFloorSelections).toHaveBeenLastCalledWith([expect.objectContaining({ sceneRoomId: 'scene-test', finishId: 'marble' })]);
+    expect(engine.setRoomFloorSelections).toHaveBeenLastCalledWith([expect.objectContaining({
+      sceneRoomId: 'scene-test', publicationName: publication.name,
+    })]);
     expect(component.activeFloorPreview()).toBeUndefined();
     expect(budget).toHaveBeenCalledTimes(2);
+  });
+  it('accepts the quoted floor of the current room and refreshes the 3D floor and budget below suggestions', async () => {
+    engine.getSceneRooms.mockReturnValue([{ id: 'scene-test', name: 'Living', areaM2: 12 }]);
+    ready();
+    const api = TestBed.inject(Ep2ApiService);
+    TestBed.inject(SessionService).user.set({ id: 1, email: 'demo@example.test' });
+    vi.spyOn(api, 'project').mockResolvedValue({ ...TEST_PROJECT, floorplan: uploaded });
+    vi.spyOn(api, 'status').mockResolvedValue(TEST_STATUS);
+    const room = { ...TEST_PROJECT.rooms[0], publicationKey: TEST_PUBLICATION.publicationKey, publication: TEST_PUBLICATION };
+    const budget = vi.spyOn(api, 'budget').mockResolvedValueOnce(TEST_BUDGET)
+      .mockResolvedValue({
+        ...TEST_BUDGET, status: 'complete', total_cost_clp: 60000, calculable_subtotal_clp: 60000,
+        rooms: [{
+          room_id: room.id, publication_key: room.publicationKey, status: 'calculated', reasons: [],
+          area_m2: '10.25', waste_percent: '10', required_area_m2: '11.275', coverage_per_box_m2: '2',
+          price_per_box_clp: 10000, boxes: 6, purchased_area_m2: '12', cost_clp: 60000,
+          budget_clp: null, budget_excess_clp: null, fits_budget: null, checked_at: TEST_PUBLICATION.checkedAt,
+          last_check_display: TEST_PUBLICATION.lastCheckedDisplay,
+        }],
+      });
+    const suggest = vi.spyOn(api, 'suggestions').mockResolvedValue({
+      ...TEST_SUGGESTIONS, suggestions: [{ ...TEST_SUGGESTIONS.suggestions[0], boxes: 6, totalClp: 60000 }],
+    });
+    const accept = vi.spyOn(api, 'acceptSuggestion').mockResolvedValue({ status: 'accepted', room });
+    const save = vi.spyOn(api, 'saveRoom');
+    component.projectMode.set(true);
+    component.projectId.set(TEST_PROJECT.id);
+    await component.loadActiveProject();
+    await fixture.whenStable();
+
+    const host = fixture.nativeElement as HTMLElement;
+    const suggestions = host.querySelector('app-floor-suggestions')!;
+    const roomBudget = host.querySelector('.studio__room-budget')!;
+    const catalog = host.querySelector('app-viewer-floor-catalog')!;
+    expect(suggestions.compareDocumentPosition(roomBudget) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(roomBudget.compareDocumentPosition(catalog) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(suggest).toHaveBeenCalledWith(TEST_PROJECT.id, room.id, []);
+    button('Aceptar sugerencia').click();
+    await fixture.whenStable();
+
+    expect(accept).toHaveBeenCalledExactlyOnceWith(TEST_PROJECT.id, room.id, room.publicationKey, 'quote-v1');
+    expect(save).not.toHaveBeenCalled();
+    expect(engine.setRoomFloorSelections).toHaveBeenLastCalledWith([
+      expect.objectContaining({ sceneRoomId: room.sceneRoomId, publicationKey: room.publicationKey }),
+    ]);
+    expect(budget).toHaveBeenCalledTimes(2);
+    expect(roomBudget.textContent).toContain('Piso guardado en Habitación de prueba.');
+    expect(roomBudget.querySelector('p strong')?.textContent).toMatch(/6 cajas.*60\.000/);
   });
   it('uses the scene areas and saves a catalogue floor for a new whole-house project', async () => {
     engine.getSceneRooms.mockReturnValue([{ id: 'selection-a', name: 'Living', areaM2: 8.125 }]);

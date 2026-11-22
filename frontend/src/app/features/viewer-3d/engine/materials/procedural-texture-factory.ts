@@ -8,69 +8,81 @@ export interface ProceduralTextureSet {
   roughness: THREE.Texture | null;
 }
 
-const SIZE = 1024;
+export interface ProceduralTextureOptions {
+  size?: number;
+  seed?: number;
+  layout?: 'staggered' | 'basketweave';
+}
 
 /**
  * Canvas-drawn stand-ins for finishes we have no PBR asset for (paint, tile, stucco,
  * stone). Drawn at the material's physical size so a 30 × 60 tile really is 30 × 60.
  */
-export function drawProceduralTexture(definition: MaterialDefinition): ProceduralTextureSet {
+export function drawProceduralTexture(definition: MaterialDefinition, options: ProceduralTextureOptions = {}): ProceduralTextureSet {
   const spec = definition.procedural;
   if (!spec) throw new Error(`${definition.id} has no procedural spec`);
+  const size = options.size ?? 1024;
+  const random = options.seed === undefined ? Math.random : tileRandom(options.seed);
 
   const albedoCanvas = document.createElement('canvas');
   const heightCanvas = document.createElement('canvas');
-  albedoCanvas.width = albedoCanvas.height = SIZE;
-  heightCanvas.width = heightCanvas.height = SIZE;
+  albedoCanvas.width = albedoCanvas.height = size;
+  heightCanvas.width = heightCanvas.height = size;
   const albedo = albedoCanvas.getContext('2d');
   const height = heightCanvas.getContext('2d');
   if (!albedo || !height) throw new Error('2D canvas context unavailable');
 
   height.fillStyle = '#808080';
-  height.fillRect(0, 0, SIZE, SIZE);
+  height.fillRect(0, 0, size, size);
 
   if (spec.kind === 'tile') {
     const [tileWidth, tileHeight] = spec.tile ?? [0.3, 0.3];
     const columns = Math.max(1, Math.round((definition.physicalWidthMeters ?? 1) / tileWidth));
     const rows = Math.max(1, Math.round((definition.physicalHeightMeters ?? 1) / tileHeight));
-    const cellWidth = SIZE / columns;
-    const cellHeight = SIZE / rows;
+    const cellWidth = size / columns;
+    const cellHeight = size / rows;
     albedo.fillStyle = spec.grout ?? '#cccccc';
-    albedo.fillRect(0, 0, SIZE, SIZE);
+    albedo.fillRect(0, 0, size, size);
     height.fillStyle = '#404040';
-    height.fillRect(0, 0, SIZE, SIZE);
-    const groutPx = Math.max(2, Math.round(Math.min(cellWidth, cellHeight) * 0.015));
+    height.fillRect(0, 0, size, size);
+    const groutPx = Math.max(size >= 512 ? 2 : 1, Math.round(Math.min(cellWidth, cellHeight) * 0.015));
     const faceWidth = cellWidth - groutPx * 2;
     const faceHeight = cellHeight - groutPx * 2;
-    for (let row = 0; row < rows; row++) {
-      for (let column = 0; column < columns; column++) {
+    for (let column = 0; column < columns; column++) {
+      const stagger = options.layout === 'staggered' && column % 2 === 1;
+      for (let row = stagger ? -1 : 0; row < rows; row++) {
         const x = column * cellWidth + groutPx;
-        const y = row * cellHeight + groutPx;
-        const seed = row * columns + column + 1;
-        const random = tileRandom(seed);
-        albedo.fillStyle = shadeHex(spec.color, 1 + (random() - 0.5) * (spec.pattern === 'wood' ? 0.13 : 0.07));
+        const y = (row + (stagger ? 0.5 : 0)) * cellHeight + groutPx;
+        const wrappedRow = (row + rows) % rows;
+        const tileSeed = (options.seed ?? 0) + wrappedRow * columns + column + 1;
+        const tileVariant = tileRandom(tileSeed);
+        albedo.fillStyle = shadeHex(spec.color, 1 + (tileVariant() - 0.5) * (spec.pattern === 'wood' ? 0.13 : 0.07));
         albedo.fillRect(x, y, faceWidth, faceHeight);
-        if (spec.pattern) drawTilePattern(albedo, spec.pattern, x, y, faceWidth, faceHeight, random);
+        if (options.layout === 'basketweave') {
+          drawParquetTile(albedo, spec.color, x, y, faceWidth, faceHeight, (row + column) % 2 !== 0, tileVariant);
+        } else if (spec.pattern) {
+          drawTilePattern(albedo, spec.pattern, x, y, faceWidth, faceHeight, tileVariant);
+        }
         height.fillStyle = '#c8c8c8';
         height.fillRect(x, y, faceWidth, faceHeight);
       }
     }
-    speckle(albedo, 0.02, 900);
+    speckle(albedo, 0.02, 900, random);
   } else if (spec.kind === 'paint') {
     albedo.fillStyle = spec.color;
-    albedo.fillRect(0, 0, SIZE, SIZE);
-    speckle(albedo, 0.012, 5000);
+    albedo.fillRect(0, 0, size, size);
+    speckle(albedo, 0.012, 5000, random);
   } else if (spec.kind === 'stucco') {
     albedo.fillStyle = spec.color;
-    albedo.fillRect(0, 0, SIZE, SIZE);
-    speckle(albedo, 0.05, 45000);
-    speckle(height, 0.12, 30000);
+    albedo.fillRect(0, 0, size, size);
+    speckle(albedo, 0.05, 45000, random);
+    speckle(height, 0.12, 30000, random);
   } else {
     albedo.fillStyle = spec.color;
-    albedo.fillRect(0, 0, SIZE, SIZE);
+    albedo.fillRect(0, 0, size, size);
     for (let index = 0; index < 2600; index++) {
-      const x = Math.random() * SIZE;
-      const y = Math.random() * SIZE;
+      const x = Math.random() * size;
+      const y = Math.random() * size;
       const radius = Math.random() * 5 + 1;
       albedo.fillStyle = `rgba(255,255,255,${Math.random() * 0.12})`;
       albedo.beginPath();
@@ -78,10 +90,10 @@ export function drawProceduralTexture(definition: MaterialDefinition): Procedura
       albedo.fill();
       albedo.fillStyle = `rgba(0,0,0,${Math.random() * 0.1})`;
       albedo.beginPath();
-      albedo.arc(SIZE - x, SIZE - y, radius * 0.8, 0, Math.PI * 2);
+      albedo.arc(size - x, size - y, radius * 0.8, 0, Math.PI * 2);
       albedo.fill();
     }
-    speckle(height, 0.05, 20000);
+    speckle(height, 0.05, 20000, random);
   }
 
   return {
@@ -93,13 +105,36 @@ export function drawProceduralTexture(definition: MaterialDefinition): Procedura
 }
 
 function tileRandom(seed: number): () => number {
-  let state = Math.imul(seed, 0x9e3779b1);
+  let state = Math.imul(seed, 0x9e3779b1) || 1;
   return () => {
     state ^= state << 13;
     state ^= state >>> 17;
     state ^= state << 5;
     return (state >>> 0) / 0x100000000;
   };
+}
+
+function drawParquetTile(
+  context: CanvasRenderingContext2D,
+  color: string,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  horizontal: boolean,
+  random: () => number,
+): void {
+  context.save();
+  context.translate(x + (horizontal ? width : 0), y);
+  if (horizontal) context.rotate(Math.PI / 2);
+  const strip = (horizontal ? height : width) / 3;
+  const length = horizontal ? width : height;
+  for (let board = 0; board < 3; board++) {
+    context.fillStyle = shadeHex(color, 0.83 + random() * 0.32);
+    context.fillRect(strip * board, 0, strip, length);
+    drawTilePattern(context, 'wood', strip * board, 0, strip, length, random);
+  }
+  context.restore();
 }
 
 function drawTilePattern(
@@ -150,11 +185,12 @@ function drawMarbleVeins(context: CanvasRenderingContext2D, width: number, heigh
   }
 }
 
-function speckle(context: CanvasRenderingContext2D, strength: number, count: number): void {
+function speckle(context: CanvasRenderingContext2D, strength: number, count: number, random: () => number): void {
+  const size = context.canvas.width;
   for (let index = 0; index < count; index++) {
-    const value = Math.random() < 0.5 ? 0 : 255;
-    context.fillStyle = `rgba(${value},${value},${value},${Math.random() * strength})`;
-    context.fillRect(Math.random() * SIZE, Math.random() * SIZE, 2, 2);
+    const value = random() < 0.5 ? 0 : 255;
+    context.fillStyle = `rgba(${value},${value},${value},${random() * strength})`;
+    context.fillRect(random() * size, random() * size, 2, 2);
   }
 }
 
@@ -165,23 +201,24 @@ function shadeHex(hex: string, factor: number): string {
 }
 
 function normalFromHeight(heightCanvas: HTMLCanvasElement): THREE.Texture {
+  const size = heightCanvas.width;
   const sourceContext = heightCanvas.getContext('2d');
   const output = document.createElement('canvas');
-  output.width = output.height = SIZE;
+  output.width = output.height = size;
   const context = output.getContext('2d');
   if (!sourceContext || !context) throw new Error('2D canvas context unavailable');
 
-  const source = sourceContext.getImageData(0, 0, SIZE, SIZE);
-  const destination = context.createImageData(SIZE, SIZE);
+  const source = sourceContext.getImageData(0, 0, size, size);
+  const destination = context.createImageData(size, size);
   const sample = (x: number, y: number): number =>
-    source.data[((((y + SIZE) % SIZE) * SIZE) + ((x + SIZE) % SIZE)) * 4];
+    source.data[((((y + size) % size) * size) + ((x + size) % size)) * 4];
 
-  for (let y = 0; y < SIZE; y++) {
-    for (let x = 0; x < SIZE; x++) {
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
       const dx = (sample(x + 1, y) - sample(x - 1, y)) / 255;
       const dy = (sample(x, y + 1) - sample(x, y - 1)) / 255;
       const length = Math.hypot(dx * 2, dy * 2, 1);
-      const index = (y * SIZE + x) * 4;
+      const index = (y * size + x) * 4;
       destination.data[index] = ((-dx * 2 / length) * 0.5 + 0.5) * 255;
       destination.data[index + 1] = ((-dy * 2 / length) * 0.5 + 0.5) * 255;
       destination.data[index + 2] = ((1 / length) * 0.5 + 0.5) * 255;

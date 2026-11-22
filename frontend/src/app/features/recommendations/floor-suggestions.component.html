@@ -1,6 +1,8 @@
-<section class="ep2-card" aria-labelledby="suggestions-title" [attr.aria-busy]="working() || loading()">
+@let titleId = compact() ? 'viewer-suggestions-title' : 'suggestions-title';
+@let priceTitleId = compact() ? 'viewer-updated-price-title' : 'updated-price-title';
+<section class="ep2-card" [class.suggestions--compact]="compact()" [attr.aria-labelledby]="titleId" [attr.aria-busy]="working() || loading()">
   <div class="ep2-section-head">
-    <h2 id="suggestions-title">Sugerencias para {{ room().name }}</h2>
+    <h2 [id]="titleId">Sugerencias para {{ room().name }}</h2>
     <button type="button" (click)="openCatalog.emit()">Ver catálogo completo</button>
   </div>
   @if (!enabled()) {
@@ -27,8 +29,8 @@
     }
     @if (actionError()) { <p class="ep2-error" role="alert">{{ actionError() }}</p> }
     @if (priceChange(); as change) {
-      <div class="ep2-notice" role="group" aria-labelledby="updated-price-title">
-        <h3 id="updated-price-title">Confirma el costo actualizado</h3>
+      <div class="ep2-notice" role="group" [attr.aria-labelledby]="priceTitleId">
+        <h3 [id]="priceTitleId">Confirma el costo actualizado</h3>
         <p role="status">{{ change.current.name }}. Antes {{ money(change.previous.totalClp) }}. Ahora {{ money(change.current.totalClp) }} por {{ change.current.boxes }} cajas.</p>
         @if (!change.current.fitsBudget) { <p>Supera el presupuesto disponible en {{ money(change.current.budgetExcessClp) }}.</p> }
         <div class="ep2-actions">

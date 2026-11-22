@@ -37,16 +37,12 @@
             </p>
             @if (sceneError()) { <p class="ep2-error" role="alert">{{ sceneError() }}</p> }
           </section>
-          <section class="ep2-card">
+          <details class="ep2-card ep2-room-management" [open]="!active.rooms.length">
+            <summary>Administrar proyecto y habitaciones</summary>
+            <div class="ep2-room-management__body">
             <div class="ep2-section-head"><div><span class="ep2-eyebrow">DISTRIBUCIÓN Y SUPERFICIES</span><h2>{{ active.name }}</h2></div><div class="ep2-actions"><button type="button" [disabled]="busy()" (click)="editProject()">Editar proyecto</button><button type="button" [disabled]="busy()" (click)="confirmDelete.set('project')">Eliminar proyecto</button></div></div>
             @if (confirmDelete() === 'project') { <div class="ep2-notice"><p>Se eliminarán este proyecto y sus habitaciones. El catálogo y el historial se conservan.</p><div class="ep2-actions"><button type="button" [disabled]="busy()" (click)="deleteProject()">Confirmar eliminación</button><button type="button" (click)="confirmDelete.set(null)">Cancelar</button></div></div> }
             <p class="ep2-hint">Cada habitación conserva su propio piso y margen de material adicional.</p>
-            @if (active.suggestionsEnabled !== undefined) {
-              <div class="ep2-actions">
-                <button type="button" role="switch" [attr.aria-checked]="active.suggestionsEnabled" [disabled]="busy() || projectLoading()" (click)="toggleSuggestions(active)">Sugerencias por habitación</button>
-                <span aria-hidden="true">{{ active.suggestionsEnabled ? 'Activadas' : 'Desactivadas' }}</span>
-              </div>
-            }
             <div class="ep2-rooms">
               @for (room of active.rooms; track room.id) {
                 <article class="ep2-room" [class.ep2-room--selected]="selectedRoomId() === room.id"><button type="button" class="ep2-room-select" [attr.aria-pressed]="selectedRoomId() === room.id" [disabled]="busy()" (click)="selectRoom(room.id)"><strong>{{ room.name }}</strong><span>{{ room.areaMode === 'area' ? room.areaM2 + ' m²' : room.lengthM + ' × ' + room.widthM + ' m' }} · adicional {{ room.wastePercent }} %</span><small>{{ room.publication?.name ?? 'Sin piso seleccionado' }}</small></button><p class="ep2-hint">Límite: {{ room.budgetClp === null ? 'Sin límite propio' : money(room.budgetClp) }} · {{ room.sceneRoomId ? 'Espacio 3D: ' + room.sceneRoomId : 'Sin vínculo 3D' }}</p><div class="ep2-actions"><button type="button" [disabled]="busy()" (click)="editRoom(room)">Editar</button><button type="button" [disabled]="busy()" (click)="confirmDelete.set(room.id)">Eliminar</button></div>
@@ -56,14 +52,65 @@
             </div>
             <button type="button" class="ep2-primary" [disabled]="busy() || active.rooms.length >= 100" (click)="editRoom(null)">+ Añadir habitación</button>
             @if (showRoomForm()) { <app-room-editor [room]="editingRoom()" [sceneRooms]="sceneRooms()" [busy]="busy()" (save)="saveRoom($event)" (cancelEdit)="showRoomForm.set(false)" /> }
-          </section>
+            </div>
+          </details>
+          @if (active.rooms.length || drawing()) {
+            <section class="ep2-card ep2-room-workspace" aria-labelledby="room-workspace-title">
+              <div class="ep2-section-head">
+                <h2 id="room-workspace-title">Selecciona una habitación</h2>
+                @if (active.suggestionsEnabled !== undefined) {
+                  <div class="ep2-actions">
+                    <button type="button" role="switch" [attr.aria-checked]="active.suggestionsEnabled" [disabled]="busy() || projectLoading()" (click)="toggleSuggestions(active)">Sugerencias por habitación</button>
+                    <span aria-hidden="true">{{ active.suggestionsEnabled ? 'Activadas' : 'Desactivadas' }}</span>
+                  </div>
+                }
+              </div>
+              <div class="ep2-room-workspace__body">
+                @if (drawing(); as plan) {
+                  <app-project-room-map [plan]="plan" [rooms]="active.rooms" [selectedRoomId]="selectedRoomId()" [disabled]="busy() || projectLoading()" (roomSelected)="selectRoom($event)" />
+                }
+                <div class="ep2-room-workspace__controls">
+                  @if (active.rooms.length) {
+                    <label for="active-project-room">Cambiar habitación</label>
+                    <select #roomSelect id="active-project-room" [disabled]="busy() || projectLoading()" (change)="selectRoom(roomSelect.value)">
+                      @for (option of active.rooms; track option.id) {
+                        @let number = sceneRoomNumbers().get(option.sceneRoomId ?? '');
+                        <option [value]="option.id" [selected]="option.id === selectedRoomId()">{{ number ? number + '. ' : '' }}{{ option.name }}</option>
+                      }
+                    </select>
+                  } @else {
+                    <p class="ep2-hint">Añade una habitación y vincúlala con un recinto del plano.</p>
+                  }
+                  @if (selectedRoom(); as room) {
+                    <div class="ep2-room-workspace__selection" aria-live="polite">
+                      <h3>{{ room.name }}</h3>
+                      <p>{{ roomDimensions(room) }} · adicional {{ room.wastePercent }} %</p>
+                      <p>{{ room.publication?.name ?? 'Sin piso seleccionado' }}</p>
+                      <div class="ep2-actions">
+                        @if (floorplan()) {
+                          <a class="ep2-primary" routerLink="/viewer-3d" [queryParams]="{ project: active.id, room: room.id }">Ver habitación en 3D →</a>
+                        }
+                        @if (room.publicationKey) { <button type="button" [disabled]="busy()" (click)="chooseFloor(null)">Quitar piso</button> }
+                      </div>
+                    </div>
+                  }
+                </div>
+              </div>
+            </section>
+          }
           @if (selectedRoom(); as room) {
-            <section class="ep2-card ep2-selection"><div><span class="ep2-eyebrow">HABITACIÓN SELECCIONADA</span><h2>{{ room.name }}</h2><p>{{ room.publication?.name ?? 'Elige un piso en el catálogo de abajo.' }}</p><p class="ep2-hint">La apariencia 3D es orientativa y no reproduce exactamente el producto comercial.</p></div><div class="ep2-actions">@if (floorplan()) { <a class="ep2-primary" routerLink="/viewer-3d" [queryParams]="{ project: active.id, room: room.id }">Ver habitación en 3D →</a> }@if (room.publicationKey) { <button type="button" [disabled]="busy()" (click)="chooseFloor(null)">Quitar piso</button> }</div></section>
             <app-floor-suggestions [projectId]="active.id" [room]="room" [enabled]="active.suggestionsEnabled ?? true"
               [busy]="busy() || projectLoading()" (preferencesSaved)="saveRoomResult($event)" (floorAccepted)="useSuggestedFloor($event)"
               (pendingChange)="suggestionPending.set($event)" (openCatalog)="focusCatalog()" />
+            @if (confirmedSuggestionRoom() === room.id) {
+              <p class="ep2-success" role="status">Piso guardado para {{ room.name }}.
+                @if (floorplan() && room.sceneRoomId) {
+                  <a routerLink="/viewer-3d" [queryParams]="{ project: active.id, room: room.id }">Ver piso aplicado en 3D</a>
+                }
+              </p>
+            }
           }
-          <app-floor-budget [budget]="budget()" [rooms]="active.rooms" [loading]="budgetLoading()" [error]="budgetError()" (refresh)="refreshBudget()" />
+          <app-floor-budget [budget]="budget()" [rooms]="active.rooms" [selectedRoom]="selectedRoom()" [loading]="budgetLoading()" [error]="budgetError()" (refresh)="refreshBudget()" />
           <app-floor-catalog #catalogTarget tabindex="-1" [roomName]="selectedRoom()?.name ?? ''" [selectedKey]="selectedRoom()?.publicationKey ?? null" [busy]="busy() || projectLoading()" (choose)="chooseFloor($event)" />
         } @else if (projects().length && !projectLoading()) { <p class="ep2-notice">Selecciona un proyecto para trabajar en sus habitaciones.</p> }
       }

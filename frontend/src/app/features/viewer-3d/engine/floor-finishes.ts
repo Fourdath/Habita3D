@@ -26,9 +26,10 @@ export const FLOOR_FINISHES = [
 ] as const satisfies readonly FloorFinish[];
 
 export type FloorFinishId = (typeof FLOOR_FINISHES)[number]['id'];
+export type CatalogueFloorFinishId = Exclude<FloorFinishId, 'concrete'>;
 
 /** Picks a reference finish from explicit words in the published name. */
-export function finishForPublication(category: FloorCategory, name: string): FloorFinishId {
+export function finishForPublication(category: FloorCategory, name: string): CatalogueFloorFinishId {
   const words = name.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '');
   if (category === 'laminate') {
     if (/\b(?:ceniza|gris|gray|grey|ash)\b/.test(words)) return 'laminate-gray';

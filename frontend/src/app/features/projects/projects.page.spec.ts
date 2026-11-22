@@ -17,7 +17,7 @@ describe('EP2 project orchestration', () => {
     api.projects.mockResolvedValue([TEST_PROJECT]); api.project.mockResolvedValue(structuredClone(TEST_PROJECT)); api.budget.mockResolvedValue(TEST_BUDGET); api.saveRoom.mockResolvedValue(TEST_PROJECT.rooms[0]);
     TestBed.configureTestingModule({ providers: [
       { provide: Ep2ApiService, useValue: api }, { provide: SessionService, useValue: session },
-      { provide: ScenePlanService, useValue: { rooms: vi.fn().mockReturnValue([]) } },
+      { provide: ScenePlanService, useValue: { parse: vi.fn().mockReturnValue({ rooms: [], walls: [] }) } },
       { provide: Router, useValue: { navigate: vi.fn().mockResolvedValue(true) } },
       { provide: ActivatedRoute, useValue: { queryParamMap: of(convertToParamMap({})), snapshot: { queryParams: {} } } },
     ] });
@@ -57,5 +57,14 @@ describe('EP2 project orchestration', () => {
     api.project.mockResolvedValue({ ...TEST_PROJECT, rooms: [...TEST_PROJECT.rooms, room] });
     await page.openProject(7, room.id);
     expect(page.selectedRoom()?.id).toBe(room.id);
+  });
+
+  it('reflects a newly accepted room floor and refreshes its authoritative costs', async () => {
+    const accepted = { ...TEST_PROJECT.rooms[0], publicationKey: TEST_PUBLICATION.publicationKey, publication: TEST_PUBLICATION };
+    await page.useSuggestedFloor(accepted);
+    expect(page.selectedRoom()?.publication).toBe(TEST_PUBLICATION);
+    expect(page.confirmedSuggestionRoom()).toBe(accepted.id);
+    expect(api.budget).toHaveBeenCalledWith(TEST_PROJECT.id);
+    expect(page.budget()).toBe(TEST_BUDGET);
   });
 });

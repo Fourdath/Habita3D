@@ -1,0 +1,34 @@
+.suggestions--compact {
+  padding: 0 0 18px;
+  border: 0;
+  border-bottom: 1px solid #e1e5dc;
+  border-radius: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+
+  .ep2-section-head { gap: 8px; }
+  h2 { font-size: 20px; }
+  h3 { font-size: 14px; margin: 0; }
+  .ep2-filters, .ep2-products { grid-template-columns: minmax(0, 1fr); margin: 12px 0 0; }
+  .ep2-products { gap: 12px; }
+  .ep2-product-image { height: 108px; }
+  .ep2-product-body { padding: 12px; }
+  .ep2-product-body ul { padding-inline-start: 1em; margin: 0; }
+  .ep2-actions { gap: 6px; }
+
+  label { display: grid; gap: 4px; }
+  select, button {
+    min-height: 42px;
+    max-width: 100%;
+    padding: 6px 8px;
+    border: 1px solid #cbd7c8;
+    border-radius: 6px;
+    background: #fff;
+    color: #245442;
+    font: inherit;
+  }
+
+  select:focus-visible { outline: 2px solid #245442; outline-offset: 2px; }
+  button.ep2-primary { background: #245442; color: #fff; }
+}

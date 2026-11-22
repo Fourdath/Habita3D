@@ -54,6 +54,15 @@ describe('Final delivery suggestions', () => {
     expect(card.querySelector('button')?.disabled).toBe(false);
   });
 
+  it('provides a separately labelled suggestions region for the viewer', async () => {
+    fixture.componentRef.setInput('compact', true);
+    await fixture.whenStable();
+    const panel = fixture.nativeElement.querySelector('section') as HTMLElement;
+    expect(panel.getAttribute('aria-labelledby')).toBe('viewer-suggestions-title');
+    expect(panel.querySelector('#viewer-suggestions-title')?.textContent).toContain(room.name);
+    expect(panel.textContent).toContain('Aceptar sugerencia');
+  });
+
   it('requires a new explicit acceptance after a price change', async () => {
     const roomAfterSave = { ...room, publicationKey: TEST_PUBLICATION.publicationKey, publication: TEST_PUBLICATION };
     const revised = { ...suggestion, totalClp: 85000, fitsBudget: false, budgetExcessClp: 5000, quoteId: 'quote-v2' };

@@ -5,7 +5,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CatalogProductPhotoComponent } from '../../core/ep2/catalog-product-photo.component';
 import { Ep2ApiService, apiError, money } from '../../core/ep2/ep2-api.service';
 import { SessionService } from '../../core/ep2/session.service';
-import type { Project, ProjectBudget, ProjectFloorplan, Publication, SceneRoom } from '../../core/ep2/ep2.types';
+import type { Project, ProjectBudget, ProjectFloorplan, ProjectRoom, Publication, SceneRoom } from '../../core/ep2/ep2.types';
 
 import type { ConstructionBudgetSummary } from '../../core/budget/budget.types';
 import type { InteriorStyleId } from '../../core/interior-style/interior-style.types';
@@ -13,7 +13,7 @@ import { readFloorplanFile, validateProjectFloorplanSvg } from '../../core/floor
 
 import { VIEWER_ENGINE_FACTORY, type ViewerEngine } from './engine/viewer-engine.factory';
 import { CONSTRUCTION_VIEW_LEGEND } from './engine/construction-board-view';
-import { finishForPublication, type FloorFinishId } from './engine/floor-finishes';
+import type { FloorFinishId } from './engine/floor-finishes';
 import type { RoomFloorSelection } from './engine/room-floor-selection';
 import type { InteriorWallColors, ViewerStatus } from './engine/viewer-3d.types';
 import type { WalkDirection } from './engine/touch-walk-input';
@@ -21,6 +21,7 @@ import { FloorAppearancePanelComponent } from './floor-appearance-panel.componen
 import { InteriorStylePanelComponent } from './interior-style-panel.component';
 import { ViewerFloorCatalogComponent } from './viewer-floor-catalog.component';
 import { BrandMarkComponent } from '../landing/components/brand-mark.component';
+import { FloorSuggestionsComponent } from '../recommendations/floor-suggestions.component';
 
 const EXAMPLE_MODEL_NAME = 'Vivienda de demostración';
 
@@ -35,7 +36,7 @@ const ORIGINAL_WALLS: InteriorWallColors = { all: null, rooms: new Map() };
   selector: 'app-viewer-3d',
   templateUrl: 'viewer-3d.page.html',
   styleUrls: ['viewer-3d.page.scss'],
-  imports: [IonContent, IonSpinner, FloorAppearancePanelComponent, InteriorStylePanelComponent, ViewerFloorCatalogComponent, RouterLink, BrandMarkComponent, CatalogProductPhotoComponent],
+  imports: [IonContent, IonSpinner, FloorAppearancePanelComponent, InteriorStylePanelComponent, ViewerFloorCatalogComponent, RouterLink, BrandMarkComponent, CatalogProductPhotoComponent, FloorSuggestionsComponent],
 })
 export class Viewer3DPage implements AfterViewInit, OnDestroy {
   @ViewChild('canvasHost', { static: true })
@@ -96,6 +97,8 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
     return !this.projectMode() && roomId ? this.freeFloorPreviews().get(roomId) : undefined;
   });
   readonly floorUpdating = signal(false);
+  readonly suggestionPending = signal(false);
+  readonly projectFloorBusy = computed(() => this.floorUpdating() || this.projectLoading() || this.suggestionPending());
   readonly floorAppearanceError = signal('');
   readonly floorCatalogMessage = signal('');
   readonly floorCatalogError = signal('');
@@ -197,7 +200,7 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
   }
 
   onStartClick(event?: MouseEvent): void {
-    if (this.status() !== 'ready' || this.loadingFloorplan() || this.interiorStyleLoading() || this.projectLoading() || this.floorUpdating()) return;
+    if (!this.modelReady() || this.loadingFloorplan() || this.interiorStyleLoading() || this.projectFloorBusy()) return;
     this.walkError.set(null);
     const touched = event && 'pointerType' in event && event.pointerType === 'touch';
     const coarsePointer = window.matchMedia?.('(pointer: coarse)').matches === true;
@@ -249,13 +252,14 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
   }
 
   async selectProjectRoom(event: Event): Promise<void> {
+    if (this.projectFloorBusy()) return;
     const room = (event.target as HTMLSelectElement).value;
     this.pickedProjectSceneRoom.set(null);
     await this.router.navigate([], { relativeTo: this.route, queryParams: { project: this.projectId(), room }, replaceUrl: true });
   }
 
   private pickSceneRoom(roomId: string): void {
-    if (this.constructionView() || this.projectLoading() || this.floorUpdating() || this.loadingFloorplan()) return;
+    if (this.constructionView() || this.projectFloorBusy() || this.loadingFloorplan()) return;
     if (!this.sceneRooms().some(room => room.id === roomId)) return;
     if (this.projectMode()) {
       this.pickedProjectSceneRoom.set(roomId);
@@ -314,7 +318,7 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
   async saveCatalogFloor(publication: Publication, wholeHouse = false): Promise<void> {
     const project = this.project();
     const room = this.selectedProjectRoom();
-    if (this.floorUpdating() || this.projectLoading() || !project || (!wholeHouse && (!room || room.publicationKey === publication.publicationKey))) return;
+    if (this.projectFloorBusy() || !project || (!wholeHouse && (!room || room.publicationKey === publication.publicationKey))) return;
     if (wholeHouse && this.unmappedRooms().length) {
       this.floorCatalogError.set('Vincula las habitaciones existentes al plano antes de aplicar el piso a toda la casa.');
       return;
@@ -329,22 +333,11 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
         ? await this.api.saveProjectFloor(project.id, publication.publicationKey, this.sceneRooms().map(scene => ({
             id: scene.id, name: scene.name.slice(0, 120), areaM2: scene.areaM2.toFixed(6),
           })), this.projectFloorplan()?.revision)
-        : await this.api.saveRoom(project.id, { publicationKey: publication.publicationKey }, room!.id).then(updatedRoom => ({
-            ...project, rooms: project.rooms.map(item => item.id === updatedRoom.id ? updatedRoom : item),
-          }));
+        : this.withUpdatedRoom(project, await this.api.saveRoom(project.id, { publicationKey: publication.publicationKey }, room!.id));
       if (request !== this.projectRequest) return;
-      this.project.set(updated);
-      this.floorCatalogMessage.set(wholeHouse ? 'Piso guardado en todos los recintos del plano.' : 'Piso guardado en la habitación.');
-      this.refreshUnmappedRooms(updated);
-      const [appearance, budget] = await Promise.allSettled([
-        this.updateScene(async () => {
-          if (request === this.projectRequest) await this.applyFloorVisuals(updated);
-        }),
-        this.api.budget(project.id),
-      ]);
-      if (request !== this.projectRequest) return;
-      if (appearance.status === 'rejected') this.floorAppearanceError.set('El piso se guardó. Reabre el visor para actualizar el modelo.');
-      this.showProjectBudget(budget);
+      await this.applySavedFloors(
+        updated, request, wholeHouse ? 'Piso guardado en todos los recintos del plano.' : 'Piso guardado en la habitación.',
+      );
     } catch (error) {
       if (request === this.projectRequest) this.floorCatalogError.set(apiError(error));
     } finally {
@@ -352,10 +345,72 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
     }
   }
 
+  saveFloorPreferences(room: ProjectRoom): void {
+    const project = this.project();
+    if (project?.id === room.projectId) this.project.set(this.withUpdatedRoom(project, room));
+  }
+
+  async useSuggestedFloor(room: ProjectRoom): Promise<void> {
+    const project = this.project();
+    if (project?.id !== room.projectId || this.projectLoading()) return;
+    const request = this.projectRequest;
+    this.floorUpdating.set(true);
+    this.floorCatalogError.set('');
+    this.floorAppearanceError.set('');
+    try {
+      await this.applySavedFloors(this.withUpdatedRoom(project, room), request, `Piso guardado en ${room.name}.`);
+    } finally {
+      this.floorUpdating.set(false);
+    }
+  }
+
+  focusFloorCatalog(target: HTMLElement): void {
+    const details = target.querySelector('details');
+    if (details) details.open = true;
+    (details?.querySelector('summary') ?? target).focus({ preventScroll: true });
+    target.scrollIntoView?.({ block: 'nearest' });
+  }
+
+  async refreshProjectBudget(): Promise<void> {
+    const project = this.project();
+    if (!project || this.projectFloorBusy()) return;
+    const request = this.projectRequest;
+    this.floorUpdating.set(true);
+    this.projectBudgetError.set('');
+    try {
+      const [result] = await Promise.allSettled([this.api.budget(project.id)]);
+      if (request === this.projectRequest) this.showProjectBudget(result);
+    } finally {
+      this.floorUpdating.set(false);
+    }
+  }
+
+  private withUpdatedRoom(project: Project, room: ProjectRoom): Project {
+    return { ...project, rooms: project.rooms.map(item => item.id === room.id ? room : item) };
+  }
+
+  private async applySavedFloors(updated: Project, request: number, message: string): Promise<void> {
+    this.project.set(updated);
+    this.floorCatalogMessage.set(message);
+    this.projectBudget.set(null);
+    this.projectBudgetError.set('');
+    this.refreshUnmappedRooms(updated);
+    const [appearance, budget] = await Promise.allSettled([
+      this.updateScene(async () => {
+        if (request === this.projectRequest) await this.applyFloorVisuals(updated);
+      }),
+      this.api.budget(updated.id),
+    ]);
+    if (request !== this.projectRequest) return;
+    if (appearance.status === 'rejected') this.floorAppearanceError.set('El piso se guardó. Reabre el visor para actualizar el modelo.');
+    this.showProjectBudget(budget);
+  }
+
   async loadActiveProject(): Promise<void> {
     const request = ++this.projectRequest;
     const saved = this.projectMode();
     const freePlan = this.freePlan;
+    this.suggestionPending.set(false);
     this.projectFloorplan.set(null);
     this.project.set(null); this.projectBudget.set(null); this.projectError.set(''); this.projectBudgetError.set(''); this.captureWarning.set(''); this.unmappedRooms.set([]);
     const resetScene = saved || this.sceneProjectMode || this.loadedSvg !== (freePlan?.svgText ?? null) || this.projectLoading() || this.loadingFloorplan();
@@ -528,8 +583,12 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
       for (const room of project.rooms) {
         const { sceneRoomId, publication } = room;
         if (!sceneRoomId || !sceneIds.has(sceneRoomId) || !publication) continue;
-        selections.push({ sceneRoomId, publicationKey: publication.publicationKey, category: publication.category,
-          finishId: finishForPublication(publication.category, publication.name) });
+        selections.push({
+          sceneRoomId,
+          publicationKey: publication.publicationKey,
+          publicationName: publication.name,
+          category: publication.category,
+        });
       }
     } else {
       for (const [sceneRoomId, preview] of previews) {

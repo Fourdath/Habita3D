@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { applyRoomFloorSelections, disposeRoomFloorTints } from './room-floor-selection';
+import { catalogueFloorTexture } from './catalogue-floor-texture';
+import { applyRoomFloorSelections, disposeRoomFloorMaterials } from './room-floor-selection';
 import { FLOOR_FINISHES, finishForPublication } from './floor-finishes';
 import { MaterialRegistry } from './materials/material-registry';
 
@@ -15,7 +16,7 @@ describe('EP2 publication-to-room rendering', () => {
       mesh.userData = { roomId, semanticType: type, roomSemantic: 'DRY' }; house.add(mesh);
     }
   });
-  afterEach(() => { disposeRoomFloorTints(house); registry.dispose(); house.traverse(object => { if (object instanceof THREE.Mesh) object.geometry.dispose(); }); vi.restoreAllMocks(); });
+  afterEach(() => { disposeRoomFloorMaterials(house); registry.dispose(); house.traverse(object => { if (object instanceof THREE.Mesh) object.geometry.dispose(); }); vi.restoreAllMocks(); });
   it('updates only the selected room floor, keeping the other room and ceiling independent', async () => {
     const ceilingMaterial = (house.children[2] as THREE.Mesh).material;
     await applyRoomFloorSelections(house, [selection], 'none', registry);
@@ -65,5 +66,45 @@ describe('EP2 publication-to-room rendering', () => {
     await applyRoomFloorSelections(house, [{ sceneRoomId: 'living', finishId: 'marble' }], 'none', registry);
     expect(first.material).toBe(base);
     expect(disposals).toHaveBeenCalledOnce();
+  });
+  it('gives the eight catalogue models distinct local appearances and interprets advertised tile sizes', () => {
+    const ceramicNames = [
+      'Cerámica 46x46 cm Mixtura roble Café 1.9 m2',
+      'Cerámica 45x45 cm Madera Jona Café 2.29 m2',
+      'Cerámica piso muro Glaciar negro 42.5x42.5 cm 2.17 m2',
+      'Cerámica piso muro California gris 36x36 cm 2.68 m2',
+    ];
+    const laminateNames = [
+      'Piso flotante Classic touch Aquapro ferrara wildlife 7 mm 3.04 m2',
+      'Piso flotante Farco Elegance roble 8 mm 2.40 m2',
+      'Piso Flotante 8 mm Oak Brown Grey 1.99 m2',
+      'Piso Laminado 8.3 mm Sena Café 2.4 m2',
+    ];
+    const ceramic = ceramicNames.map((name, index) => catalogueFloorTexture('ceramic', String(index), name));
+    const laminate = laminateNames.map((name, index) => catalogueFloorTexture('laminate', String(index + 4), name));
+    expect(ceramic.map(floor => floor.definition.procedural?.tile?.[0])).toEqual([0.46, 0.45, 0.425, 0.36]);
+    expect(ceramic[0].options.layout).toBe('basketweave');
+    expect(laminate.every(floor => floor.definition.procedural?.pattern === 'wood' && floor.options.layout === 'staggered')).toBe(true);
+    expect(new Set([...ceramic, ...laminate].map(floor => floor.definition.procedural?.color)).size).toBe(8);
+    expect(catalogueFloorTexture('ceramic', 'new', 'Porcelanato 60 x 30 cm Calacatta').definition.procedural)
+      .toMatchObject({ tile: [0.6, 0.3], pattern: 'marble' });
+    expect(catalogueFloorTexture('laminate', 'new', 'Modelo nuevo').definition.procedural)
+      .toMatchObject({ kind: 'tile', pattern: 'wood' });
+  });
+  it('shares a generated product across rooms and releases it only when the last room changes', async () => {
+    const living = house.children[0] as THREE.Mesh;
+    const bedroom = house.children[1] as THREE.Mesh;
+    const bedroomSelection = { ...selection, sceneRoomId: 'bedroom' };
+    await applyRoomFloorSelections(house, [selection, bedroomSelection], 'none', registry);
+    const material = living.material as THREE.MeshStandardMaterial;
+    expect(bedroom.material).toBe(material);
+    expect(material.map).toBeInstanceOf(THREE.Texture);
+    expect(THREE.Loader.prototype.loadAsync).not.toHaveBeenCalled();
+    const released = vi.spyOn(material.map!, 'dispose');
+    await applyRoomFloorSelections(house, [bedroomSelection], 'none', registry);
+    expect(bedroom.material).toBe(material);
+    expect(released).not.toHaveBeenCalled();
+    await applyRoomFloorSelections(house, [], 'none', registry);
+    expect(released).toHaveBeenCalledOnce();
   });
 });

@@ -10,6 +10,7 @@ import { SuggestionDismissals } from './suggestion-dismissals.service';
   selector: 'app-floor-suggestions',
   imports: [ReactiveFormsModule, CatalogProductPhotoComponent],
   templateUrl: './floor-suggestions.component.html',
+  styleUrl: './floor-suggestions.component.scss',
 })
 export class FloorSuggestionsComponent {
   private readonly api = inject(Ep2ApiService);
@@ -17,6 +18,7 @@ export class FloorSuggestionsComponent {
   private readonly destroyRef = inject(DestroyRef);
   readonly projectId = input.required<number>();
   readonly room = input.required<ProjectRoom>();
+  readonly compact = input(false);
   readonly enabled = input(true);
   readonly busy = input(false);
   readonly preferencesSaved = output<ProjectRoom>();
