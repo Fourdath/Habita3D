@@ -1,13 +1,19 @@
 # Diseño preliminar de la capacidad adaptativa
 
-La entrega final implementa reglas acordadas después de este diseño. Consultar
-el [ADR 0004](../adr/0004-sugerencias-por-habitacion.md) y el [contrato
-vigente](../final/contrato-sugerencias.md) para integrar la aplicación.
+> **Antecedente de EP2.** La entrega final reemplazó la puntuación ponderada,
+> el historial de comportamiento y la evaluación con usuarios propuestos aquí.
+> El motor vigente devuelve hasta tres sugerencias con reglas de presupuesto,
+> coincidencia con las preferencias declaradas de tipo y tienda, y costo.
+> Conserva los descartes durante la sesión y guarda la última sugerencia aceptada
+> para volver a previsualizarla. La evaluación compara ambos órdenes sobre
+> una misma instantánea del catálogo en casos reproducibles.
+> [ADR vigente](../adr/0004-recomendaciones-adaptativas.md) ·
+> [Contrato v1](../final/contrato-sugerencias-v1.md) ·
+> [Evaluación reproducible](../../scripts/suggestion_evaluation.py)
 
-Entregable 8 de la EP2: especificación preliminar de la capacidad adaptativa que se
-implementará en el Módulo 3. En la EP2 **no se implementa el motor**: este documento
-define qué se adaptará, con qué datos y cómo se evaluará, a partir de lo que ya existe
-en los bloques 1 a 3.
+Este documento conserva el entregable 8 de la EP2, que especificó el alcance,
+los datos y la evaluación preliminar para el Módulo 3. En la EP2 se entregó
+la propuesta a partir de los bloques 1 a 3.
 
 ## Resumen
 
