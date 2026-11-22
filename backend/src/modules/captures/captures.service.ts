@@ -9,6 +9,8 @@ import type { CaptureDto } from './capture.dto.js';
 import { materialsTokenConfigured } from './materials-token.guard.js';
 
 const ACQUISITION_LOCK = 72634102;
+const finishedAtOrAfter = (startedAt: Date) =>
+  new Date(Math.max(startedAt.getTime(), Date.now()));
 
 @Injectable()
 export class CapturesService implements OnModuleDestroy, OnApplicationBootstrap {
@@ -24,7 +26,7 @@ export class CapturesService implements OnModuleDestroy, OnApplicationBootstrap 
       throw new ServiceUnavailableException('No se pudo reservar la ejecución de captura');
     });
     let locked = false;
-    let reserved = false;
+    let reservedAt: Date | undefined;
     const started = performance.now();
     try {
       const result = await client.query<{ locked: boolean }>('SELECT pg_try_advisory_lock($1) AS locked', [ACQUISITION_LOCK]);
@@ -34,8 +36,9 @@ export class CapturesService implements OnModuleDestroy, OnApplicationBootstrap 
       if (scheduledFor && await this.prisma.captureJob.findUnique({ where: { id } })) {
         return { jobId: id, status: 'skipped', reason: 'slot_already_attempted' };
       }
-      await this.prisma.captureJob.create({ data: { id, scheduledFor, status: 'running', startedAt: new Date(), requestId } });
-      reserved = true;
+      const startedAt = new Date();
+      await this.prisma.captureJob.create({ data: { id, scheduledFor, status: 'running', startedAt, requestId } });
+      reservedAt = startedAt;
       const payload = {
         sources: dto.sources ?? ['sodimac', 'easy'], categories: dto.categories ?? ['ceramic', 'laminate'],
         limit_per_category: dto.limitPerCategory ?? 10,
@@ -55,15 +58,15 @@ export class CapturesService implements OnModuleDestroy, OnApplicationBootstrap 
         throw error;
       }
       await this.prisma.captureJob.update({ where: { id }, data: {
-        status: imported.status, finishedAt: new Date(), runId: imported.runId,
+        status: imported.status, finishedAt: finishedAtOrAfter(startedAt), runId: imported.runId,
       } });
       this.log(requestId, imported.status, started);
       return { jobId: id, ...imported };
     } catch (error) {
-      if (reserved) {
+      if (reservedAt) {
         const errorCode = error instanceof BadGatewayException ? 'invalid_upstream_response'
           : error instanceof ServiceUnavailableException ? 'upstream_unavailable' : 'capture_or_import_failed';
-        await this.prisma.captureJob.update({ where: { id }, data: { status: 'failed', finishedAt: new Date(), errorCode } })
+        await this.prisma.captureJob.update({ where: { id }, data: { status: 'failed', finishedAt: finishedAtOrAfter(reservedAt), errorCode } })
           .catch(() => this.log(requestId, 'job_status_write_failed', started));
         this.log(requestId, errorCode, started);
       }
@@ -79,9 +82,14 @@ export class CapturesService implements OnModuleDestroy, OnApplicationBootstrap 
 
   private async markInterrupted() {
     // Call only while owning the global acquisition lock: an active worker cannot be overwritten.
-    await this.prisma.captureJob.updateMany({ where: { status: 'running' }, data: {
-      status: 'failed', finishedAt: new Date(), errorCode: 'interrupted_before_completion',
-    } });
+    // An orphan's previous host clock could be ahead of the current clock.
+    await this.prisma.$executeRaw`
+      UPDATE "CaptureJob"
+      SET "status" = 'failed',
+          "finishedAt" = GREATEST(CURRENT_TIMESTAMP, "startedAt"),
+          "errorCode" = 'interrupted_before_completion'
+      WHERE "status" = 'running'
+    `;
   }
 
   async onApplicationBootstrap() {
