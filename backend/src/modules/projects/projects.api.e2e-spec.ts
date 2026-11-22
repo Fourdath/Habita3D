@@ -120,7 +120,7 @@ describe('EP2 projects authorization and DTOs (HTTP)', () => {
       .send({ name: '  Casa EP2  ', budgetClp: 200_000 })
       .expect(201);
     expect(create).toHaveBeenCalledWith({
-      data: { name: 'Casa EP2', ownerId: 7, budgetClp: 200_000n },
+      data: { name: 'Casa EP2', ownerId: 7, budgetClp: 200_000n, suggestionsEnabled: true },
     });
     expect(response.body.budgetClp).toBe(200_000);
     expect(response.body.ownerId).toBeUndefined();

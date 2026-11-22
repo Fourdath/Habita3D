@@ -125,10 +125,10 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === 'true')('EP2 PostgreSQL persis
     });
     await new Promise<void>(resolve => upstream.listen(0, '127.0.0.1', resolve));
     process.env.PYTHON_SERVICE_URL = `http://127.0.0.1:${(upstream.address() as AddressInfo).port}`;
-    await startApp();
   });
 
   beforeEach(async () => {
+    await startApp();
     tag = `ep2-db-${randomUUID()}`;
     fixture = JSON.parse(await readFile(new URL('./fixtures/ep2-capture.json', import.meta.url), 'utf8'));
     for (const p of fixture.publications) {
@@ -151,11 +151,11 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === 'true')('EP2 PostgreSQL persis
     await prisma.captureRun.deleteMany({ where: { runId: { in: [...runIds] } } });
     runIds.clear();
     await prisma.captureJob.deleteMany({ where: { requestId: { startsWith: tag } } });
+    await app.close();
   });
 
   afterAll(async () => {
     releaseCapture?.();
-    await app?.close();
     await new Promise<void>(resolve => upstream?.close(() => resolve()));
     for (const [key, old] of [['PYTHON_SERVICE_URL', originalPython], ['MATERIALS_API_TOKEN', originalToken], ['MATERIALS_SCHEDULE_ENABLED', originalSchedule]]) {
       if (old === undefined) delete process.env[key!]; else process.env[key!] = old;

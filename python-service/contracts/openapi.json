@@ -1855,36 +1855,18 @@
           },
           "area_m2": {
             "type": "string",
-            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Area M2"
           },
           "waste_percent": {
             "type": "string",
-            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Waste Percent"
           },
           "required_area_m2": {
-            "anyOf": [
-              {
-                "type": "string",
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
-              },
-              {
-                "type": "null"
-              }
-            ],
+            "type": "string",
             "title": "Required Area M2"
           },
           "coverage_per_box_m2": {
-            "anyOf": [
-              {
-                "type": "string",
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
-              },
-              {
-                "type": "null"
-              }
-            ],
+            "type": "string",
             "title": "Coverage Per Box M2"
           },
           "price_per_box_clp": {
@@ -1910,15 +1892,7 @@
             "title": "Boxes"
           },
           "purchased_area_m2": {
-            "anyOf": [
-              {
-                "type": "string",
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
-              },
-              {
-                "type": "null"
-              }
-            ],
+            "type": "string",
             "title": "Purchased Area M2"
           },
           "cost_clp": {

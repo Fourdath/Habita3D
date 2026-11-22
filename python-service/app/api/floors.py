@@ -16,6 +16,7 @@ from pydantic import (
     ConfigDict,
     Field,
     StrictInt,
+    field_serializer,
     field_validator,
     model_validator,
 )
@@ -167,6 +168,17 @@ class RoomBudgetResponse(StrictModel):
     availability: Availability
     checked_at: datetime
     last_check_display: str
+
+    @field_serializer(
+        "area_m2",
+        "waste_percent",
+        "required_area_m2",
+        "coverage_per_box_m2",
+        "purchased_area_m2",
+        when_used="json-unless-none",
+    )
+    def decimal_as_fixed_string(self, value: Decimal) -> str:
+        return format(value, "f")
 
 
 class FloorBudgetResponse(StrictModel):
