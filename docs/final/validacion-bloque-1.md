@@ -49,6 +49,11 @@ una dependencia de ese módulo. La corrección propuesta por la auditoría
 implica un cambio mayor; se conserva Prisma 7 en esta entrega y se
 mantiene el escaneo de imágenes y dependencias en CI.
 
+Tras la detección de cuatro vulnerabilidades críticas por Trivy en la imagen
+del frontend, se reconstruyó con [Nginx 1.30.7](https://nginx.org/news.html).
+La imagen local inicia con la versión corregida. El mismo escaneo sigue
+aplicándose a las cuatro imágenes del entorno.
+
 El ensayo local acredita el flujo de backend, la prueba de recuperación de
 la base aislada y el plan Terraform. El despliegue mediante el runner Windows,
 el rollback de la aplicación en ese staging y la validación con el frontend
