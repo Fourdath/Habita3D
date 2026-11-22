@@ -1,5 +1,7 @@
 import { Transform } from 'class-transformer';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  IsBoolean,
   IsInt,
   IsNotEmpty,
   IsString,
@@ -24,4 +26,9 @@ export class UpdateProjectDto {
   @Min(0)
   @Max(MAX_BUDGET_CLP)
   budgetClp?: number;
+
+  @ApiPropertyOptional({ type: Boolean })
+  @ValidateIf((_, value) => value !== undefined)
+  @IsBoolean()
+  suggestionsEnabled?: boolean;
 }

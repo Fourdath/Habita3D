@@ -7,22 +7,29 @@ It does not select the latest snapshot or certify real-time stock itself.
 
 from datetime import datetime
 from decimal import Decimal
-from typing import Annotated, Literal
+from typing import Annotated, Literal, Self
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
     StrictInt,
+    field_serializer,
     field_validator,
     model_validator,
 )
 
+from app.api.internal_auth import INTERNAL_AUTH_RESPONSES, require_internal_token
 from app.services.floor_budget import calculate_floor, room_area
 
-router = APIRouter(prefix="/floors", tags=["floors"])
+router = APIRouter(
+    prefix="/floors",
+    tags=["floors"],
+    dependencies=[Depends(require_internal_token)],
+    responses=INTERNAL_AUTH_RESPONSES,
+)
 
 PositiveDecimal = Annotated[
     Decimal,
@@ -90,19 +97,37 @@ class PublicationSnapshot(StrictModel):
         return value
 
 
-class RoomBudgetRequest(StrictModel):
-    room_id: Annotated[str, Field(min_length=1, max_length=100)]
+class RoomSurface(StrictModel):
     area_m2: PositiveDecimal | None = None
     length_m: PositiveDecimal | None = None
     width_m: PositiveDecimal | None = None
     waste_percent: WastePercent = Decimal("10")
-    budget_clp: WholePesos | None = None
-    publication: PublicationSnapshot
 
     @field_validator("area_m2", "length_m", "width_m", "waste_percent", mode="before")
     @classmethod
     def decimal_quantities(cls, value: object) -> object:
         return reject_non_decimal_input(value)
+
+    @model_validator(mode="after")
+    def exactly_one_area_mode(self) -> Self:
+        has_dimensions = self.length_m is not None or self.width_m is not None
+        if self.area_m2 is not None and has_dimensions:
+            raise ValueError("Indique área directa o largo y ancho, nunca ambos")
+        if self.area_m2 is None and (self.length_m is None or self.width_m is None):
+            raise ValueError("Indique área directa o ambos valores de largo y ancho")
+        return self
+
+    def resolved_area(self) -> Decimal:
+        if self.area_m2 is not None:
+            return self.area_m2
+        assert self.length_m is not None and self.width_m is not None
+        return room_area(length_m=self.length_m, width_m=self.width_m)
+
+
+class RoomBudgetRequest(RoomSurface):
+    room_id: Annotated[str, Field(min_length=1, max_length=100)]
+    budget_clp: WholePesos | None = None
+    publication: PublicationSnapshot
 
     @field_validator("room_id")
     @classmethod
@@ -110,15 +135,6 @@ class RoomBudgetRequest(StrictModel):
         if not value.strip():
             raise ValueError("room_id no puede estar vacío")
         return value
-
-    @model_validator(mode="after")
-    def exactly_one_area_mode(self) -> "RoomBudgetRequest":
-        has_dimensions = self.length_m is not None or self.width_m is not None
-        if self.area_m2 is not None and has_dimensions:
-            raise ValueError("Indique área directa o largo y ancho, nunca ambos")
-        if self.area_m2 is None and (self.length_m is None or self.width_m is None):
-            raise ValueError("Indique área directa o ambos valores de largo y ancho")
-        return self
 
 
 class FloorBudgetRequest(StrictModel):
@@ -156,6 +172,13 @@ class RoomBudgetResponse(StrictModel):
     availability: Availability
     checked_at: datetime
     last_check_display: str
+
+    @field_serializer(
+        "area_m2", "waste_percent", "required_area_m2", "coverage_per_box_m2",
+        "purchased_area_m2", when_used="json-unless-none",
+    )
+    def decimal_as_fixed_string(self, value: Decimal) -> str:
+        return format(value, "f")
 
 
 class FloorBudgetResponse(StrictModel):
@@ -198,11 +221,7 @@ def floor_budget(request: FloorBudgetRequest) -> FloorBudgetResponse:
     results: list[RoomBudgetResponse] = []
     for room in request.rooms:
         publication = room.publication
-        area = room.area_m2
-        if area is None:
-            # The request validator guarantees both dimensions in this mode.
-            assert room.length_m is not None and room.width_m is not None
-            area = room_area(length_m=room.length_m, width_m=room.width_m)
+        area = room.resolved_area()
         reasons = []
         if publication.price_per_box_clp is None:
             reasons.append("missing_price")

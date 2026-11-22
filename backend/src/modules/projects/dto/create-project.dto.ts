@@ -1,11 +1,14 @@
 import { Transform } from 'class-transformer';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  IsBoolean,
   IsInt,
   IsNotEmpty,
   IsString,
   Max,
   MaxLength,
   Min,
+  ValidateIf,
 } from 'class-validator';
 
 import { MAX_BUDGET_CLP, trimmed } from './project-fields.js';
@@ -21,4 +24,9 @@ export class CreateProjectDto {
   @Min(0)
   @Max(MAX_BUDGET_CLP)
   budgetClp!: number;
+
+  @ApiPropertyOptional({ type: Boolean, default: true })
+  @ValidateIf((_, value) => value !== undefined)
+  @IsBoolean()
+  suggestionsEnabled?: boolean;
 }

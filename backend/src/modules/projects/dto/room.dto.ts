@@ -1,4 +1,5 @@
 import { Transform } from 'class-transformer';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsIn,
   IsInt,
@@ -47,6 +48,24 @@ export class RoomDetailsDto {
   @IsNotEmpty()
   @MaxLength(100)
   sceneRoomId?: string | null;
+
+  @ApiPropertyOptional({
+    type: String,
+    enum: ['ceramic', 'laminate'],
+    nullable: true,
+  })
+  @ValidateIf((_, value) => value !== undefined && value !== null)
+  @IsIn(['ceramic', 'laminate'])
+  preferredCategory?: 'ceramic' | 'laminate' | null;
+
+  @ApiPropertyOptional({
+    type: String,
+    enum: ['sodimac', 'easy'],
+    nullable: true,
+  })
+  @ValidateIf((_, value) => value !== undefined && value !== null)
+  @IsIn(['sodimac', 'easy'])
+  preferredSource?: 'sodimac' | 'easy' | null;
 }
 
 export class CreateRoomDto extends RoomDetailsDto {
