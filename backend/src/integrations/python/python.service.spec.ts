@@ -17,15 +17,50 @@ const result = { currency: 'CLP', status: 'complete', rooms: [{
 
 describe('Python integration', () => {
   const service = new PythonService();
+  beforeEach(() => vi.stubEnv('MATERIALS_API_TOKEN', 'test-only-internal-credential'));
   afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 
-  it('accepts the budget contract and propagates correlation without credentials', async () => {
+  it('accepts the budget contract with internal authentication and correlation', async () => {
     const fetch = vi.fn().mockResolvedValue(Response.json(result));
     vi.stubGlobal('fetch', fetch);
     await expect(service.calculateBudget(payload, 'request-1')).resolves.toEqual(result);
     expect(fetch.mock.calls[0][1].headers['X-Request-ID']).toBe('request-1');
-    expect(fetch.mock.calls[0][1].headers['X-Materials-Token']).toBeUndefined();
+    expect(fetch.mock.calls[0][1].headers['X-Materials-Token']).toBe('test-only-internal-credential');
     expect(fetch.mock.calls[0][1].redirect).toBe('error');
+  });
+
+  it('does not send credentials to the liveness endpoint', async () => {
+    const fetch = vi.fn().mockResolvedValue(Response.json({ status: 'ok' }));
+    vi.stubGlobal('fetch', fetch);
+    await service.health();
+    expect(fetch.mock.calls[0][1].headers['X-Materials-Token']).toBeUndefined();
+  });
+
+  const suggestionInput = {
+    area_m2: '10', available_budget_clp: 5000, candidates: payload.rooms.map(r => r.publication),
+  };
+  const item = { publication_key: 'p1', boxes: 6, cost_clp: 6000, budget_excess_clp: 1000, reasons: ['Supera el presupuesto en $1.000.'] };
+  const suggestions = { rule_version: 'floor-rules-v1', status: 'over_budget', items: [item] };
+
+  it('returns authenticated suggestions bound to the supplied catalogue', async () => {
+    const fetch = vi.fn().mockResolvedValue(Response.json(suggestions));
+    vi.stubGlobal('fetch', fetch);
+    await expect(service.recommendFloors(suggestionInput, 'room-1')).resolves.toEqual(suggestions);
+    expect(fetch.mock.calls[0][0].pathname).toBe('/recommendations/floors');
+    expect(fetch.mock.calls[0][1].headers).toMatchObject({
+      'X-Request-ID': 'room-1', 'X-Materials-Token': 'test-only-internal-credential',
+    });
+  });
+
+  it.each([
+    { ...suggestions, status: 'within_budget' },
+    { ...suggestions, items: [item, item] },
+    { ...suggestions, items: [{ ...item, publication_key: 'unlisted' }] },
+    { ...suggestions, items: [{ ...item, cost_clp: 5500 }] },
+    { ...suggestions, items: [{ ...item, budget_excess_clp: 0 }] },
+  ])('rejects malformed or inconsistent suggestions', async invalid => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json(invalid)));
+    await expect(service.recommendFloors(suggestionInput)).rejects.toBeInstanceOf(BadGatewayException);
   });
 
   it.each([

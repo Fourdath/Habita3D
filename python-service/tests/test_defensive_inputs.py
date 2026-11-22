@@ -27,10 +27,13 @@ def raw_record(**changes):
 
 @pytest.fixture
 def api(monkeypatch, tmp_path):
-    monkeypatch.setenv("MATERIALS_API_TOKEN", "defensive-test-token-not-real-credentials")
+    token = "defensive-test-token-not-real-credentials"
+    monkeypatch.setenv("MATERIALS_API_TOKEN", token)
     store = CaptureStore(tmp_path)
     app.dependency_overrides[get_store] = lambda: store
-    with TestClient(app, raise_server_exceptions=False) as client:
+    with TestClient(
+        app, raise_server_exceptions=False, headers={"X-Materials-Token": token}
+    ) as client:
         yield client, store
     app.dependency_overrides.clear()
 

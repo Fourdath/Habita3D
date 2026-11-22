@@ -234,14 +234,16 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === 'true')('EP2 PostgreSQL persis
     expect(catalog.body.total).toBeGreaterThanOrEqual(2);
   });
 
-  it('closes orphaned attempts after restart without repeating a retailer request', async () => {
+  it('recovers an orphan with a skewed clock without repeating a retailer request', async () => {
     const id = `scheduled:orphan-${tag}`;
     const calls = captureCalls;
-    await prisma.captureJob.create({ data: { id, status: 'running', startedAt: new Date(), requestId: tag } });
+    const startedAt = new Date(Date.now() + 60_000);
+    await prisma.captureJob.create({ data: { id, status: 'running', startedAt, requestId: tag } });
     await app.close(); await startApp();
     const recovered = await prisma.captureJob.findUniqueOrThrow({ where: { id } });
     expect(recovered.status).toBe('failed');
     expect(recovered.errorCode).toBe('interrupted_before_completion');
+    expect(recovered.finishedAt?.getTime()).toBeGreaterThanOrEqual(startedAt.getTime());
     expect(captureCalls).toBe(calls);
   });
 

@@ -65,6 +65,7 @@ jobs:
       TF_VAR_database_password: ${{ secrets.STAGING_DATABASE_PASSWORD }}
       TF_VAR_materials_api_token: ${{ secrets.STAGING_MATERIALS_API_TOKEN }}
       TF_VAR_materials_schedule_enabled: ${{ vars.STAGING_MATERIALS_SCHEDULE_ENABLED || 'false' }}
+      TF_VAR_api_allowed_origins: ${{ vars.STAGING_API_ALLOWED_ORIGINS }}
     steps:
       - uses: actions/checkout@v4
         with:

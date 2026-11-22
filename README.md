@@ -7,6 +7,16 @@ calculado con los últimos precios persistidos. El **bloque 3 de Angular/3D** in
 sesión, proyectos, habitaciones, catálogo, historial y suelos orientativos por habitación.
 La demo libre EP1 conserva sus datos demostrativos, separados del presupuesto EP2.
 
+## Entrega final · Bloque 1
+
+La [guía de entrega final](docs/final/README.md) reúne el recomendador de
+pisos, las preferencias por habitación, la aceptación con confirmación del
+costo y las comprobaciones de seguridad y despliegue. El [contrato para
+Angular](docs/final/contrato-sugerencias.md) contiene ejemplos para integrar
+la interfaz del bloque 2. Swagger está en /api/docs y el esquema JSON en
+/api/docs-json. La evidencia de PWA, Android y staging en Windows se completa
+durante la integración del equipo.
+
 ## Estado de la EP2
 
 - [Acuerdos y plan de trabajo](docs/ep2/README.md): alcance, reparto y pendientes.

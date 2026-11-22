@@ -153,6 +153,7 @@ resource "docker_container" "backend" {
     "DATABASE_URL=${local.database_url}",
     "PYTHON_SERVICE_URL=http://python-service:8000",
     "APP_VERSION=${var.image_tag}",
+    "API_ALLOWED_ORIGINS=${var.api_allowed_origins}",
     "MATERIALS_API_TOKEN=${var.materials_api_token}",
     "MATERIALS_SCHEDULE_ENABLED=${var.materials_schedule_enabled}",
   ]

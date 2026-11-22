@@ -8,34 +8,37 @@ datasource db {
 }
 
 model Project {
-  id        Int      @id @default(autoincrement())
-  name      String
-  ownerId   Int?
-  owner     User?    @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  budgetClp BigInt   @default(0)
-  rooms     Room[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                 Int      @id @default(autoincrement())
+  name               String
+  ownerId            Int?
+  owner              User?    @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  budgetClp          BigInt   @default(0)
+  suggestionsEnabled Boolean  @default(true)
+  rooms              Room[]
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   @@index([ownerId, createdAt])
 }
 
 model Room {
-  id             String       @id @default(uuid())
-  projectId      Int
-  project        Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  name           String
-  areaMode       String
-  areaM2         Decimal?     @db.Decimal(18, 6)
-  lengthM        Decimal?     @db.Decimal(18, 6)
-  widthM         Decimal?     @db.Decimal(18, 6)
-  wastePercent   Decimal      @default(10) @db.Decimal(9, 6)
-  budgetClp      BigInt?
-  publicationKey String?
-  publication    Publication? @relation(fields: [publicationKey], references: [publicationKey], onDelete: Restrict)
-  sceneRoomId    String?
-  createdAt      DateTime     @default(now()) @db.Timestamptz(6)
-  updatedAt      DateTime     @updatedAt @db.Timestamptz(6)
+  id                String       @id @default(uuid())
+  projectId         Int
+  project           Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name              String
+  areaMode          String
+  areaM2            Decimal?     @db.Decimal(18, 6)
+  lengthM           Decimal?     @db.Decimal(18, 6)
+  widthM            Decimal?     @db.Decimal(18, 6)
+  wastePercent      Decimal      @default(10) @db.Decimal(9, 6)
+  budgetClp         BigInt?
+  publicationKey    String?
+  publication       Publication? @relation(fields: [publicationKey], references: [publicationKey], onDelete: Restrict)
+  sceneRoomId       String?
+  preferredCategory String?
+  preferredSource   String?
+  createdAt         DateTime     @default(now()) @db.Timestamptz(6)
+  updatedAt         DateTime     @updatedAt @db.Timestamptz(6)
 
   @@index([projectId])
   @@index([publicationKey])

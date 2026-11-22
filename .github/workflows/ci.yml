@@ -216,8 +216,22 @@ jobs:
       # Build success alone does not prove that migrations or service calls work.
       - run: docker compose up -d --wait --wait-timeout 180
       - run: bash scripts/ep1-smoke.sh
-      - name: Persisted EP2 catalogue and project integration (no retailer network)
-        run: python3 scripts/ep2-smoke.py --disposable-fixtures
+      - name: Catalogue, budget and recommendation integration using disposable fixtures
+        run: python3 scripts/ep2-smoke.py --disposable-fixtures --evaluation-output habita3d-evaluation.json
+      - name: Detect and recover from a Python service outage
+        run: |
+          docker compose stop python-service
+          result="$(curl --silent --show-error --max-time 15 --output /dev/null --write-out '%{http_code}' http://127.0.0.1:8080/api/health/recommendations)"
+          test "$result" -eq 503
+          docker compose up -d --wait --wait-timeout 90 python-service
+          python3 scripts/ep2-smoke.py
+      - name: Publish reproducible fixture comparison
+        uses: actions/upload-artifact@v4
+        with:
+          name: habita3d-suggestion-fixture-evaluation
+          path: habita3d-evaluation.json
+          if-no-files-found: error
+          retention-days: 14
 
       # Scan actual runtime images, including OS and language dependencies.
       # Pinned to the verified v0.36.0 release commit (not a mutable tag).

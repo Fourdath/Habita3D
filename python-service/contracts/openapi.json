@@ -55,6 +55,12 @@
               }
             }
           },
+          "401": {
+            "description": "Credencial interna ausente o inválida"
+          },
+          "503": {
+            "description": "Credencial interna del servicio sin configurar"
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -65,7 +71,65 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "InternalMaterialsToken": []
+          }
+        ]
+      }
+    },
+    "/recommendations/floors": {
+      "post": {
+        "tags": [
+          "recommendations"
+        ],
+        "summary": "Recommend Floors",
+        "description": "Recommend calculable offers using the persisted catalogue supplied by NestJS.",
+        "operationId": "recommend_floors_recommendations_floors_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FloorSuggestionsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FloorSuggestionsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Credencial interna ausente o inválida"
+          },
+          "503": {
+            "description": "Credencial interna del servicio sin configurar"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "InternalMaterialsToken": []
+          }
+        ]
       }
     },
     "/floors/budget": {
@@ -97,6 +161,12 @@
               }
             }
           },
+          "401": {
+            "description": "Credencial interna ausente o inválida"
+          },
+          "503": {
+            "description": "Credencial interna del servicio sin configurar"
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -107,7 +177,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "InternalMaterialsToken": []
+          }
+        ]
       }
     },
     "/materials/normalize": {
@@ -139,6 +214,12 @@
               }
             }
           },
+          "401": {
+            "description": "Credencial interna ausente o inválida"
+          },
+          "503": {
+            "description": "Credencial interna del servicio sin configurar"
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -149,7 +230,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "InternalMaterialsToken": []
+          }
+        ]
       }
     },
     "/materials/captures": {
@@ -160,33 +246,15 @@
         "summary": "Create Capture",
         "description": "Explicit protected acquisition. Browsing/catalog reads must never call this route.",
         "operationId": "create_capture_materials_captures_post",
-        "parameters": [
-          {
-            "name": "x-materials-token",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Materials-Token"
-            }
-          }
-        ],
         "requestBody": {
-          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/CaptureApiRequest"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -199,57 +267,11 @@
               }
             }
           },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/materials/status": {
-      "get": {
-        "tags": [
-          "materials"
-        ],
-        "summary": "Capture Status",
-        "description": "Local acquisition evidence only, not the future application's catalogue API.",
-        "operationId": "capture_status_materials_status_get",
-        "parameters": [
-          {
-            "name": "x-materials-token",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Materials-Token"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
-                  "title": "Response Capture Status Materials Status Get"
-                }
-              }
-            }
+          "401": {
+            "description": "Credencial interna ausente o inválida"
+          },
+          "503": {
+            "description": "Credencial interna del servicio sin configurar"
           },
           "422": {
             "description": "Validation Error",
@@ -261,7 +283,47 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "InternalMaterialsToken": []
+          }
+        ]
+      }
+    },
+    "/materials/status": {
+      "get": {
+        "tags": [
+          "materials"
+        ],
+        "summary": "Capture Status",
+        "description": "Local acquisition evidence only, not the future application's catalogue API.",
+        "operationId": "capture_status_materials_status_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Capture Status Materials Status Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Credencial interna ausente o inválida"
+          },
+          "503": {
+            "description": "Credencial interna del servicio sin configurar"
+          }
+        },
+        "security": [
+          {
+            "InternalMaterialsToken": []
+          }
+        ]
       }
     }
   },
@@ -653,6 +715,293 @@
           "fits_budget"
         ],
         "title": "FloorBudgetResponse"
+      },
+      "FloorCandidate": {
+        "properties": {
+          "publication_key": {
+            "type": "string",
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Publication Key"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "sodimac",
+              "easy"
+            ],
+            "title": "Source"
+          },
+          "price_per_box_clp": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 1000000000000000.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Per Box Clp"
+          },
+          "coverage_per_box_m2": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 10000000000.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coverage Per Box M2"
+          },
+          "currency": {
+            "type": "string",
+            "const": "CLP",
+            "title": "Currency"
+          },
+          "price_type": {
+            "type": "string",
+            "const": "public",
+            "title": "Price Type",
+            "default": "public"
+          },
+          "checked_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Checked At"
+          },
+          "availability": {
+            "type": "string",
+            "enum": [
+              "available",
+              "unavailable",
+              "unknown"
+            ],
+            "title": "Availability",
+            "default": "unknown"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "ceramic",
+              "laminate"
+            ],
+            "title": "Category"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "publication_key",
+          "source",
+          "currency",
+          "checked_at",
+          "category"
+        ],
+        "title": "FloorCandidate"
+      },
+      "FloorSuggestion": {
+        "properties": {
+          "publication_key": {
+            "type": "string",
+            "title": "Publication Key"
+          },
+          "boxes": {
+            "type": "integer",
+            "maximum": 9007199254740991.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Boxes"
+          },
+          "cost_clp": {
+            "type": "integer",
+            "maximum": 9007199254740991.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Cost Clp"
+          },
+          "budget_excess_clp": {
+            "type": "integer",
+            "maximum": 9007199254740991.0,
+            "minimum": 0.0,
+            "title": "Budget Excess Clp"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 3,
+            "minItems": 1,
+            "title": "Reasons"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "publication_key",
+          "boxes",
+          "cost_clp",
+          "budget_excess_clp",
+          "reasons"
+        ],
+        "title": "FloorSuggestion"
+      },
+      "FloorSuggestionsRequest": {
+        "properties": {
+          "area_m2": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 10000000000.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Area M2"
+          },
+          "length_m": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 10000000000.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Length M"
+          },
+          "width_m": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 10000000000.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Width M"
+          },
+          "waste_percent": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Waste Percent",
+            "default": "10"
+          },
+          "available_budget_clp": {
+            "type": "integer",
+            "maximum": 9007199254740991.0,
+            "minimum": -9007199254740991.0,
+            "title": "Available Budget Clp"
+          },
+          "preferred_category": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "ceramic",
+                  "laminate"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preferred Category"
+          },
+          "preferred_source": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "sodimac",
+                  "easy"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preferred Source"
+          },
+          "candidates": {
+            "items": {
+              "$ref": "#/components/schemas/FloorCandidate"
+            },
+            "type": "array",
+            "maxItems": 40,
+            "title": "Candidates"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "available_budget_clp",
+          "candidates"
+        ],
+        "title": "FloorSuggestionsRequest"
+      },
+      "FloorSuggestionsResponse": {
+        "properties": {
+          "rule_version": {
+            "type": "string",
+            "const": "floor-rules-v1",
+            "title": "Rule Version",
+            "default": "floor-rules-v1"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "within_budget",
+              "over_budget",
+              "no_candidates"
+            ],
+            "title": "Status"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/FloorSuggestion"
+            },
+            "type": "array",
+            "maxItems": 3,
+            "title": "Items"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "items"
+        ],
+        "title": "FloorSuggestionsResponse"
       },
       "GroupResult": {
         "properties": {
@@ -1160,12 +1509,6 @@
       },
       "RoomBudgetRequest": {
         "properties": {
-          "room_id": {
-            "type": "string",
-            "maxLength": 100,
-            "minLength": 1,
-            "title": "Room Id"
-          },
           "area_m2": {
             "anyOf": [
               {
@@ -1227,6 +1570,12 @@
             ],
             "title": "Waste Percent",
             "default": "10"
+          },
+          "room_id": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Room Id"
           },
           "budget_clp": {
             "anyOf": [
@@ -1311,25 +1660,11 @@
             "title": "Waste Percent"
           },
           "required_area_m2": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
+            "type": "string",
             "title": "Required Area M2"
           },
           "coverage_per_box_m2": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
+            "type": "string",
             "title": "Coverage Per Box M2"
           },
           "price_per_box_clp": {
@@ -1355,14 +1690,7 @@
             "title": "Boxes"
           },
           "purchased_area_m2": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
+            "type": "string",
             "title": "Purchased Area M2"
           },
           "cost_clp": {
@@ -1494,6 +1822,14 @@
           "type"
         ],
         "title": "ValidationError"
+      }
+    },
+    "securitySchemes": {
+      "InternalMaterialsToken": {
+        "type": "apiKey",
+        "description": "Credencial interna compartida con NestJS.",
+        "in": "header",
+        "name": "X-Materials-Token"
       }
     }
   }

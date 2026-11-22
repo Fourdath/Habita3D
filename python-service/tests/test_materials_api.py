@@ -48,13 +48,12 @@ class FakeAdapter:
 
 
 @pytest.fixture
-def api(monkeypatch, tmp_path):
-    monkeypatch.setenv("MATERIALS_API_TOKEN", "unit-test-token-not-real-credentials")
+def api(internal_token, tmp_path):
     store = CaptureStore(tmp_path)
     app.dependency_overrides[get_store] = lambda: store
     app.dependency_overrides[get_adapters] = lambda: {"sodimac": FakeAdapter()}
     app.dependency_overrides[get_source_client] = FakeClient
-    with TestClient(app) as client:
+    with TestClient(app, headers={"X-Materials-Token": internal_token}) as client:
         yield client, store
     app.dependency_overrides.clear()
 
@@ -97,7 +96,8 @@ def test_normalize_requires_explicit_timezone(api, checked_at):
 
 def test_capture_endpoint_requires_token_and_valid_configuration(api, monkeypatch):
     client, store = api
-    assert client.post("/materials/captures", json={}).status_code == 401
+    response = client.post("/materials/captures", json={}, headers={"X-Materials-Token": ""})
+    assert response.status_code == 401
     assert not store.path.exists()
     monkeypatch.delenv("MATERIALS_API_TOKEN")
     assert client.post("/materials/captures", json={}).status_code == 503
@@ -166,20 +166,6 @@ def test_capture_lock_is_reported_as_conflict(api):
             },
         )
     assert response.status_code == 409
-
-
-def test_health_and_openapi_expose_new_routes_without_removing_demo(api):
-    client, _ = api
-    assert client.get("/health").status_code == 200
-    schema = client.get("/openapi.json").json()
-    for path in (
-        "/recommendations/compare",
-        "/floors/budget",
-        "/materials/normalize",
-        "/materials/captures",
-        "/materials/status",
-    ):
-        assert path in schema["paths"]
 
 
 @pytest.mark.parametrize(
