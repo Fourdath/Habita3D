@@ -20,7 +20,7 @@ def require_materials_token(
     token: Annotated[str | None, Security(materials_token_header)],
 ) -> None:
     configured = os.environ.get("MATERIALS_API_TOKEN", "")
-    if len(configured) < 24 or configured.startswith("replace-"):
+    if not 24 <= len(configured) <= 256 or configured.startswith("replace-"):
         raise HTTPException(503, "Configure MATERIALS_API_TOKEN (mínimo 24 caracteres)")
     if not token or not secrets.compare_digest(configured.encode("utf-8"), token.encode("utf-8")):
         raise HTTPException(401, "Credencial interna inválida")

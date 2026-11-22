@@ -1,9 +1,10 @@
 # Backend de Habita3D
 
-API NestJS y PostgreSQL/Prisma del bloque 2 de EP2. Administra catálogo e historial,
-proyectos privados, habitaciones y presupuestos con los últimos precios guardados.
-FastAPI adquiere/procesa los datos y calcula las cantidades; Angular consumirá estas APIs.
+NestJS administra catálogo e historial, proyectos privados, habitaciones y
+preferencias en PostgreSQL. FastAPI adquiere y valida datos, calcula presupuestos
+y ordena sugerencias usando los últimos precios guardados. Angular consulta NestJS.
 
+- [Sugerencias y confirmación de costo](../docs/final/contrato-sugerencias.md).
 - [Manual de endpoints y contratos](../docs/ep2/bloque-2-backend.md).
 - [Modelo de datos](../docs/architecture/data-model.md).
 - [Arranque local y despliegue Windows](../docs/ep2/bloque-2-staging.md).
@@ -25,7 +26,11 @@ npm run start:dev
 
 `/api/health` comprueba liveness y `/api/health/ready` comprueba PostgreSQL y FastAPI.
 Las rutas EP2 privadas usan la sesión Bearer; catálogo e historial son de lectura.
-Capturar/importar exige `X-Materials-Token`. No enviar esa credencial al navegador.
+La credencial X-Materials-Token se usa en captura, importación y las llamadas
+internas de procesamiento desde NestJS a FastAPI. La interfaz usa su sesión Bearer.
+Swagger está disponible en /api/docs y OpenAPI en /api/docs-json.
+Si un cliente llama desde otro origen, configurar API_ALLOWED_ORIGINS con una
+lista explícita de orígenes permitidos separados por comas.
 
 ## Verificación
 

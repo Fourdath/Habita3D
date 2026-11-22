@@ -189,6 +189,7 @@ export class ProjectsService {
           name: dto.name,
           budgetClp: BigInt(dto.budgetClp),
           ownerId: userId,
+          suggestionsEnabled: dto.suggestionsEnabled ?? true,
         },
       }),
     );
@@ -286,7 +287,7 @@ export class ProjectsService {
   }
 
   async update(userId: number, id: number, dto: UpdateProjectDto) {
-    if (dto.name === undefined && dto.budgetClp === undefined) {
+    if (dto.name === undefined && dto.budgetClp === undefined && dto.suggestionsEnabled === undefined) {
       throw new BadRequestException('Indique nombre o presupuesto');
     }
     return this.prisma.$transaction(async (tx) => {
@@ -296,6 +297,7 @@ export class ProjectsService {
           where: { id, ownerId: userId },
           data: {
             name: dto.name,
+            suggestionsEnabled: dto.suggestionsEnabled,
             ...(dto.budgetClp !== undefined
               ? { budgetClp: BigInt(dto.budgetClp) }
               : {}),
@@ -362,6 +364,8 @@ export class ProjectsService {
               : BigInt(dto.budgetClp),
           publicationKey: dto.publicationKey ?? null,
           sceneRoomId: dto.sceneRoomId ?? null,
+          preferredCategory: dto.preferredCategory,
+          preferredSource: dto.preferredSource,
         },
         include: { publication: true },
       });
@@ -468,6 +472,8 @@ export class ProjectsService {
           data: {
             name: dto.name,
             ...surface,
+            preferredCategory: dto.preferredCategory,
+            preferredSource: dto.preferredSource,
             ...(dto.wastePercent !== undefined
               ? { wastePercent: String(dto.wastePercent) }
               : {}),

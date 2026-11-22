@@ -52,6 +52,14 @@ export class RoomDetailsDto {
   @ValidateIf((_, value) => value !== undefined)
   @IsUUID('4')
   floorplanRevision?: string;
+
+  @ValidateIf((_, value) => value !== undefined && value !== null)
+  @IsIn(['ceramic', 'laminate'])
+  preferredCategory?: 'ceramic' | 'laminate' | null;
+
+  @ValidateIf((_, value) => value !== undefined && value !== null)
+  @IsIn(['sodimac', 'easy'])
+  preferredSource?: 'sodimac' | 'easy' | null;
 }
 
 export class CreateRoomDto extends RoomDetailsDto {

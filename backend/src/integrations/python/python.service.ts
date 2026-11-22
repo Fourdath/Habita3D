@@ -145,6 +145,10 @@ export class PythonService {
     throw new ServiceUnavailableException({ code: 'recommendations_unavailable', message: 'El motor de sugerencias no está disponible' });
   }
 
+  compareDemonstration(payload: unknown, requestId?: string): Promise<unknown> {
+    return this.json('/recommendations/compare', payload, requestId, 5_000, { 'X-Materials-Token': internalPythonToken() });
+  }
+
   capture(payload: unknown, requestId?: string): Promise<unknown> {
     const token = internalPythonToken();
     const configured = Number(process.env.PYTHON_CAPTURE_TIMEOUT_MS ?? 600_000);

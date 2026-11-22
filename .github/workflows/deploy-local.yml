@@ -89,6 +89,7 @@ jobs:
           CD_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           TF_VAR_database_password: ${{ secrets.STAGING_DATABASE_PASSWORD }}
           TF_VAR_materials_api_token: ${{ secrets.STAGING_MATERIALS_API_TOKEN }}
+          TF_VAR_api_allowed_origins: ${{ vars.STAGING_API_ALLOWED_ORIGINS }}
           TF_VAR_materials_schedule_enabled: ${{ vars.STAGING_MATERIALS_SCHEDULE_ENABLED || 'false' }}
           STAGING_STATE_DIRECTORY: ${{ vars.STAGING_STATE_DIRECTORY || 'C:\Habita3D-staging' }}
           STAGING_FRONTEND_PORT: ${{ vars.STAGING_FRONTEND_PORT || '18080' }}

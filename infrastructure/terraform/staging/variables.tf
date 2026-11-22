@@ -77,13 +77,13 @@ variable "database_password" {
 
 
 variable "materials_api_token" {
-  description = "Shared internal acquisition token. Supply through TF_VAR_materials_api_token, never Git."
+  description = "Shared internal processing and acquisition token. Supply via TF_VAR_materials_api_token."
   type        = string
   sensitive   = true
 
   validation {
-    condition     = length(var.materials_api_token) >= 24 && !startswith(var.materials_api_token, "replace-")
-    error_message = "Provide at least 24 characters and replace the example token."
+    condition     = length(var.materials_api_token) >= 24 && length(var.materials_api_token) <= 256 && !startswith(var.materials_api_token, "replace-")
+    error_message = "Provide 24-256 characters and replace the example token."
   }
 }
 
@@ -91,4 +91,10 @@ variable "materials_schedule_enabled" {
   description = "Enable NestJS 08/12/16 America/Santiago acquisition only on the designated host."
   type        = bool
   default     = false
+}
+
+variable "api_allowed_origins" {
+  description = "Optional comma-delimited list of exact browser or WebView origins allowed by NestJS."
+  type        = string
+  default     = ""
 }

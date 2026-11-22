@@ -16,7 +16,7 @@ Actualización del 18 de octubre de 2026, posterior a la investigación de fuent
 - Cada proyecto incluirá **varias habitaciones**, cada una con sus propios metros cuadrados y selección de piso. La superficie podrá ingresarse directamente en m² o calcularse a partir del largo y ancho. Se definirá **un presupuesto total por proyecto y límites opcionales por habitación**. El modelo de datos, los contratos, los cálculos y la interfaz deben contemplar ese alcance.
 - Filtros del catálogo para EP2: **tipo de piso, tienda y precio por m²**. Los filtros por marca, color y formato se posponen. El precio por m² requiere una unidad/cobertura verificable; no inventarlo cuando falte información.
 - Se incluirá **previsualización 3D orientativa del piso elegido por habitación**, reutilizando el visor existente y vinculando cada producto con una apariencia representativa. Indicar cuando la apariencia sea aproximada; mostrar fotografía, datos y precio reales del producto seleccionado. No se exige reproducción exacta de cada SKU dentro de este alcance acordado.
-- Retroalimentación EP1: el equipo no recibió de la profesora comentarios ni correcciones. Registrar este contexto y resolver los pendientes técnicos verificados, sin atribuir al docente observaciones que no realizó.
+- Retroalimentación EP1, registrada después de la EP2: justificar la arquitectura, separar CI y CD y profundizar el trabajo en Python. Ver [cambios y evidencia](../final/README.md#retroalimentación-de-ep1).
 - Diseño/prototipo: el prototipo existe y requiere actualización; el integrante encargado solo compartió el código y la información del repositorio; no dispone de un enlace de prototipo. Usar esas pantallas como referencia actual. El usuario pedirá detalles en una reunión posterior; dejar la actualización y el enlace del prototipo como tareas, sin bloquear la planificación ni asumir un Figma accesible.
 - Flujo aceptado: extracción Python de los JSON del frontend de las tiendas → validación y procesamiento mediante FastAPI → integración con NestJS → persistencia en PostgreSQL → consulta y visualización Angular.
 - Se verificó paginación mediante `page` en ambas fuentes. No se ha confirmado una opción `full`.
@@ -147,7 +147,7 @@ Además: staging funcional desplegado automáticamente, controles de calidad y s
 
 ### A. Continuidad y decisiones iniciales
 
-- [ ] **EP2-01 — Registrar la continuidad y correcciones EP1.** El equipo no recibió retroalimentación docente. Dejar constancia y relacionar los pendientes técnicos verificados con tareas, responsables y evidencias; incorporar comentarios del profesor si llegan posteriormente. No atribuir las observaciones de la revisión técnica al docente.
+- [x] **EP2-01 — Registrar la continuidad y correcciones EP1.** Las observaciones docentes y su rastro a archivos y evidencias se documentan en la [guía final](../final/README.md#retroalimentación-de-ep1).
 - [ ] **EP2-02 — Actualizar arquitectura y gestión.** Diagramas de flujo de datos y despliegue, modelo de datos y ADR para fuente, actualización y staging. Actualizar tablero/backlog y dejar claro qué está terminado, en progreso o postergado.
 - [ ] **EP2-03 — Actualizar y enlazar los entregables formales.** El prototipo existente requiere actualización; recibir su enlace y adaptar las pantallas al alcance acordado. Registrar tablero y participantes, y corregir en README el estado de protección de main si continúa desactualizado. La versión EP2 se etiqueta al cierre con su propio tag o release.
 

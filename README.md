@@ -14,6 +14,16 @@ una estimación demostrativa de planchas y revestimientos vinculada al plano.
 - [Contrato de sugerencias por habitación](docs/final/contrato-sugerencias-v1.md) y [decisión de arquitectura, datos y permisos](docs/adr/0004-recomendaciones-adaptativas.md).
 - CI prueba la integración con fixtures desechables. CD despliega desde `main` al runner de Windows cuando la CI de esa SHA ha aprobado y el entorno está habilitado.
 
+## Entrega final · Bloque 1
+
+La [guía de entrega final](docs/final/README.md) reúne el recomendador de
+pisos, las preferencias por habitación, la aceptación con confirmación del
+costo y las comprobaciones de seguridad y despliegue. El [contrato para
+Angular](docs/final/contrato-sugerencias.md) contiene ejemplos para integrar
+la interfaz del bloque 2. Swagger está en /api/docs y el esquema JSON en
+/api/docs-json. La evidencia de PWA, Android y staging en Windows se completa
+durante la integración del equipo.
+
 ## Estado de la EP2
 
 - [Acuerdos y plan de trabajo](docs/ep2/README.md): alcance, reparto y pendientes.

@@ -59,8 +59,8 @@ python -c "from pathlib import Path; import secrets; p=Path('.env'); t=p.read_te
 El archivo contiene `MATERIALS_API_TOKEN` y `MATERIALS_DATA_DIR=data/materials`. El token debe
 tener al menos 24 caracteres y no comenzar por `replace-`. `.env` y `python-service/data/`
 están excluidos de Git; no se debe subir el token ni una copia del archivo al repositorio.
-El token protege las operaciones HTTP de captura y consulta de estado, no es un usuario
-de la aplicación ni una credencial de las tiendas.
+El token protege las operaciones HTTP de captura, consulta de estado y, desde la
+entrega final, procesamiento interno. Se comparte entre NestJS y FastAPI.
 
 ## 3. Levantar FastAPI
 
@@ -229,7 +229,8 @@ La publicación del presupuesto es un **subconjunto** del registro normalizado. 
 seleccionar los últimos valores guardados con éxito y preparar este objeto.
 
 **Ejemplo ficticio de contrato**, no corresponde a un SKU, precio capturado o disponibilidad
-real. Puede pegarse en `POST /floors/budget` de `/docs` para comprobar el cálculo:
+real. En FastAPI, usar Authorize con la credencial local antes de pegar el ejemplo
+en `POST /floors/budget` desde `/docs`.
 
 ```json
 {

@@ -203,7 +203,12 @@ def estimate_cost_clp(area_m2: float, unit_cost_clp: int) -> int:
     )
 
 
-@router.post("/compare", response_model=CompareResponse)
+@router.post(
+    "/compare",
+    response_model=CompareResponse,
+    dependencies=[Depends(require_materials_token)],
+    responses=INTERNAL_AUTH_ERRORS,
+)
 def compare_finishes(request: CompareRequest) -> CompareResponse:
     costs = [
         (tier, estimate_cost_clp(request.area_m2, unit_cost_clp))

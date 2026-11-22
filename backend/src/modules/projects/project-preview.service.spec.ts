@@ -6,6 +6,7 @@ import {
 
 import { ProjectPreviewService } from './project-preview.service.js';
 import { ProjectsService } from './projects.service.js';
+import { PythonService } from '../../integrations/python/python.service.js';
 
 const dto = { name: 'Casa piloto', areaM2: 60, budgetClp: 2_000_000 };
 const recommendation = {
@@ -24,10 +25,11 @@ afterEach(() => {
 
 describe('ProjectPreviewService', () => {
   const setup = () => {
+    vi.stubEnv('MATERIALS_API_TOKEN', 'test-only-internal-credential');
     const create = vi.fn().mockResolvedValue({ id: 7, name: dto.name });
     const service = new ProjectPreviewService({
       create,
-    } as unknown as ProjectsService);
+    } as unknown as ProjectsService, new PythonService());
     return { service, create };
   };
 
@@ -49,6 +51,7 @@ describe('ProjectPreviewService', () => {
       expect.objectContaining({
         method: 'POST',
         body: JSON.stringify({ area_m2: 60, budget_clp: 2_000_000 }),
+        headers: expect.objectContaining({ 'X-Materials-Token': 'test-only-internal-credential' }),
       }),
     );
   });

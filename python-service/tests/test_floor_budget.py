@@ -19,6 +19,11 @@ def configured_token(monkeypatch) -> None:
     monkeypatch.setenv("MATERIALS_API_TOKEN", TOKEN)
 
 
+@pytest.fixture(autouse=True)
+def authenticate_client(monkeypatch, internal_token):
+    monkeypatch.setattr(client, "headers", {"X-Materials-Token": internal_token})
+
+
 def room(**changes: object) -> dict:
     result = {
         "room_id": "living",
@@ -102,6 +107,24 @@ def test_length_width_and_multiple_room_budget_limits() -> None:
     assert data["budget_difference_clp"] == -41760
     assert data["budget_excess_clp"] == 41760
     assert data["fits_budget"] is False
+
+
+@pytest.mark.parametrize(
+    "length,width,waste,area,required_area",
+    [
+        ("2.123456", "3.654321", "11.234567", "7.759789853376", "8.63156864351272848192"),
+        ("0.000001", "0.000001", "1", "0.000000000001", "0.00000000000101"),
+    ],
+)
+def test_exact_areas_use_fixed_decimal_strings_in_json(
+    length: str, width: str, waste: str, area: str, required_area: str,
+) -> None:
+    selected = room(area_m2=None, length_m=length, width_m=width, waste_percent=waste)
+    response = post(selected)
+    assert response.status_code == 200
+    result = response.json()["rooms"][0]
+    assert result["area_m2"] == area
+    assert result["required_area_m2"] == required_area
 
 
 def test_missing_coverage_and_price_are_explicitly_uncalculable() -> None:

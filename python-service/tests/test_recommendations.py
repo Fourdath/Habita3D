@@ -1,8 +1,14 @@
+import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
 
 client = TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def authenticate_client(monkeypatch, internal_token):
+    monkeypatch.setattr(client, "headers", {"X-Materials-Token": internal_token})
 
 
 def test_selects_highest_affordable_tier() -> None:

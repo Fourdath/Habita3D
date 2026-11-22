@@ -15,6 +15,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from uuid import uuid4
+
+from suggestion_evaluation import evaluate_case
 from zoneinfo import ZoneInfo
 
 
@@ -30,7 +32,10 @@ def main():
                         help="Write synthetic test captures into a disposable database only")
     parser.add_argument("--adaptive-fixtures", action="store_true",
                         help="Verify suggestions and price reconfirmation after importing disposable fixtures")
+    parser.add_argument("--evaluation-output", type=Path, help="Write comparisons from the disposable fixtures")
     args = parser.parse_args()
+    if args.evaluation_output and not args.adaptive_fixtures:
+        parser.error("--evaluation-output needs --adaptive-fixtures")
     if args.adaptive_fixtures and not args.disposable_fixtures:
         parser.error("--adaptive-fixtures needs --disposable-fixtures")
     base = args.base_url.rstrip("/")
@@ -152,8 +157,10 @@ def main():
         assert partial["total_cost_clp"] is None and partial["status"] == "partial"
         assert len(partial["unselected_room_ids"]) == 1
         if args.adaptive_fixtures:
-            verify_adaptation(call, capture, operator, project_path, room, bedroom, auth, other_auth,
+            comparisons = verify_adaptation(call, capture, operator, project_path, room, bedroom, auth, other_auth,
                               updated_budget["total_cost_clp"])
+            if args.evaluation_output:
+                args.evaluation_output.write_text(json.dumps(comparisons, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     finally:
         call(project_path, "DELETE", headers=auth, expected=204)
         call("/api/auth/logout", "POST", headers=auth, expected=204)
@@ -175,6 +182,7 @@ def verify_adaptation(call, capture, operator, project_path, living, bedroom, au
     assert len(initial["suggestions"]) == 2
     assert call(living_path, headers=auth)["provisionalBudget"] is True
 
+    comparisons = []
     for category, source in [("ceramic", "sodimac"), ("laminate", "easy")]:
         preferred = call(suggestions_path + "/preferences", "PATCH", {
             "preferredCategory": category, "preferredSource": source,
@@ -183,6 +191,7 @@ def verify_adaptation(call, capture, operator, project_path, living, bedroom, au
         assert preferred["publicationKey"] is None
         adjusted = call(suggestions_path, headers=auth)["suggestions"]
         assert adjusted[0]["category"] == category and adjusted[0]["source"] == source
+        comparisons.append(evaluate_case(call, auth, project_path.split("/")[-1], bedroom["id"]))
     call(project_path, "PATCH", {"budgetClp": committed + 1000}, auth)
     over_budget = call(suggestions_path, headers=auth)["suggestions"]
     assert all(not candidate["fitsBudget"] for candidate in over_budget)
@@ -214,6 +223,8 @@ def verify_adaptation(call, capture, operator, project_path, living, bedroom, au
     saved = next(item for item in call(project_path, headers=auth)["rooms"] if item["id"] == bedroom["id"])
     assert saved["preferredSource"] == "easy" and saved["publicationKey"] == proposal["publicationKey"]
     print(f"Adaptive integration passed: owner isolation, preference ranking, room exclusion, project switch and price confirmation {preferred_floor['totalClp']} -> {changed['quote']['totalClp']} CLP.")
+
+    return comparisons
 
 
 if __name__ == "__main__":

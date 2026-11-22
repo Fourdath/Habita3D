@@ -7,12 +7,15 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { ApiBody, ApiSecurity, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 
 import { CatalogQueryDto, PageQueryDto } from './materials.dto.js';
 import { MaterialsImportGuard } from './materials-token.guard.js';
 import { MaterialsService } from './materials.service.js';
 
 @Controller('materials')
+@ApiTags('Catálogo')
 export class MaterialsController {
   constructor(private readonly materials: MaterialsService) {}
 
@@ -28,6 +31,9 @@ export class MaterialsController {
 
   @Post('import')
   @UseGuards(MaterialsImportGuard)
+  @ApiSecurity('materialsToken')
+  @ApiBody({ schema: { type: 'object' }, description: 'CaptureResult del contrato FastAPI.' })
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   importCapture(@Body() payload: unknown) {
     return this.materials.importCapture(payload);
   }

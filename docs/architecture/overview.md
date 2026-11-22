@@ -1,9 +1,10 @@
 # Arquitectura de Habita3D
 
-Actualizada para EP2, bloques 1 y 2, el 24/10/2026. El recorrido visual actual
-conserva la demostración EP1; las pantallas de selección con datos reales
-corresponden al bloque 3. El [manual del backend](../ep2/bloque-2-backend.md)
-y el [manual de staging](../ep2/bloque-2-staging.md) permiten preparar esa integración.
+La interfaz EP2 consulta el catálogo y los proyectos privados mediante NestJS.
+Para la entrega final, el bloque 1 añade sugerencias de pisos calculadas por
+FastAPI. El [contrato](../final/contrato-sugerencias.md) permite conectar la UI
+en el bloque 2 y el [ADR 0004](../adr/0004-sugerencias-por-habitacion.md)
+justifica el mecanismo, sus límites y el reparto entre servicios.
 
 ## Problema y decisiones
 
@@ -35,9 +36,10 @@ explican persistencia y programación, junto con las decisiones de redes de EP1.
 flowchart LR
     U[Usuario ficticio de demo] --> FE[Angular y visor 3D]
     FE -->|EP1 preview| BE[NestJS]
-    FE -.->|APIs EP2 listas; integración visual bloque 3| BE
+    FE -->|Catálogo y proyectos privados| BE
+    FE -.->|Interfaz de sugerencias del bloque 2| BE
     BE -->|Prisma y transacciones| DB[(PostgreSQL)]
-    BE -->|captura protegida y cálculo| PY[FastAPI]
+    BE -->|Captura, cálculo y sugerencias con credencial interna| PY[FastAPI]
     PY -->|JSON y solicitudes limitadas| WEB[Sodimac y Easy]
     PY --> CACHE[(Evidencia local persistente)]
     S[Programador NestJS 08 12 16 Chile] --> BE
@@ -71,10 +73,19 @@ no se mezclan con el precio público. `unknown` no significa sin stock. Véanse 
 ## Compatibilidad EP1
 
 `POST /api/projects/preview` sigue llamando a `/recommendations/compare` con cifras
-demostrativas y persiste un proyecto heredado sin propietario. El visor del navegador
-sigue usando su recorrido demostrativo hasta el bloque 3. Los proyectos EP2 privados
-usan las nuevas rutas, con presupuesto total y habitaciones; no se atribuyen
-automáticamente los proyectos viejos a una cuenta.
+demostrativas y persiste un proyecto heredado sin propietario. El visor libre carga
+SVG y ofrece el modo demostrativo. Los proyectos privados usan habitaciones
+vinculadas al plano de ejemplo. Las rutas de captura, cómputo y recomendación
+de FastAPI requieren la credencial interna.
+
+## Sugerencias para la entrega final
+
+NestJS combina preferencias y presupuesto desde una instantánea del catálogo.
+FastAPI reutiliza el cálculo por cajas y devuelve hasta tres alternativas ordenadas,
+con costo, exceso y razones. La selección se confirma después de recalcular y
+comprobar el precio y la habitación en PostgreSQL. El usuario controla las
+preferencias por habitación y la activación por proyecto. Consultar sugerencias
+no inicia captura web y el costo sigue siendo una estimación de compra de pisos.
 
 ## Despliegue local
 
