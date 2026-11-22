@@ -1,5 +1,5 @@
 // Synthetic data for isolated tests only. Never imported by application components.
-import type { CatalogStatus, Project, ProjectBudget, Publication } from './ep2.types';
+import type { CatalogStatus, FloorSuggestions, Project, ProjectBudget, Publication } from './ep2.types';
 export const TEST_PUBLICATION: Publication = {
   publicationKey: 'a'.repeat(64), source: 'easy', category: 'ceramic', name: 'Piso sintético de prueba', seller: 'Easy', brand: null, sku: 'test-only',
   productUrl: 'https://example.test/producto', imageUrl: null, currency: 'CLP', priceType: 'public', pricePerBoxClp: 10000,
@@ -17,3 +17,12 @@ export const TEST_BUDGET: ProjectBudget = {
   calculation_basis: 'latest_persisted_publications', scope: 'floor_boxes_only',
 };
 export const TEST_STATUS: CatalogStatus = { publicationCount: 1, latestRun: { status: 'complete', finishedAt: TEST_PUBLICATION.checkedAt }, latestJob: null, groups: [], schedule: { enabled: false, hours: [8, 12, 16], timezone: 'America/Santiago' } };
+export const TEST_SUGGESTIONS: FloorSuggestions = {
+  availableBudgetClp: 80000, provisionalBudget: false, emptyReason: null,
+  suggestions: [{
+    publicationKey: TEST_PUBLICATION.publicationKey, name: TEST_PUBLICATION.name,
+    category: TEST_PUBLICATION.category, source: TEST_PUBLICATION.source, availability: 'unknown',
+    checkedAt: TEST_PUBLICATION.checkedAt, priceStale: false, boxes: 8, totalClp: 80000,
+    fitsBudget: true, budgetExcessClp: 0, reasons: ['Cabe en el presupuesto'], quoteId: 'quote-v1',
+  }],
+};

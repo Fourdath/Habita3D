@@ -10,6 +10,7 @@ import { Prisma } from '../../generated/prisma/client.js';
 import type { Publication } from '../../generated/prisma/client.js';
 
 import {
+  CATALOGUE_IMPORT_LOCK,
   captureHash,
   chileDisplay,
   validateCapture,
@@ -72,7 +73,7 @@ export class MaterialsService {
       async (tx) => {
         // A transaction-level lock serializes imports across all backend instances.
         // It is distinct from the acquisition lock, so no transaction is held during HTTP.
-        await tx.$queryRaw`SELECT pg_advisory_xact_lock(72634103)::text AS locked`;
+        await tx.$queryRaw`SELECT pg_advisory_xact_lock(${CATALOGUE_IMPORT_LOCK})::text AS locked`;
         const prior = await tx.captureRun.findUnique({
           where: { runId: capture.run_id },
         });

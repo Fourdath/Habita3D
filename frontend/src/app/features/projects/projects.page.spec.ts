@@ -4,6 +4,7 @@ import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
 import { of } from 'rxjs';
 import { Ep2ApiService } from '../../core/ep2/ep2-api.service';
 import { TEST_BUDGET, TEST_PROJECT, TEST_PUBLICATION } from '../../core/ep2/ep2.fixtures';
+import type { RoomBudget } from '../../core/ep2/ep2.types';
 import { SessionService } from '../../core/ep2/session.service';
 import { ScenePlanService } from '../../core/ep2/scene-plan.service';
 import { ProjectsPage } from './projects.page';
@@ -17,7 +18,7 @@ describe('EP2 project orchestration', () => {
     api.projects.mockResolvedValue([TEST_PROJECT]); api.project.mockResolvedValue(structuredClone(TEST_PROJECT)); api.budget.mockResolvedValue(TEST_BUDGET); api.saveRoom.mockResolvedValue(TEST_PROJECT.rooms[0]);
     TestBed.configureTestingModule({ providers: [
       { provide: Ep2ApiService, useValue: api }, { provide: SessionService, useValue: session },
-      { provide: ScenePlanService, useValue: { rooms: vi.fn().mockResolvedValue([]) } },
+      { provide: ScenePlanService, useValue: { parse: vi.fn().mockReturnValue({ rooms: [], walls: [] }) } },
       { provide: Router, useValue: { navigate: vi.fn().mockResolvedValue(true) } },
       { provide: ActivatedRoute, useValue: { queryParamMap: of(convertToParamMap({})), snapshot: { queryParams: {} } } },
     ] });
@@ -57,5 +58,38 @@ describe('EP2 project orchestration', () => {
     api.project.mockResolvedValue({ ...TEST_PROJECT, rooms: [...TEST_PROJECT.rooms, room] });
     await page.openProject(7, room.id);
     expect(page.selectedRoom()?.id).toBe(room.id);
+  });
+
+  it('reflects a newly accepted room floor and refreshes its authoritative costs', async () => {
+    const accepted = { ...TEST_PROJECT.rooms[0], publicationKey: TEST_PUBLICATION.publicationKey, publication: TEST_PUBLICATION };
+    await page.useSuggestedFloor(accepted);
+    expect(page.selectedRoom()?.publication).toBe(TEST_PUBLICATION);
+    expect(page.confirmedSuggestionRoom()).toBe(accepted.id);
+    expect(api.budget).toHaveBeenCalledWith(TEST_PROJECT.id);
+    expect(page.budget()).toBe(TEST_BUDGET);
+  });
+
+  it('uses the cost for the selected room and its current product only', () => {
+    const room = { ...TEST_PROJECT.rooms[0], publicationKey: TEST_PUBLICATION.publicationKey };
+    const cost: RoomBudget = {
+      room_id: room.id, publication_key: TEST_PUBLICATION.publicationKey,
+      status: 'calculated', reasons: [],
+      area_m2: '10.25', waste_percent: '10', required_area_m2: '11.275',
+      coverage_per_box_m2: '2', price_per_box_clp: 10000,
+      boxes: 6, purchased_area_m2: '12', cost_clp: 60000,
+      budget_clp: null, budget_excess_clp: null, fits_budget: null,
+      checked_at: TEST_PUBLICATION.checkedAt, last_check_display: TEST_PUBLICATION.lastCheckedDisplay,
+    };
+    const roomTwo = { ...room, id: 'room-two' };
+    const costTwo = { ...cost, room_id: roomTwo.id, cost_clp: 80000, boxes: 8 };
+    page.project.set({ ...TEST_PROJECT, rooms: [room, roomTwo] });
+    page.budget.set({ ...TEST_BUDGET, rooms: [cost, costTwo] });
+    expect(page.selectedRoomCost()).toEqual(cost);
+
+    page.selectedRoomId.set(roomTwo.id);
+    expect(page.selectedRoomCost()).toEqual(costTwo);
+
+    page.saveRoomResult({ ...roomTwo, publicationKey: 'b'.repeat(64) });
+    expect(page.selectedRoomCost()).toBeNull();
   });
 });

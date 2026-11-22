@@ -1,6 +1,6 @@
 import { Component, OnInit, inject, input, output, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
-import { Ep2ApiService, apiError, chileDate, money } from '../../core/ep2/ep2-api.service';
+import { Ep2ApiService, apiError, chileDate, money, safeCatalogUrl } from '../../core/ep2/ep2-api.service';
 import type { CatalogStatus, Page, PriceHistory, Publication } from '../../core/ep2/ep2.types';
 import { decimal, validDecimal } from './room-editor.component';
 
@@ -65,8 +65,6 @@ export class CatalogPanelComponent implements OnInit {
   }
   closeHistory(): void { ++this.historyRequest; this.historyProduct.set(null); this.history.set(null); this.historyLoading.set(false); }
   imageFailed(key: string): void { this.failedImages.update(keys => new Set([...keys, key])); }
-  safeUrl(value: string | null): string | null {
-    try { const url = new URL(value ?? ''); return url.protocol === 'https:' ? url.href : null; } catch { return null; }
-  }
-  availability(value: string): string { return value === 'available' ? 'Disponible según la fuente' : value === 'unavailable' ? 'No disponible según la fuente' : 'Disponibilidad desconocida'; }
+  readonly safeUrl = safeCatalogUrl;
+  availability(value: string): string { return value === 'available' ? 'Disponible según la fuente' : value === 'unavailable' ? 'No disponible según la fuente' : 'Disponibilidad sin confirmar'; }
 }

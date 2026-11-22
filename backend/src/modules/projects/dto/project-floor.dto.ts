@@ -1,0 +1,52 @@
+import { Transform, Type } from 'class-transformer';
+import {
+  ArrayMaxSize,
+  ArrayMinSize,
+  ArrayUnique,
+  IsArray,
+  IsNotEmpty,
+  IsString,
+  IsUUID,
+  Matches,
+  MaxLength,
+  ValidateNested,
+  ValidateIf,
+} from 'class-validator';
+import { ExactDecimal, trimmed } from './project-fields.js';
+
+class PlanRoomDto {
+  @Transform(trimmed)
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(100)
+  id!: string;
+
+  @Transform(trimmed)
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(120)
+  name!: string;
+
+  @ExactDecimal(1_000_000)
+  areaM2!: string;
+}
+
+export class PlanRoomsDto {
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(100)
+  @ArrayUnique((room: PlanRoomDto | null) => room?.id)
+  @ValidateNested({ each: true })
+  @Type(() => PlanRoomDto)
+  rooms!: PlanRoomDto[];
+}
+
+export class ProjectFloorDto extends PlanRoomsDto {
+  @IsString()
+  @Matches(/^[a-f0-9]{64}$/)
+  publicationKey!: string;
+
+  @ValidateIf((_, value) => value !== undefined)
+  @IsUUID('4')
+  floorplanRevision?: string;
+}

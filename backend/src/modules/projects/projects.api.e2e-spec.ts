@@ -12,7 +12,6 @@ import { AuthService } from '../auth/auth.service.js';
 import { ProjectsModule } from './projects.module.js';
 
 const roomId = '32344a38-1e52-4d6f-bdf6-39bd2ce1e5c0';
-const suggestionPath = `/api/projects/1/rooms/${roomId}/suggestions`;
 
 describe('EP2 projects authorization and DTOs (HTTP)', () => {
   let app: INestApplication;
@@ -25,7 +24,6 @@ describe('EP2 projects authorization and DTOs (HTTP)', () => {
       id: 1,
       name: 'Casa',
       budgetClp: 100_000n,
-      suggestionsEnabled: true,
       ownerId: 7,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -50,10 +48,7 @@ describe('EP2 projects authorization and DTOs (HTTP)', () => {
         update: vi.fn(async () => project),
         delete: vi.fn(async () => project),
       },
-      $queryRaw: vi.fn(
-        async (_sql: TemplateStringsArray, id: number, ownerId: number) =>
-          ownerId === 7 && id === 1 ? [{ id }] : [],
-      ),
+      $queryRaw: vi.fn(async (_sql: TemplateStringsArray, id: number, ownerId: number) => ownerId === 7 && id === 1 ? [{ id }] : []),
       $transaction: vi.fn(),
     };
     fake.$transaction.mockImplementation(
@@ -102,12 +97,15 @@ describe('EP2 projects authorization and DTOs (HTTP)', () => {
     ['get', '/api/projects/1'],
     ['patch', '/api/projects/1'],
     ['delete', '/api/projects/1'],
+    ['put', '/api/projects/1/floorplan'],
     ['get', '/api/projects/1/budget'],
+    ['patch', '/api/projects/1/suggestions/settings'],
+    ['get', `/api/projects/1/rooms/${roomId}/suggestions`],
+    ['patch', `/api/projects/1/rooms/${roomId}/suggestions/preferences`],
+    ['post', `/api/projects/1/rooms/${roomId}/suggestions/accept`],
     ['post', '/api/projects/1/rooms'],
     ['patch', `/api/projects/1/rooms/${roomId}`],
     ['delete', `/api/projects/1/rooms/${roomId}`],
-    ['get', suggestionPath],
-    ['post', `${suggestionPath}/accept`],
   ] as const)('requires a session for %s %s', async (method, url) => {
     await request(app.getHttpServer())[method](url).expect(401);
     expect(findFirst).not.toHaveBeenCalled();
@@ -122,12 +120,7 @@ describe('EP2 projects authorization and DTOs (HTTP)', () => {
       .send({ name: '  Casa EP2  ', budgetClp: 200_000 })
       .expect(201);
     expect(create).toHaveBeenCalledWith({
-      data: {
-        name: 'Casa EP2',
-        ownerId: 7,
-        budgetClp: 200_000n,
-        suggestionsEnabled: true,
-      },
+      data: { name: 'Casa EP2', ownerId: 7, budgetClp: 200_000n, suggestionsEnabled: true },
     });
     expect(response.body.budgetClp).toBe(200_000);
     expect(response.body.ownerId).toBeUndefined();
@@ -174,15 +167,6 @@ describe('EP2 projects authorization and DTOs (HTTP)', () => {
       .delete(`/api/projects/1/rooms/${roomId}`)
       .set('Authorization', 'Bearer other')
       .expect(404);
-    await request(app.getHttpServer())
-      .get(suggestionPath)
-      .set('Authorization', 'Bearer other')
-      .expect(404);
-    await request(app.getHttpServer())
-      .post(`${suggestionPath}/accept`)
-      .set('Authorization', 'Bearer other')
-      .send({ publicationKey: 'a'.repeat(64), expectedCostClp: 60_000 })
-      .expect(404);
   });
 
   it('rejects unknown fields and invalid values before hitting persistence', async () => {
@@ -191,12 +175,6 @@ describe('EP2 projects authorization and DTOs (HTTP)', () => {
       { name: 'Pieza', areaMode: 'area', areaM2: '0.0000001' },
       { name: 'Pieza', areaMode: 'area', areaM2: '10', wastePercent: '101' },
       { name: 'Pieza', areaMode: 'area', areaM2: '10', pricePerBoxClp: 1 },
-      {
-        name: 'Pieza',
-        areaMode: 'area',
-        areaM2: '10',
-        preferredSource: 'otra',
-      },
     ];
     for (const body of bodies) {
       await request(app.getHttpServer())
@@ -208,37 +186,23 @@ describe('EP2 projects authorization and DTOs (HTTP)', () => {
     expect(findFirst).not.toHaveBeenCalled();
   });
 
-  it('validates exclusions, expected cost and suggestions toggle before persistence', async () => {
-    const client = request(app.getHttpServer());
-    await client
-      .get(suggestionPath)
-      .query({ exclude: 'malformada' })
-      .set('Authorization', 'Bearer owner')
-      .expect(400);
-    await client
-      .get(suggestionPath)
-      .query({ exclude: Array(41).fill('a'.repeat(64)).join(',') })
-      .set('Authorization', 'Bearer owner')
-      .expect(400);
-    await client
-      .post(`${suggestionPath}/accept`)
-      .set('Authorization', 'Bearer owner')
-      .send({ publicationKey: 'a'.repeat(64), expectedCostClp: '60000' })
-      .expect(400);
-    await client
-      .patch('/api/projects/1')
-      .set('Authorization', 'Bearer owner')
-      .send({ suggestionsEnabled: null })
-      .expect(400);
-    expect(findFirst).not.toHaveBeenCalled();
-    expect(calculateBudget).not.toHaveBeenCalled();
-  });
-
   it('keeps the public EP1 demo validation separate from private EP2 operations', async () => {
     await request(app.getHttpServer())
       .post('/api/projects/preview')
       .send({ name: 'Demo', areaM2: -1, budgetClp: 100 })
       .expect(400);
     expect(create).not.toHaveBeenCalled();
+  });
+
+  it('publishes the v1 contract and rejects invalid suggestion filters and changes', async () => {
+    const server = app.getHttpServer();
+    const contract = await request(server).get('/api/projects/suggestions/openapi.json').expect(200);
+    expect(contract.body.openapi).toBe('3.0.3');
+    expect(contract.body.paths['/projects/{id}/rooms/{roomId}/suggestions/accept'].post.responses['409']).toBeDefined();
+    await request(server).get(`/api/projects/1/rooms/${roomId}/suggestions?exclude=bad`).set('Authorization', 'Bearer owner').expect(400);
+    await request(server).patch('/api/projects/1/suggestions/settings').set('Authorization', 'Bearer owner').send({ suggestionsEnabled: 'false' }).expect(400);
+    await request(server).patch(`/api/projects/1/rooms/${roomId}/suggestions/preferences`)
+      .set('Authorization', 'Bearer owner').send({ preferredCategory: null }).expect(400);
+    expect(findFirst).not.toHaveBeenCalled();
   });
 });

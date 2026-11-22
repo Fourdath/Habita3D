@@ -25,17 +25,18 @@ export class ReadinessController {
       // This fixed probe exercises the protected Python path without reading or
       // writing catalogue or project data. It works on a fresh installation.
       const result = await this.python.recommendFloors({
-        area_m2: '1',
-        waste_percent: '0',
-        available_budget_clp: 0,
-        preferred_category: null,
-        preferred_source: null,
-        candidates: [],
+        budget_clp: 0,
+        room: {
+          room_id: 'health-probe', area_m2: '1', waste_percent: '0', budget_clp: null,
+          preferred_category: null, preferred_source: null,
+        },
+        other_rooms: [],
+        publications: [],
       }, requestId);
-      if (result.status !== 'no_candidates' || result.items.length !== 0) {
+      if (result.empty_reason !== 'no_calculable_options' || result.suggestions.length !== 0) {
         throw new Error('Unexpected recommendation probe result');
       }
-      return { status: 'ok', ruleVersion: result.rule_version };
+      return { status: 'ok', ruleVersion: 'floor-rules-v1' };
     } catch {
       throw new ServiceUnavailableException({ status: 'unavailable' });
     }

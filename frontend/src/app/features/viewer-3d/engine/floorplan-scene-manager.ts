@@ -4,6 +4,7 @@ import type { Floorplan } from '../../../core/floorplan/floorplan.types';
 import type { InteriorStyleId } from '../../../core/interior-style/interior-style.types';
 import { buildFloorplanGroup } from './floorplan-geometry';
 import { MaterialRegistry } from './materials/material-registry';
+import { disposeRoomFloorMaterials } from './room-floor-selection';
 import type { FloorplanBuildResult } from './surface-mesh.types';
 import { disposeObject3D } from './three-object-disposal';
 
@@ -35,6 +36,7 @@ export class FloorplanSceneManager {
     }
     if (this.result) {
       this.parent.remove(this.result.group);
+      disposeRoomFloorMaterials(this.result.group);
       disposeObject3D(this.result.group, { keepMaterials: true });
     }
     this.parent.add(next.group);
@@ -49,6 +51,7 @@ export class FloorplanSceneManager {
     ++this.requestToken;
     if (this.result) {
       this.parent.remove(this.result.group);
+      disposeRoomFloorMaterials(this.result.group);
       disposeObject3D(this.result.group, { keepMaterials: true });
       this.result = null;
     }

@@ -2,9 +2,10 @@ import { findFurnitureCatalogEntry, FURNITURE_CATALOG } from './furniture-catalo
 import { getInteriorStyle, listInteriorStyles } from './interior-style-catalog';
 
 describe('interior style catalog', () => {
-  it('lists exactly the three defined styles: none, nordic, industrial', () => {
+  it('lists the original design and the four selectable styles', () => {
     const styles = listInteriorStyles();
-    expect(styles.map((s) => s.id)).toEqual(['none', 'nordic', 'industrial']);
+    expect(styles.map((s) => s.id)).toEqual(['none', 'nordic', 'industrial', 'mediterranean', 'contemporary']);
+    expect(new Set(styles.map(style => style.facadeLabel)).size).toBe(styles.length);
   });
 
   it('gives "none" no architectural material override and no budget items', () => {

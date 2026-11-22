@@ -35,11 +35,11 @@ def test_missing_or_invalid_configuration_fails_closed_without_disabling_health(
 
 def test_openapi_describes_internal_header_and_leaves_health_public():
     schema = client.get("/openapi.json").json()
-    scheme = schema["components"]["securitySchemes"]["InternalMaterialsToken"]
+    scheme = schema["components"]["securitySchemes"]["MaterialsToken"]
     assert scheme["in"] == "header"
     assert scheme["name"] == "X-Materials-Token"
     for method, path in PROTECTED_ROUTES:
         op = schema["paths"][path][method.lower()]
-        assert op["security"] == [{"InternalMaterialsToken": []}]
+        assert op["security"] == [{"MaterialsToken": []}]
         assert {"401", "503"} <= op["responses"].keys()
     assert "security" not in schema["paths"]["/health"]["get"]

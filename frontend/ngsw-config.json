@@ -1,0 +1,29 @@
+{
+  "$schema": "./node_modules/@angular/service-worker/config/schema.json",
+  "index": "/index.html",
+  "navigationUrls": ["/**", "!/**/*.*", "!/**/*__*", "!/**/*__*/**", "!/api/**"],
+  "assetGroups": [
+    {
+      "name": "application",
+      "installMode": "prefetch",
+      "resources": {
+        "files": ["/index.html", "/manifest.webmanifest", "/*.css", "/*.js"]
+      }
+    },
+    {
+      "name": "public-demo",
+      "installMode": "prefetch",
+      "resources": {
+        "files": [
+          "/assets/floorplans/**",
+          "/assets/furniture/**",
+          "/assets/home/**",
+          "/assets/icon/**",
+          "/assets/models/**",
+          "/assets/textures/**",
+          "!/assets/**/*.md"
+        ]
+      }
+    }
+  ]
+}

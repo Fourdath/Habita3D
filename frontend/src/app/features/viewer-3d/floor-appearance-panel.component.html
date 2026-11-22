@@ -1,0 +1,53 @@
+<section class="floor-appearance" aria-labelledby="floor-appearance-title" [attr.aria-busy]="busy()"
+  (keydown)="$event.stopPropagation()" (keyup)="$event.stopPropagation()">
+  <h2 id="floor-appearance-title">Apariencia del piso</h2>
+  <p>Previsualización 3D de la habitación.</p>
+
+  @if (rooms().length > 1) {
+    <label class="floor-appearance__room">Recinto del plano
+      <select [value]="selectedRoomId() ?? ''" [disabled]="busy()" (change)="onRoomChange($event)">
+        @for (room of rooms(); track room.id) {
+          <option [value]="room.id" [selected]="room.id === selectedRoomId()">{{ room.name }} · {{ room.areaM2.toFixed(1) }} m²</option>
+        }
+      </select>
+    </label>
+  }
+
+  @if (selectedRoomId()) {
+    <fieldset class="floor-appearance__finishes" [disabled]="busy()">
+      <legend>Acabado</legend>
+      <label class="floor-appearance__option" [class.is-selected]="finish() === null">
+        <input type="radio" name="floor-finish" value="original" [checked]="finish() === null" (change)="finishChange.emit(null)" />
+        <span class="floor-appearance__preview floor-appearance__preview--original" aria-hidden="true">↺</span>
+        <span>Original</span>
+      </label>
+      @for (choice of finishes; track choice.id) {
+        <label class="floor-appearance__option" [class.is-selected]="finish() === choice.id">
+          <input type="radio" name="floor-finish" [value]="choice.id" [checked]="finish() === choice.id" (change)="finishChange.emit(choice.id)" />
+          <span class="floor-appearance__preview" [style.background-color]="choice.swatch"
+            [style.background-image]="choice.preview" aria-hidden="true"></span>
+          <span>{{ choice.label }}</span>
+        </label>
+      }
+    </fieldset>
+
+    <fieldset class="floor-appearance__colors" [disabled]="busy()">
+      <legend>Color del piso</legend>
+      @for (choice of tints; track choice.label) {
+        <button type="button" class="floor-appearance__tone" [attr.aria-label]="choice.label" [title]="choice.label"
+          [attr.aria-pressed]="tint() === choice.color" (click)="tintChange.emit(choice.color)">
+          <span [style.background-color]="choice.color" aria-hidden="true">{{ choice.color === null ? '↺' : '' }}</span>
+        </button>
+      }
+      <input type="color" aria-label="Color personalizado" title="Color personalizado"
+        [value]="tint() ?? '#ffffff'" (change)="onColorChange($event)" />
+    </fieldset>
+
+    @if (finish() || tint()) {
+      @if (allowWholeHouse()) {
+        <button type="button" class="floor-appearance__reset" [disabled]="busy()" (click)="applyToWholeHouse.emit()">Previsualizar este piso en toda la casa</button>
+      }
+      <button type="button" class="floor-appearance__reset" [disabled]="busy()" (click)="appearanceReset.emit()">Restablecer apariencia</button>
+    }
+  }
+</section>

@@ -23,17 +23,17 @@ El runner aplica Terraform, conserva un respaldo antes de migrar una base
 existente y ejecuta la comprobación del commit desplegado.
 
 En Windows, repetir la comprobación de solo lectura y guardar un informe local.
-El valor de ExpectedVersion debe coincidir con la SHA desplegada. AlertAfterMs es
-un umbral opcional acordado por el operador. El comando devuelve un error si
-falla un endpoint o se supera el umbral configurado.
+El valor de ExpectedVersion debe coincidir con la SHA desplegada.
+ReadinessWarningMs ajusta el umbral de advertencia para la latencia de disponibilidad.
+El comando devuelve un error si una comprobación requerida falla.
 
 ~~~powershell
-./scripts/verify-local.ps1 -BaseUrl http://127.0.0.1:18080 -ExpectedVersion $sha -ReportJson
+./scripts/verify-local.ps1 -BaseUrl http://127.0.0.1:18080 -ExpectedVersion $sha -PassThru | ConvertTo-Json -Depth 4
 ~~~
 
-El informe contiene disponibilidad, conteos y latencia por comprobación,
-identificadores de solicitud para correlacionar con los logs, estado de
-capturas y versión del motor. El diagnóstico GET /api/health/recommendations
+El informe contiene disponibilidad, conteo de publicaciones, latencia y un
+identificador de solicitud para correlacionar con los logs, además del estado de
+la última captura. El diagnóstico GET /api/health/recommendations
 ejecuta una entrada sin candidatos por NestJS y FastAPI. La prueba completa
 usa una cuenta ficticia y el catálogo real de staging.
 

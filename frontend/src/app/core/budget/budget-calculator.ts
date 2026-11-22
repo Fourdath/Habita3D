@@ -1,6 +1,7 @@
 import type { InteriorStyleId } from '../interior-style/interior-style.types';
 import { isCeramicFinish } from '../materials/material.catalog';
 import { getStyleMaterialPreset } from '../materials/style-material-presets';
+import { sheetProductForFace, type SheetProductId } from './board-coverage';
 import { calculateCeramicBoxes } from './ceramic-calculator';
 import { CONSTRUCTION_PRODUCT_CATALOG, getStyleProductMap } from './construction-product.catalog';
 import type { ConstructionProduct, ConstructionProductId } from './construction-product.types';
@@ -10,8 +11,6 @@ import type { LinearCutOptimization } from './linear-cut-optimizer';
 import { packSheets, splitForStock } from './sheet-cut-optimizer';
 import type { SheetCutOptimization } from './sheet-cut-optimizer';
 import type { ManifestWallFace, SurfaceManifest } from './surface-manifest.types';
-
-type SheetProductId = 'GYPSUM_BOARD_ST_12_5' | 'GYPSUM_BOARD_RH_12_5' | 'EXTERIOR_FIBERCEMENT_BOARD';
 
 interface LineInput {
   requiredQuantity: number;
@@ -122,19 +121,6 @@ export function computeConstructionBudget(
     totalClp: items.reduce((sum, item) => sum + item.subtotalClp, 0),
     requiresStructuralSpecification: manifest.concrete.length > 0,
   };
-}
-
-/**
- * Which sheet a face needs. Moisture-resistant board goes ONLY on the face looking into
- * the wet room — the other face of that same wall is standard board.
- */
-function sheetProductForFace(face: ManifestWallFace): SheetProductId | null {
-  if (face.assemblyId !== 'INTERIOR_LIGHT' && face.assemblyId !== 'EXTERIOR_LIGHT') return null;
-  if (face.environment === 'EXTERIOR') {
-    return face.assemblyId === 'EXTERIOR_LIGHT' ? 'EXTERIOR_FIBERCEMENT_BOARD' : null;
-  }
-  if (face.environment !== 'INTERIOR') return null;
-  return face.roomSemantic === 'BATHROOM' ? 'GYPSUM_BOARD_RH_12_5' : 'GYPSUM_BOARD_ST_12_5';
 }
 
 function ceramicLine(

@@ -1,5 +1,8 @@
 # Contrato de sugerencias para integrar Angular
 
+> Propuesta de Bloque 1. La API integrada con el frontend usa el [contrato activo de sugerencias](contrato-sugerencias-v1.md), con confirmación mediante `quoteId`.
+
+
 Propuesta implementada en el bloque 1. El equipo revisa este contrato antes de
 conectar la interfaz. Ver Swagger en /api/docs y el JSON generado en
 /api/docs-json, bajo el mismo origen que sirve la aplicación.

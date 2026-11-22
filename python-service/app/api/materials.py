@@ -9,17 +9,12 @@ from zoneinfo import ZoneInfo
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator
 
-from app.api.internal_auth import INTERNAL_AUTH_RESPONSES, require_internal_token
+from app.api.internal_auth import INTERNAL_AUTH_ERRORS, require_materials_token
 from app.services.capture_store import CaptureBusyError, CaptureStore
 from app.services.captures import CaptureRequest, CaptureResult, capture
 from app.services.materials import Publication, normalize_record
 
-router = APIRouter(
-    prefix="/materials",
-    tags=["materials"],
-    dependencies=[Depends(require_internal_token)],
-    responses=INTERNAL_AUTH_RESPONSES,
-)
+router = APIRouter(prefix="/materials", tags=["materials"], responses=INTERNAL_AUTH_ERRORS)
 
 
 def get_store() -> CaptureStore:
@@ -80,7 +75,12 @@ class NormalizeResult(BaseModel):
     duplicate_records: int
 
 
-@router.post("/normalize", response_model=NormalizeResult)
+@router.post(
+    "/normalize",
+    response_model=NormalizeResult,
+    dependencies=[Depends(require_materials_token)],
+    responses=INTERNAL_AUTH_ERRORS,
+)
 def normalize(request: NormalizeRequest) -> NormalizeResult:
     """Pure validation of canonical raw records; never calls a retailer or writes a file."""
     publications, rejected, seen = [], [], set()
@@ -101,7 +101,9 @@ def normalize(request: NormalizeRequest) -> NormalizeResult:
     )
 
 
-@router.post("/captures", response_model=CaptureResult)
+@router.post(
+    "/captures", response_model=CaptureResult, dependencies=[Depends(require_materials_token)]
+)
 async def create_capture(
     request: CaptureApiRequest,
     http_request: Request,
@@ -113,8 +115,12 @@ async def create_capture(
     try:
         async with client:
             return await capture(
-                request, client, adapters, store, request_id=http_request.state.request_id,
-                slot=request.scheduled_for.isoformat() if request.scheduled_for else None
+                request,
+                client,
+                adapters,
+                store,
+                request_id=http_request.state.request_id,
+                slot=request.scheduled_for.isoformat() if request.scheduled_for else None,
             )
     except CaptureBusyError as exc:
         raise HTTPException(409, str(exc)) from exc
@@ -122,7 +128,9 @@ async def create_capture(
         raise HTTPException(503, "No se pudo leer o guardar la evidencia local de captura") from exc
 
 
-@router.get("/status")
+@router.get(
+    "/status", dependencies=[Depends(require_materials_token)], responses=INTERNAL_AUTH_ERRORS
+)
 def capture_status(store: CaptureStore = Depends(get_store)) -> dict:
     """Local acquisition evidence only, not the future application's catalogue API."""
     try:

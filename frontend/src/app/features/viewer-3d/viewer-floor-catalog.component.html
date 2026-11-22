@@ -1,0 +1,58 @@
+<details (toggle)="onToggle($event)">
+  <summary>Ver pisos del catálogo</summary>
+  <div class="floor-catalog" [attr.aria-busy]="loading()">
+    @if (loading()) { <p role="status">Cargando productos guardados…</p> }
+    @if (failedPage(); as page) {
+      <p role="alert">No se pudo consultar el catálogo guardado.</p>
+      <button type="button" [disabled]="busy()" (click)="load(page)">Reintentar catálogo</button>
+    }
+    @if (catalog(); as result) {
+      @if (products().length) {
+        <fieldset class="floor-products" [disabled]="busy() || loading() || failedPage() !== null">
+          <legend>Elige un piso</legend>
+          @for (product of products(); track product.publicationKey) {
+            <label class="floor-product" [class.floor-product--selected]="pendingKey() === product.publicationKey">
+              <app-catalog-product-photo class="floor-product__photo" [src]="product.imageUrl" />
+              <span class="floor-product__details">
+                <span class="floor-product__source">
+                  <input type="radio" name="catalog-floor" [value]="product.publicationKey"
+                    [checked]="pendingKey() === product.publicationKey" (change)="setPending(product.publicationKey)" />
+                  {{ product.source === 'easy' ? 'Easy' : 'Sodimac' }}
+                </span>
+                <strong>{{ product.name }}</strong>
+                <span>{{ money(product.pricePerBoxClp) }} / caja</span>
+                @if (currentKey() === product.publicationKey) { <span class="floor-product__saved">Guardado</span> }
+              </span>
+            </label>
+          }
+        </fieldset>
+        @if (pendingProduct(); as product) {
+          <p>{{ money(product.pricePerBoxClp) }} por caja · {{ product.coveragePerBoxM2 }} m² por caja</p>
+          @if (product.availability === 'unknown') { <p>Disponibilidad sin confirmar.</p> }
+        }
+        @if (roomId()) {
+          <button type="button" (click)="save()"
+            [disabled]="busy() || loading() || failedPage() !== null || !pendingProduct() || pendingKey() === currentKey()">
+            Guardar piso en esta habitación
+          </button>
+        }
+        @if (wholeHouseCount()) {
+          <button type="button" class="save-floor" (click)="saveWholeHouse()"
+            [disabled]="busy() || loading() || failedPage() !== null || !pendingProduct()">
+            Guardar piso en toda la casa
+          </button>
+          <p>Reemplaza la selección de los {{ wholeHouseCount() }} recintos del plano. Añade los que aún falten en el proyecto.</p>
+        }
+      } @else if (!loading() && failedPage() === null) {
+        <p role="status">{{ result.total ? 'Esta página no tiene productos con precio y cobertura por caja.' : 'El catálogo guardado está vacío.' }}</p>
+      }
+      @if (pageCount() > 1) {
+        <nav class="floor-pages" aria-label="Páginas de productos">
+          <button type="button" [disabled]="busy() || loading() || failedPage() !== null || result.page <= 1" (click)="load(result.page - 1)">Anterior</button>
+          <span>Pág. {{ result.page }} de {{ pageCount() }}</span>
+          <button type="button" [disabled]="busy() || loading() || failedPage() !== null || result.page >= pageCount()" (click)="load(result.page + 1)">Siguiente</button>
+        </nav>
+      }
+    }
+  </div>
+</details>

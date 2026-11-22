@@ -1,0 +1,88 @@
+@let titleId = compact() ? 'viewer-suggestions-title' : 'suggestions-title';
+@let priceTitleId = compact() ? 'viewer-updated-price-title' : 'updated-price-title';
+<section class="ep2-card" [class.suggestions--compact]="compact()" [attr.aria-labelledby]="titleId" [attr.aria-busy]="working() || loading()">
+  <div class="ep2-section-head">
+    <h2 [id]="titleId">Sugerencias para {{ room().name }}</h2>
+    <button type="button" (click)="openCatalog.emit()">Ver catálogo completo</button>
+  </div>
+  @if (!enabled()) {
+    <p class="ep2-hint">Las sugerencias están desactivadas para este proyecto.</p>
+  } @else {
+    @if (room().preferredCategory !== undefined && room().preferredSource !== undefined) {
+      <form class="ep2-filters" [formGroup]="preferences" (ngSubmit)="savePreferences()" aria-label="Preferencias de la habitación">
+        <label>Tipo de piso preferido
+          <select formControlName="preferredCategory">
+            <option value="">Sin preferencia</option>
+            <option value="ceramic">Cerámica para piso</option>
+            <option value="laminate">Flotante laminado</option>
+          </select>
+        </label>
+        <label>Tienda preferida
+          <select formControlName="preferredSource">
+            <option value="">Sin preferencia</option>
+            <option value="sodimac">Sodimac</option>
+            <option value="easy">Easy</option>
+          </select>
+        </label>
+        <button type="submit" [disabled]="busy() || working() || !!priceChange()">Guardar preferencias</button>
+      </form>
+    }
+    @if (actionError()) { <p class="ep2-error" role="alert">{{ actionError() }}</p> }
+    @if (priceChange(); as change) {
+      <div class="ep2-notice" role="group" [attr.aria-labelledby]="priceTitleId">
+        <h3 [id]="priceTitleId">Confirma el costo actualizado</h3>
+        <p role="status">{{ change.current.name }}. Antes {{ money(change.previous.totalClp) }}. Ahora {{ money(change.current.totalClp) }} por {{ change.current.boxes }} cajas.</p>
+        @if (!change.current.fitsBudget) { <p>Supera el presupuesto disponible en {{ money(change.current.budgetExcessClp) }}.</p> }
+        <div class="ep2-actions">
+          <button class="ep2-primary" type="button" [disabled]="busy() || working()" (click)="accept(change.current)">Confirmar {{ money(change.current.totalClp) }}</button>
+          <button type="button" [disabled]="busy() || working()" (click)="priceChange.set(null); refresh()">Cancelar y actualizar</button>
+        </div>
+      </div>
+    }
+    @if (!hasArea(room())) { <p class="ep2-hint">Guarda la superficie de la habitación para consultar sugerencias.</p> }
+    @if (loading()) { <p role="status">Consultando sugerencias…</p> }
+    @if (queryError()) {
+      <p class="ep2-error" role="alert">{{ queryError() }}</p>
+      <button type="button" [disabled]="busy() || working()" (click)="refresh()">Volver a consultar</button>
+    }
+    @if (response(); as result) {
+      <p class="ep2-hint">Presupuesto disponible para esta habitación: {{ money(result.availableBudgetClp) }}.</p>
+      @if (result.provisionalBudget) {
+        <p class="ep2-notice" role="status">Saldo provisional. Faltan costos de otras habitaciones.</p>
+      }
+      @if (!result.suggestions.length) {
+        <p class="ep2-notice" role="status">{{ result.emptyReason === 'all_dismissed' ? 'Ya descartaste todas las sugerencias disponibles para esta habitación.' : 'El catálogo guardado no tiene opciones con un costo calculable para esta habitación.' }}</p>
+      }
+      <div class="ep2-products">
+        @for (item of result.suggestions; track item.publicationKey) {
+          <article class="ep2-product" [class.ep2-product--selected]="room().publicationKey === item.publicationKey">
+            <div class="ep2-product-image"><app-catalog-product-photo [src]="item.imageUrl" /></div>
+            <div class="ep2-product-body">
+              <small>{{ item.source === 'easy' ? 'Easy' : 'Sodimac' }} · {{ item.category === 'ceramic' ? 'Cerámica' : 'Flotante laminado' }}</small>
+              <h3>{{ item.name }}</h3>
+              <p><strong class="ep2-product-price">{{ money(item.totalClp) }}</strong> por {{ item.boxes }} {{ item.boxes === 1 ? 'caja' : 'cajas' }}</p>
+              <p>{{ item.fitsBudget ? 'Dentro del presupuesto disponible' : 'Excede el presupuesto disponible en ' + money(item.budgetExcessClp) }}</p>
+              <p>Última comprobación: {{ chileDate(item.checkedAt) }} (Chile).</p>
+              @if (item.availability === 'unknown') { <p>Disponibilidad sin confirmar</p> }
+              @if (item.priceStale) { <p class="ep2-notice">Precio sin comprobación en las últimas 24 horas.</p> }
+              @if (item.reasons.length) {
+                <ul>
+                  @for (reason of item.reasons; track $index) { <li>{{ reason }}</li> }
+                </ul>
+              }
+              <div class="ep2-actions">
+                <button class="ep2-primary" type="button" [disabled]="busy() || working() || !!priceChange() || room().publicationKey === item.publicationKey" (click)="accept(item)">{{ room().publicationKey === item.publicationKey ? 'Piso guardado' : 'Aceptar sugerencia' }}</button>
+                @if (canPreview() && !busy() && !working() && !priceChange()) {
+                  <a class="suggestions__preview-link" routerLink="/viewer-3d" [replaceUrl]="compact()"
+                    [queryParams]="{ project: projectId(), room: room().id, preview: item.publicationKey }"
+                    [attr.aria-label]="'Ver en 3D ' + item.name">Ver en 3D</a>
+                }
+                <button type="button" [disabled]="busy() || working() || !!priceChange()" (click)="dismiss(item)">Descartar sugerencia</button>
+              </div>
+            </div>
+          </article>
+        }
+      </div>
+    }
+  }
+</section>

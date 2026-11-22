@@ -1,10 +1,9 @@
 /**
- * Validates a user-picked floor plan file entirely in memory — never uploaded to a
- * backend, never written into public/. Used by Viewer3DPage's file picker before
- * handing the raw SVG text to Viewer3DEngine.
+ * Validates a user-picked SVG in memory before rendering it or saving it to a project.
  */
 
 export const MAX_FLOORPLAN_FILE_SIZE_BYTES = 5 * 1024 * 1024;
+export const MAX_PROJECT_FLOORPLAN_BYTES = 1024 * 1024;
 
 export type FloorplanFileErrorCode =
   | 'invalid-extension'
@@ -53,19 +52,28 @@ export function validateFloorplanSvgText(svgText: string): void {
  * Reads a picked file as text, validating extension, size and content before handing
  * it back. Rejects with a FloorplanFileError carrying a user-facing Spanish message.
  */
-export async function readFloorplanFile(file: File): Promise<string> {
+export async function readFloorplanFile(file: File, project = false): Promise<string> {
   if (!hasSvgExtension(file.name)) {
     throw new FloorplanFileError('El archivo debe tener extensión .svg.', 'invalid-extension');
   }
 
-  if (file.size > MAX_FLOORPLAN_FILE_SIZE_BYTES) {
-    throw new FloorplanFileError('El archivo supera el tamaño máximo permitido (5 MB).', 'file-too-large');
+  if (file.size > (project ? MAX_PROJECT_FLOORPLAN_BYTES : MAX_FLOORPLAN_FILE_SIZE_BYTES)) {
+    throw new FloorplanFileError(`El archivo supera el tamaño máximo permitido (${project ? '1 MB' : '5 MB'}).`, 'file-too-large');
   }
 
   const svgText = await readFileAsText(file);
 
+  if (project) validateProjectFloorplanSvg(svgText);
   validateFloorplanSvgText(svgText);
   return svgText;
+}
+
+export function validateProjectFloorplanSvg(svg: string): void {
+  if (/<!\s*(?:DOCTYPE|ENTITY)\b/i.test(svg)) {
+    throw new Error('Exporta el plano SVG sin declaración DOCTYPE ni entidades XML.');
+  }
+  const root = new DOMParser().parseFromString(svg, 'image/svg+xml').documentElement;
+  if (root.localName !== 'svg') throw new Error('Selecciona un archivo SVG de CubiCasa.');
 }
 
 /**

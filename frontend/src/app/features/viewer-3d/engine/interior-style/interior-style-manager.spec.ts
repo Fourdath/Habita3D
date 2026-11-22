@@ -120,6 +120,21 @@ describe('InteriorStyleManager', () => {
     expect(manager.currentStyle).toBe('industrial');
   });
 
+  it.each([
+    ['mediterranean', 'MEDITERRANEAN_WALL_IVORY', 'MEDITERRANEAN_EXTERIOR_SAND', 'FLOOR_TILE_TERRACOTTA', 'MEDITERRANEAN_JOINERY_BLUE'],
+    ['contemporary', 'CONTEMPORARY_WALL_SAGE', 'CONTEMPORARY_EXTERIOR_SLATE', 'FLOOR_CONCRETE_SMOOTH', 'FRAME_BLACK'],
+  ] as const)('applies the %s interior and façade in the same operation', async (style, wall, facade, floor, frame) => {
+    const manager = new InteriorStyleManager(new MaterialRegistry(1, textureFactory));
+    const house = buildHouseGroup();
+
+    await manager.applyStyle(style, house);
+
+    expect(house.getObjectByName('wall')?.userData['surfaceMaterialId']).toBe(wall);
+    expect(house.getObjectByName('exteriorWall')?.userData['surfaceMaterialId']).toBe(facade);
+    expect(house.getObjectByName('floor')?.userData['surfaceMaterialId']).toBe(floor);
+    expect(house.getObjectByName('windowFrame')?.userData['surfaceMaterialId']).toBe(frame);
+  });
+
   it('does not create furniture for any floor plan', async () => {
     const manager = new InteriorStyleManager(new MaterialRegistry(1, textureFactory));
     const house = buildHouseGroup();

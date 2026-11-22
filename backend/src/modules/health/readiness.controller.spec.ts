@@ -25,7 +25,7 @@ describe('readiness', () => {
 describe('recommendation health probe', () => {
   it('checks the protected Python recommendation contract on an empty catalogue', async () => {
     const recommendFloors = vi.fn().mockResolvedValue({
-      status: 'no_candidates', items: [], rule_version: 'floor-rules-v1',
+      empty_reason: 'no_calculable_options', suggestions: [],
     });
     const controller = new ReadinessController(
       {} as PrismaService, { recommendFloors } as unknown as PythonService,
@@ -35,7 +35,7 @@ describe('recommendation health probe', () => {
       status: 'ok', ruleVersion: 'floor-rules-v1',
     });
     expect(recommendFloors).toHaveBeenCalledWith(
-      expect.objectContaining({ candidates: [], available_budget_clp: 0 }), 'test-req',
+      expect.objectContaining({ publications: [], budget_clp: 0 }), 'test-req',
     );
   });
 

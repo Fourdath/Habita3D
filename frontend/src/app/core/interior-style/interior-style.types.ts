@@ -5,13 +5,13 @@
  * consumer (features/viewer-3d/engine/floorplan-geometry.ts).
  */
 
-export type InteriorStyleId = 'none' | 'nordic' | 'industrial';
+export type InteriorStyleId = 'none' | 'nordic' | 'industrial' | 'mediterranean' | 'contemporary';
 
 export type FurnitureCategory = 'sofa' | 'table' | 'chair' | 'bed' | 'nightstand';
 
 export interface MaterialSpec {
   /** Base directory of a diffuse/normal/roughness set, e.g. 'assets/textures/oak_wood_planks'. */
-  texturePath: string;
+  texturePath?: string;
   /** How many meters one texture tile represents, for physically-plausible repeat tiling. */
   tileMeters: number;
   /** Shown immediately (and kept if the texture fails to load) so nothing renders untextured/black. */
@@ -55,6 +55,7 @@ export interface BudgetItem {
 export interface InteriorStyle {
   id: InteriorStyleId;
   name: string;
+  facadeLabel: string;
   palette: { primary: number; secondary: number; accent: number };
   /** null for 'none' — keeps the neutral materials from floorplan-geometry.ts. */
   interiorWallMaterial: MaterialSpec | null;

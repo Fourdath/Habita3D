@@ -5,18 +5,19 @@ The default mode is read-only and suitable for staging health checks.
 """
 
 import argparse
-import json
-import os
-import urllib.error
-import urllib.request
 from copy import deepcopy
 from datetime import datetime, timedelta, timezone
-from decimal import ROUND_CEILING, ROUND_HALF_UP, Decimal
+from decimal import Decimal, ROUND_CEILING, ROUND_HALF_UP
+import json
+import os
 from pathlib import Path
+import urllib.error
+import urllib.parse
+import urllib.request
 from uuid import uuid4
-from zoneinfo import ZoneInfo
 
 from suggestion_evaluation import evaluate_case
+from zoneinfo import ZoneInfo
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -29,11 +30,14 @@ def main():
     parser.add_argument("--base-url", default="http://127.0.0.1:8080")
     parser.add_argument("--disposable-fixtures", action="store_true",
                         help="Write synthetic test captures into a disposable database only")
-    parser.add_argument("--evaluation-output", type=Path,
-                        help="Write a JSON comparison from the disposable fixtures")
+    parser.add_argument("--adaptive-fixtures", action="store_true",
+                        help="Verify suggestions and price reconfirmation after importing disposable fixtures")
+    parser.add_argument("--evaluation-output", type=Path, help="Write comparisons from the disposable fixtures")
     args = parser.parse_args()
-    if args.evaluation_output and not args.disposable_fixtures:
-        parser.error("--evaluation-output requires --disposable-fixtures")
+    if args.evaluation_output and not args.adaptive_fixtures:
+        parser.error("--evaluation-output needs --adaptive-fixtures")
+    if args.adaptive_fixtures and not args.disposable_fixtures:
+        parser.error("--adaptive-fixtures needs --disposable-fixtures")
     base = args.base_url.rstrip("/")
     opener = urllib.request.build_opener(NoRedirect)
 
@@ -54,13 +58,11 @@ def main():
     ready = call("/api/health/ready", headers={"X-Request-ID": "ep2-smoke"})
     assert ready["status"] == "ok"
     assert ready["services"] == {"postgres": "ok", "python": "ok"}
-    probe = call("/api/health/recommendations", headers={"X-Request-ID": "final-smoke-health"})
-    assert probe == {"status": "ok", "ruleVersion": "floor-rules-v1"}
     catalogue = call("/api/materials?limit=1")
     assert isinstance(catalogue["items"], list) and isinstance(catalogue["total"], int)
     call("/api/captures/status")
     if not args.disposable_fixtures:
-        print("Read-only verification: readiness, persisted catalogue, capture status and recommender passed.")
+        print("EP2 read-only verification: readiness, persisted catalogue and capture status passed.")
         return
 
     token = os.environ.get("MATERIALS_API_TOKEN", "")
@@ -137,7 +139,7 @@ def main():
             "name": "Living", "areaMode": "area", "areaM2": "10",
             "wastePercent": "10", "publicationKey": key,
         }, auth, 201)
-        expected_boxes = int((Decimal(11) / Decimal(selected["coverage_per_box_m2"])).to_integral_value(rounding=ROUND_CEILING))
+        expected_boxes = int((Decimal("11") / Decimal(selected["coverage_per_box_m2"])).to_integral_value(rounding=ROUND_CEILING))
         budget = call(project_path + "/budget", headers=auth)
         assert budget["calculation_basis"] == "latest_persisted_publications"
         assert budget["rooms"][0]["boxes"] == expected_boxes
@@ -149,65 +151,80 @@ def main():
         assert updated_budget["rooms"][0]["publication_key"] == key
         call(project_path + f"/rooms/{room['id']}", "PATCH", {"publicationKey": None}, other_auth, 404)
         bedroom = call(project_path + "/rooms", "POST", {
-            "name": "Bedroom", "areaMode": "area", "areaM2": "10", "budgetClp": 78000,
-            "preferredCategory": "laminate", "preferredSource": "easy",
+            "name": "Bedroom", "areaMode": "area", "areaM2": "8", "budgetClp": 100000,
         }, auth, 201)
         partial = call(project_path + "/budget", headers=auth)
         assert partial["total_cost_clp"] is None and partial["status"] == "partial"
         assert len(partial["unselected_room_ids"]) == 1
-        bedroom_path = f"{project_path}/rooms/{bedroom['id']}"
-        suggestions_path = bedroom_path + "/suggestions"
-        accepted_path = suggestions_path + "/accept"
-        call(suggestions_path, expected=401)
-        call(suggestions_path, headers=other_auth, expected=404)
-        assert call(project_path + f"/rooms/{room['id']}/suggestions", headers=auth)["budgetProvisional"] is True
-
-        first_case = evaluate_case(call, auth, project["id"], bedroom["id"])
-        assert first_case["availableBudgetClp"] == 78_000
-        assert first_case["recommendedOrder"]["withinBudget"] == 1
-        assert first_case["recommendedOrder"]["items"][0]["category"] == "ceramic"
-        call(bedroom_path, "PATCH", {"budgetClp": 90000}, auth)
-        second_case = evaluate_case(call, auth, project["id"], bedroom["id"])
-        preferred = second_case["recommendedOrder"]["items"][0]
-        assert preferred["category"] == "laminate" and preferred["costClp"] == 80_000
-        excluded = call(f"{suggestions_path}?exclude={preferred['publicationKey']}", headers=auth)
-        assert all(p["publication"]["publicationKey"] != preferred["publicationKey"] for p in excluded["items"])
-
-        call(bedroom_path, "PATCH", {"budgetClp": 50000}, auth)
-        third_case = evaluate_case(call, auth, project["id"], bedroom["id"])
-        assert third_case["status"] == "over_budget"
-        assert third_case["recommendedOrder"]["items"][0]["costClp"] == 72_000
-        assert third_case["recommendedOrder"]["withinBudget"] == 0
-        call(bedroom_path, "PATCH", {"budgetClp": 90000}, auth)
-        if args.evaluation_output:
-            args.evaluation_output.write_text(json.dumps({
-                "dataType": "synthetic_fixtures", "version": ready["version"],
-                "method": "first-3-stable-catalogue-vs-recommender",
-                "cases": [first_case, second_case, third_case],
-            }, indent=2) + "\n", encoding="utf-8")
-
-        changed = capture(5, price_delta=3000)
-        call("/api/materials/import", "POST", changed, operator, 201)
-        acceptance = {"publicationKey": preferred["publicationKey"], "expectedCostClp": preferred["costClp"]}
-        call(accepted_path, "POST", acceptance, other_auth, 404)
-        renegotiate = call(accepted_path, "POST", acceptance, auth)
-        assert renegotiate["status"] == "price_changed" and renegotiate["costClp"] == 84_000
-        saved_bedroom = next(item for item in call(project_path, headers=auth)["rooms"] if item["id"] == bedroom["id"])
-        assert saved_bedroom["publicationKey"] is None
-        acceptance["expectedCostClp"] = renegotiate["costClp"]
-        confirmed = call(accepted_path, "POST", acceptance, auth)
-        assert confirmed["status"] == "accepted" and confirmed["costClp"] == 84_000
-        saved_bedroom = next(item for item in call(project_path, headers=auth)["rooms"] if item["id"] == bedroom["id"])
-        assert saved_bedroom["publicationKey"] == preferred["publicationKey"]
-        call(project_path, "PATCH", {"suggestionsEnabled": False}, auth)
-        disabled = call(suggestions_path, headers=auth)
-        assert disabled["status"] == "disabled" and disabled["items"] == []
+        if args.adaptive_fixtures:
+            comparisons = verify_adaptation(call, capture, operator, project_path, room, bedroom, auth, other_auth,
+                              updated_budget["total_cost_clp"])
+            if args.evaluation_output:
+                args.evaluation_output.write_text(json.dumps(comparisons, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     finally:
         call(project_path, "DELETE", headers=auth, expected=204)
         call("/api/auth/logout", "POST", headers=auth, expected=204)
         call("/api/auth/logout", "POST", headers=other_auth, expected=204)
-    print("Integration passed: catalogue/history, owner isolation, real FastAPI budgets, "
-          "ranking and price confirmation.")
+    print("EP2 integration passed: idempotent import, history, retention, owner isolation, rooms and real FastAPI budgets.")
+
+
+def verify_adaptation(call, capture, operator, project_path, living, bedroom, auth, other_auth, committed):
+    room_path = f"{project_path}/rooms/{bedroom['id']}"
+    suggestions_path = room_path + "/suggestions"
+    living_path = f"{project_path}/rooms/{living['id']}/suggestions"
+    settings_path = project_path + "/suggestions/settings"
+    accept_path = suggestions_path + "/accept"
+
+    call(suggestions_path, headers=other_auth, expected=404)
+    call(project_path, "PATCH", {"budgetClp": committed + 80000}, auth)
+    initial = call(suggestions_path, headers=auth)
+    assert initial["availableBudgetClp"] == 80000 and not initial["provisionalBudget"]
+    assert len(initial["suggestions"]) == 2
+    assert call(living_path, headers=auth)["provisionalBudget"] is True
+
+    comparisons = []
+    for category, source in [("ceramic", "sodimac"), ("laminate", "easy")]:
+        preferred = call(suggestions_path + "/preferences", "PATCH", {
+            "preferredCategory": category, "preferredSource": source,
+        }, auth)
+        assert preferred["preferredCategory"] == category and preferred["preferredSource"] == source
+        assert preferred["publicationKey"] is None
+        adjusted = call(suggestions_path, headers=auth)["suggestions"]
+        assert adjusted[0]["category"] == category and adjusted[0]["source"] == source
+        comparisons.append(evaluate_case(call, auth, project_path.split("/")[-1], bedroom["id"]))
+    call(project_path, "PATCH", {"budgetClp": committed + 1000}, auth)
+    over_budget = call(suggestions_path, headers=auth)["suggestions"]
+    assert all(not candidate["fitsBudget"] for candidate in over_budget)
+    excesses = [candidate["budgetExcessClp"] for candidate in over_budget]
+    assert excesses == sorted(excesses) and len(excesses) == 2
+    call(project_path, "PATCH", {"budgetClp": committed + 80000}, auth)
+    adjusted = call(suggestions_path, headers=auth)["suggestions"]
+    preferred_floor = adjusted[0]
+    excluded_keys = urllib.parse.urlencode([("exclude", x["publicationKey"]) for x in adjusted])
+    assert call(suggestions_path + "?" + excluded_keys, headers=auth)["emptyReason"] == "all_dismissed"
+    assert call(suggestions_path + "?exclude=" + preferred_floor["publicationKey"], headers=auth)["suggestions"][0]["publicationKey"] != preferred_floor["publicationKey"]
+    assert preferred_floor["publicationKey"] in {x["publicationKey"] for x in call(living_path, headers=auth)["suggestions"]}
+
+    call(settings_path, "PATCH", {"suggestionsEnabled": False}, auth)
+    assert call(suggestions_path, headers=auth, expected=409)["code"] == "suggestions_disabled"
+    assert call(project_path + "/budget", headers=auth)["status"] == "partial"
+    call(settings_path, "PATCH", {"suggestionsEnabled": True}, auth)
+    call("/api/materials/import", "POST", capture(5, price_delta=3000), operator, 201)
+    proposal = {"publicationKey": preferred_floor["publicationKey"], "quoteId": preferred_floor["quoteId"]}
+    changed = call(accept_path, "POST", proposal, auth, 409)
+    assert changed["status"] == "price_changed"
+    assert changed["quote"]["totalClp"] > preferred_floor["totalClp"]
+    unchanged = call(project_path, headers=auth)
+    assert next(item for item in unchanged["rooms"] if item["id"] == bedroom["id"])["publicationKey"] is None
+    proposal["quoteId"] = changed["quote"]["quoteId"]
+    accepted = call(accept_path, "POST", proposal, auth)
+    assert accepted["status"] == "accepted" and accepted["room"]["publicationKey"] == proposal["publicationKey"]
+    assert call(project_path + "/budget", headers=auth)["status"] == "complete"
+    saved = next(item for item in call(project_path, headers=auth)["rooms"] if item["id"] == bedroom["id"])
+    assert saved["preferredSource"] == "easy" and saved["publicationKey"] == proposal["publicationKey"]
+    print(f"Adaptive integration passed: owner isolation, preference ranking, room exclusion, project switch and price confirmation {preferred_floor['totalClp']} -> {changed['quote']['totalClp']} CLP.")
+
+    return comparisons
 
 
 if __name__ == "__main__":

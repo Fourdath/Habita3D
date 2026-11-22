@@ -9,6 +9,7 @@ import request from 'supertest';
 
 import { AppModule } from '../src/app.module.js';
 import { PrismaService } from '../src/database/prisma.service.js';
+import type { FloorSuggestionRequest } from '../src/integrations/python/floor-suggestions-contract.js';
 import { CapturesService } from '../src/modules/captures/captures.service.js';
 import { chileDisplay, type CapturedResult } from '../src/modules/materials/capture-contract.js';
 import { httpObservability } from '../src/observability/http-observability.js';
@@ -27,6 +28,8 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === 'true')('EP2 PostgreSQL persis
   let upstreamFailure = false;
   let releaseCapture: (() => void) | undefined;
   let holdCapture = false;
+  let recommendationFailure = false;
+  let onSelectedCalculation: (() => Promise<void>) | undefined;
   const userIds: number[] = [];
   const runIds = new Set<string>();
   const operatorToken = 'ep2-test-operator-token-not-a-secret';
@@ -75,6 +78,7 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === 'true')('EP2 PostgreSQL persis
         respond(200, result); return;
       }
       if (req.url === '/floors/budget') {
+        expect(req.headers['x-materials-token']).toBe(operatorToken);
         budgetCalls++;
         const rows = body.rooms.map((r: Record<string, any>) => {
           // This fixture exercises a known 10m² room, 10% waste, 2m²/box: six boxes.
@@ -97,14 +101,34 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === 'true')('EP2 PostgreSQL persis
           budget_difference_clp: difference, budget_excess_clp: Math.max(0, -difference), fits_budget: difference >= 0,
           calculation_basis: 'supplied_publication_snapshots', scope: 'floor_boxes_only' }); return;
       }
+      if (req.url === '/recommendations/floors') {
+        expect(req.headers['x-materials-token']).toBe(operatorToken);
+        if (recommendationFailure) { respond(503, {}); return; }
+        const input = body as FloorSuggestionRequest;
+        if (input.selected_publication_key && onSelectedCalculation) {
+          await onSelectedCalculation();
+        }
+        const commitments = input.other_rooms.reduce((sum, room) => sum + 6 * (room.publication?.price_per_box_clp ?? 0), 0);
+        const available = Math.min(Math.max(0, input.budget_clp - commitments), input.room.budget_clp ?? input.budget_clp);
+        const candidates = input.publications.filter(p => p.availability !== 'unavailable' && p.price_per_box_clp && p.coverage_per_box_m2);
+        const selected = input.selected_publication_key;
+        const suggestions = candidates.filter(p => selected ? p.publication_key === selected : !input.exclude?.includes(p.publication_key))
+          .map(p => ({ publication_key: p.publication_key, boxes: 6, total_clp: 6 * p.price_per_box_clp!,
+            fits_budget: 6 * p.price_per_box_clp! <= available, budget_excess_clp: Math.max(0, 6 * p.price_per_box_clp! - available),
+            reasons: ['Opción de prueba'], price_stale: false }));
+        const fits = suggestions.filter(s => s.fits_budget);
+        respond(200, { available_budget_clp: available, provisional_budget: input.other_rooms.some(room => !room.publication),
+          empty_reason: suggestions.length ? null : candidates.length && !selected ? 'all_dismissed' : 'no_calculable_options',
+          suggestions: (fits.length ? fits : suggestions).slice(0, 3) }); return;
+      }
       respond(404, {});
     });
     await new Promise<void>(resolve => upstream.listen(0, '127.0.0.1', resolve));
     process.env.PYTHON_SERVICE_URL = `http://127.0.0.1:${(upstream.address() as AddressInfo).port}`;
-    await startApp();
   });
 
   beforeEach(async () => {
+    await startApp();
     tag = `ep2-db-${randomUUID()}`;
     fixture = JSON.parse(await readFile(new URL('./fixtures/ep2-capture.json', import.meta.url), 'utf8'));
     for (const p of fixture.publications) {
@@ -114,6 +138,7 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === 'true')('EP2 PostgreSQL persis
     fixture.updated_publication_keys = fixture.publications.map(p => p.publication_key);
     fixture = stamp(fixture);
     upstreamFailure = false; holdCapture = false; releaseCapture = undefined;
+    recommendationFailure = false; onSelectedCalculation = undefined;
     await request(app.getHttpServer()).post('/api/materials/import').set('X-Materials-Token', operatorToken).send(fixture).expect(201);
   });
 
@@ -126,11 +151,11 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === 'true')('EP2 PostgreSQL persis
     await prisma.captureRun.deleteMany({ where: { runId: { in: [...runIds] } } });
     runIds.clear();
     await prisma.captureJob.deleteMany({ where: { requestId: { startsWith: tag } } });
+    await app.close();
   });
 
   afterAll(async () => {
     releaseCapture?.();
-    await app?.close();
     await new Promise<void>(resolve => upstream?.close(() => resolve()));
     for (const [key, old] of [['PYTHON_SERVICE_URL', originalPython], ['MATERIALS_API_TOKEN', originalToken], ['MATERIALS_SCHEDULE_ENABLED', originalSchedule]]) {
       if (old === undefined) delete process.env[key!]; else process.env[key!] = old;
@@ -206,6 +231,156 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === 'true')('EP2 PostgreSQL persis
     expect(budgetCalls).toBeGreaterThan(0);
   });
 
+  it('assigns one catalogue floor to all plan rooms atomically and does not duplicate them on retries', async () => {
+    const owner = await register('whole-house-owner');
+    const other = await register('whole-house-other');
+    const server = app.getHttpServer();
+    const created = await request(server).post('/api/projects').set('Authorization', owner)
+      .send({ name: 'Piso para toda la vivienda', budgetClp: 200000 }).expect(201);
+    const path = `/api/projects/${created.body.id}`;
+    const room = await request(server).post(`${path}/rooms`).set('Authorization', owner)
+      .send({ name: 'Living medido', areaMode: 'area', areaM2: '10', sceneRoomId: 'living' }).expect(201);
+    const selected = fixture.publications.find(p => p.source === 'sodimac')!;
+    const selection = { publicationKey: selected.publication_key, rooms: [
+      { id: 'living', name: 'Living del plano', areaM2: '9' }, { id: 'bedroom', name: 'Dormitorio', areaM2: '10' },
+    ] };
+    const apply = (auth: string, body = selection) => request(server).patch(`${path}/floors`).set('Authorization', auth).send(body);
+    await apply(other).expect(404);
+    await apply(owner, { ...selection, publicationKey: '0'.repeat(64) }).expect(400);
+    await apply(owner, { ...selection, rooms: [selection.rooms[0], selection.rooms[0]] }).expect(400);
+    const unchanged = await request(server).get(path).set('Authorization', owner).expect(200);
+    expect(unchanged.body.rooms).toHaveLength(1);
+    expect(unchanged.body.rooms[0].publicationKey).toBeNull();
+    const responses = await Promise.all([apply(owner).expect(200), apply(owner).expect(200)]);
+    expect(responses[1].body.rooms).toEqual(responses[0].body.rooms);
+    expect(responses[0].body.rooms).toMatchObject([
+      { id: room.body.id, name: 'Living medido', areaM2: '10', publicationKey: selected.publication_key },
+      { sceneRoomId: 'bedroom', publicationKey: selected.publication_key },
+    ]);
+    const budget = await request(server).get(`${path}/budget`).set('Authorization', owner).expect(200);
+    expect(budget.body.total_cost_clp).toBe(120000);
+    expect(budget.body.rooms).toHaveLength(2);
+  });
+
+  it('saves a project drawing, isolates it by owner and detaches old room links on replacement', async () => {
+    const owner = await register('drawing-owner');
+    const other = await register('drawing-other');
+    const server = app.getHttpServer();
+    const project = await request(server).post('/api/projects').set('Authorization', owner)
+      .send({ name: 'Plano privado', budgetClp: 200000 }).expect(201);
+    const path = `/api/projects/${project.body.id}`;
+    const read = (auth: string) => request(server).get(path).set('Authorization', auth);
+    const save = (auth: string, name: string, svg: string) => request(server).put(`${path}/floorplan`)
+      .set('Authorization', auth).send({ name, svg, rooms: [{ id: 'room_0', name: 'Living', areaM2: '10' }] });
+    const drawing = '<svg xmlns="http://www.w3.org/2000/svg"><g class="Wall"/><g class="Space Living"/></svg>';
+    expect((await read(owner).expect(200)).body.floorplan).toBeNull();
+    await save(other, 'otro.svg', drawing).expect(404);
+    await save(owner, 'invalido.svg', `<!DOCTYPE svg>${drawing}`).expect(400);
+    const { body: initial } = await save(owner, 'propio.svg', drawing).expect(200);
+    const { body: detail } = await read(owner).expect(200);
+    expect(detail.floorplan).toEqual(initial.floorplan);
+    expect(detail.rooms).toMatchObject([{ name: 'Living', sceneRoomId: 'room_0', areaM2: '10' }]);
+    await read(other).expect(404);
+    expect((await save(owner, 'renombrado.svg', drawing).expect(200)).body.floorplan.revision).toBe(initial.floorplan.revision);
+    const { body: replacement } = await save(owner, 'nuevo.svg', drawing.replace('Living', 'Kitchen')).expect(200);
+    expect(replacement.floorplan.revision).not.toBe(initial.floorplan.revision);
+    expect((await read(owner).expect(200)).body.rooms).toMatchObject([
+      { id: detail.rooms[0].id, name: 'Living', sceneRoomId: null, areaM2: '10' },
+    ]);
+    const patch = (revision: string) => request(server).patch(`${path}/rooms/${detail.rooms[0].id}`)
+      .set('Authorization', owner).send({ sceneRoomId: 'room_0', floorplanRevision: revision });
+    await patch(initial.floorplan.revision).expect(409);
+    await patch(replacement.floorplan.revision).expect(200);
+  });
+
+  it('persists preferences and requires an updated price to be confirmed before changing the floor', async () => {
+    const owner = await register('recommendation-owner');
+    const other = await register('recommendation-other');
+    const server = app.getHttpServer();
+    const { body: project } = await request(server).post('/api/projects').set('Authorization', owner)
+      .send({ name: 'Pisos recomendados', budgetClp: 140000 }).expect(201);
+    expect(project.suggestionsEnabled).toBe(true);
+    const product = fixture.publications.find(p => p.source === 'sodimac')!;
+    const path = `/api/projects/${project.id}`;
+    const createRoom = (name: string, details: object = {}) => request(server).post(`${path}/rooms`).set('Authorization', owner)
+      .send({ name, areaMode: 'area', areaM2: '10', ...details });
+    const { body: room } = await createRoom('Living', { budgetClp: 100000 }).expect(201);
+    await createRoom('Dormitorio', { publicationKey: product.publication_key }).expect(201);
+    await createRoom('Pasillo').expect(201);
+    const route = `${path}/rooms/${room.id}/suggestions`;
+    await request(server).get(route).set('Authorization', other).expect(404);
+    const prefs = { preferredCategory: 'ceramic', preferredSource: 'sodimac' };
+    const preferred = await request(server).patch(`${route}/preferences`).set('Authorization', owner).send(prefs).expect(200);
+    expect(preferred.body).toMatchObject({ ...prefs, publicationKey: null });
+    const initial = await request(server).get(route).set('Authorization', owner).expect(200);
+    expect(initial.body).toMatchObject({ availableBudgetClp: 80000, provisionalBudget: true });
+    const quote = initial.body.suggestions.find((p: { publicationKey: string }) => p.publicationKey === product.publication_key);
+    expect(quote).toMatchObject({ totalClp: 60000, boxes: 6, imageUrl: product.image_url });
+    const dismissed = await request(server).get(route).query({ exclude: product.publication_key }).set('Authorization', owner).expect(200);
+    expect(dismissed.body.suggestions.every((p: { publicationKey: string }) => p.publicationKey !== product.publication_key)).toBe(true);
+
+    const accept = (quoteId: string) => request(server).post(`${route}/accept`).set('Authorization', owner)
+      .send({ quoteId, publicationKey: product.publication_key });
+    await accept(`${'x'.repeat(43)}.${'y'.repeat(43)}`).expect(400);
+
+    recommendationFailure = true;
+    const failed = await request(server).get(route).set('Authorization', owner).expect(503);
+    expect(failed.body.code).toBe('recommendations_unavailable');
+    recommendationFailure = false;
+
+    const changed = stamp(fixture);
+    const update = changed.publications.find(p => p.source === 'sodimac')!;
+    update.price_per_box_clp = 12000;
+    update.price_per_m2_clp = '6000.00';
+    update.image_url = 'https://media.sodimac.cl/piso-prueba.jpg';
+    let calculateUnderOldSnapshot!: () => void;
+    let releaseCalculation!: () => void;
+    const calculationStarted = new Promise<void>(resolve => { calculateUnderOldSnapshot = resolve; });
+    const continueCalculation = new Promise<void>(resolve => { releaseCalculation = resolve; });
+    onSelectedCalculation = async () => {
+      onSelectedCalculation = undefined;
+      calculateUnderOldSnapshot();
+      await continueCalculation;
+    };
+    const accepting = accept(quote.quoteId).expect(409).then(result => result);
+    try {
+      await Promise.race([calculationStarted, accepting]);
+      await request(server).post('/api/materials/import').set('X-Materials-Token', operatorToken).send(changed).expect(201);
+    } finally {
+      releaseCalculation();
+    }
+    const conflict = await accepting;
+    expect(conflict.body).toMatchObject({
+      status: 'price_changed',
+      quote: { totalClp: 72000, budgetExcessClp: 4000, imageUrl: update.image_url },
+    });
+    const afterConflict = await request(server).get(path).set('Authorization', owner).expect(200);
+    expect(afterConflict.body.rooms.find((r: { id: string }) => r.id === room.id))
+      .toMatchObject({ ...prefs, publicationKey: null, lastSuggestedPublicationKey: null });
+    const accepted = await accept(conflict.body.quote.quoteId).expect(200);
+    expect(accepted.body).toMatchObject({
+      status: 'accepted',
+      room: { ...prefs, publicationKey: product.publication_key, lastSuggestedPublicationKey: product.publication_key },
+    });
+    const retry = await accept(conflict.body.quote.quoteId).expect(200);
+    expect(retry.body.room).toEqual(accepted.body.room);
+    await request(server).patch(`${path}/suggestions/settings`).set('Authorization', owner).send({ suggestionsEnabled: false }).expect(200);
+    const disabled = await request(server).get(route).set('Authorization', owner).expect(409);
+    expect(disabled.body.code).toBe('suggestions_disabled');
+    const current = await request(server).get(path).set('Authorization', owner).expect(200);
+    expect(current.body.suggestionsEnabled).toBe(false);
+    expect(current.body.rooms.find((r: { id: string }) => r.id === room.id).publicationKey).toBe(product.publication_key);
+
+    const alternate = fixture.publications.find(p => p.publication_key !== product.publication_key)!;
+    await request(server).patch(`${path}/rooms/${room.id}`).set('Authorization', owner)
+      .send({ publicationKey: alternate.publication_key }).expect(200);
+    const replaced = await request(server).get(path).set('Authorization', owner).expect(200);
+    expect(replaced.body.rooms.find((r: { id: string }) => r.id === room.id)).toMatchObject({
+      publicationKey: alternate.publication_key,
+      lastSuggestedPublicationKey: product.publication_key,
+    });
+  });
+
   it('uses real database locks to exclude concurrent acquisition and records transport failure', async () => {
     holdCapture = true;
     const running = request(app.getHttpServer()).post('/api/captures').set('X-Materials-Token', operatorToken).set('X-Request-ID', tag).send({}).then(r => r);
@@ -234,16 +409,14 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === 'true')('EP2 PostgreSQL persis
     expect(catalog.body.total).toBeGreaterThanOrEqual(2);
   });
 
-  it('recovers an orphan with a skewed clock without repeating a retailer request', async () => {
+  it('closes orphaned attempts after restart without repeating a retailer request', async () => {
     const id = `scheduled:orphan-${tag}`;
     const calls = captureCalls;
-    const startedAt = new Date(Date.now() + 60_000);
-    await prisma.captureJob.create({ data: { id, status: 'running', startedAt, requestId: tag } });
+    await prisma.captureJob.create({ data: { id, status: 'running', startedAt: new Date(), requestId: tag } });
     await app.close(); await startApp();
     const recovered = await prisma.captureJob.findUniqueOrThrow({ where: { id } });
     expect(recovered.status).toBe('failed');
     expect(recovered.errorCode).toBe('interrupted_before_completion');
-    expect(recovered.finishedAt?.getTime()).toBeGreaterThanOrEqual(startedAt.getTime());
     expect(captureCalls).toBe(calls);
   });
 

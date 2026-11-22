@@ -48,7 +48,6 @@ docker-compose.override.yml
 npm-debug.log*
 
 # Capacitor / native platforms
-frontend/android/
 frontend/ios/
 
 # IDE / editor

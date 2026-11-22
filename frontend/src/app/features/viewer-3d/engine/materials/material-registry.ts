@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { getMaterialDefinition } from '../../../../core/materials/material.catalog';
 import type { MaterialDefinition, MaterialId } from '../../../../core/materials/material.types';
 import { drawProceduralTexture } from './procedural-texture-factory';
-import type { ProceduralTextureSet } from './procedural-texture-factory';
+import type { ProceduralTextureOptions, ProceduralTextureSet } from './procedural-texture-factory';
 
 type MaterialMaps = Partial<Pick<THREE.MeshStandardMaterialParameters, 'map' | 'normalMap' | 'roughnessMap'>>;
 
@@ -41,6 +41,27 @@ export class MaterialRegistry {
     const unique = [...new Set(materialIds)];
     const entries = await Promise.all(unique.map(async (id) => [id, await this.get(id)] as const));
     return new Map(entries);
+  }
+
+  /** A live floor variant is owned by its scene, so replacing the selection can release its maps. */
+  createCatalogueFloor(definition: MaterialDefinition, options: ProceduralTextureOptions): THREE.MeshStandardMaterial {
+    const { map, normal, roughness } = this.proceduralFactory(definition, options);
+    this.configureTexture(map, THREE.SRGBColorSpace, definition);
+    if (normal) this.configureTexture(normal, THREE.NoColorSpace, definition);
+    if (roughness) this.configureTexture(roughness, THREE.NoColorSpace, definition);
+    const normalScale = definition.normalScale ?? 1;
+    const material = new THREE.MeshStandardMaterial({
+      color: definition.baseColor ?? 0xffffff,
+      roughness: definition.roughness,
+      metalness: definition.metalness,
+      map,
+      normalMap: normal,
+      roughnessMap: roughness,
+      normalScale: new THREE.Vector2(normalScale, normalScale),
+    });
+    material.name = definition.id;
+    material.userData = { materialId: definition.id, status: definition.status };
+    return material;
   }
 
   private async create(definition: MaterialDefinition): Promise<THREE.Material> {
@@ -130,6 +151,12 @@ export class MaterialRegistry {
   }
 
   private finishTexture(texture: THREE.Texture, colorSpace: THREE.ColorSpace, definition: MaterialDefinition): THREE.Texture {
+    this.configureTexture(texture, colorSpace, definition);
+    this.owned.add(texture);
+    return texture;
+  }
+
+  private configureTexture(texture: THREE.Texture, colorSpace: THREE.ColorSpace, definition: MaterialDefinition): void {
     texture.colorSpace = colorSpace;
     texture.wrapS = THREE.RepeatWrapping;
     texture.wrapT = THREE.RepeatWrapping;
@@ -138,8 +165,6 @@ export class MaterialRegistry {
     texture.repeat.set(1 / widthMeters, 1 / heightMeters);
     texture.anisotropy = this.maxAnisotropy;
     texture.needsUpdate = true;
-    this.owned.add(texture);
-    return texture;
   }
 
   dispose(): void {

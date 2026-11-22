@@ -52,12 +52,28 @@
 .studio__floorplan .studio__error { color: #9e3030; }
 .studio__enter { flex-shrink: 0; padding: 16px 24px 18px; border-top: 1px solid #e1e5dc; background: #fff; }
 .studio__project-floor { display: grid; gap: 10px; font-size: 12px; line-height: 1.6; padding-bottom: 18px; border-bottom: 1px solid #e1e5dc; }
-.studio__project-floor a { text-decoration: underline; text-underline-offset: 3px; color: #245442; }
+.studio__project-context { display: grid; gap: 8px; font-size: 12px; line-height: 1.6; }
+.studio__project-floor a, .studio__project-context a { text-decoration: underline; text-underline-offset: 3px; color: #245442; }
 .studio__project-floor h3 { font-size: 17px; margin: 0; }
-.studio__project-floor select { width: 100%; padding: 10px; border: 1px solid #cbd7c8; border-radius: 6px; background: #fff; color: #245442; }
+.studio__saved-floor { display: grid; grid-template-columns: 75px 1fr; gap: 10px; align-items: center; }
+.studio__saved-floor app-catalog-product-photo { height: 62px; border-radius: 6px; background: #f1f3ef; }
+.studio__project-context select { width: 100%; min-height: 42px; padding: 8px; border: 1px solid #cbd7c8; border-radius: 6px; background: #fff; color: #245442; }
 .studio__project-floor img { width: 100%; max-height: 160px; object-fit: contain; border-radius: 6px; background: #f5f6f2; }
-.studio__project-floor [role='alert'] { color: #8d3030; }
+.studio [role='alert'].studio__error, .studio__project-floor [role='alert'], .studio__project-context [role='alert'] { color: #8d3030; }
 .studio__plan-note { font-size: 10px; line-height: 1.6; color: #687662; }
+.studio__link { color: #245442; font-size: 12px; font-weight: 600; text-decoration: underline !important; text-underline-offset: 3px; }
+.studio__finish-editor { display: grid; gap: 16px; scroll-margin-top: 14px; }
+.studio__boards { display: grid; gap: 12px; padding-bottom: 18px; border-bottom: 1px solid #e1e5dc; }
+.studio__boards h2 { font-size: 23px; }
+.studio__boards p, .studio__wall-paint { color: #536b5b; font-size: 12px; line-height: 1.55; }
+.studio__boards ul { display: grid; gap: 12px; padding: 0; margin: 0; list-style: none; }
+.studio__boards li { display: flex; gap: 8px; align-items: flex-start; font-size: 12px; }
+.studio__swatch { flex: 0 0 18px; height: 18px; border: 1px solid #52695a; border-radius: 4px; }
+.studio__wall-paint summary { min-height: 44px; padding: 10px; border: 1px solid #cbd7c8; border-radius: 7px; font-weight: 600; cursor: pointer; }
+.studio__wall-paint-fields { display: grid; grid-template-columns: 1fr; gap: 8px; padding-top: 8px; }
+.studio__wall-paint-fields label { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.studio__wall-paint-fields input { width: 48px; height: 40px; border: 1px solid #cbd7c8; border-radius: 6px; background: white; }
+.studio__secondary { min-height: 42px; padding: 8px; border: 1px solid #cbd7c8; border-radius: 7px; background: white; color: #245442; font-size: 12px !important; }
 .studio__primary { display: flex; align-items: center; justify-content: space-between; gap: 16px; width: 100%; padding: 15px 18px; border: 0; border-radius: 7px; background: #245442; color: white; font-size: 13px; }
 .studio__primary:hover:not(:disabled) { background: #183b2e; }
 .studio__primary span { font-size: 20px; }
@@ -80,16 +96,19 @@
   .studio__project { text-align: right; }
   .studio__project span, .studio__home { display: none; }
   .studio__project strong { font-size: 11px; max-width: 140px; }
-  .studio__workspace { overflow-y: auto; display: block; }
-  .viewer-3d { height: 58dvh; min-height: 360px; }
+  .studio__workspace { flex-direction: column; }
+  .viewer-3d { flex: 0 0 clamp(226px, 41dvh, 410px); }
   .viewer-3d__heading { top: 20px; left: 20px; }
   .viewer-3d__views { top: 115px; left: 20px; }
+  .viewer-3d__views button { padding-inline: 9px; }
   .viewer-3d__tools { left: 14px; top: 48%; }
   .viewer-3d__help { bottom: 25px; font-size: 10px; padding: 10px; }
-  .studio__sidebar { width: 100%; border-left: 0; border-top: 1px solid #e1e5dc; overflow: visible; }
-  .studio__sidebar-content { flex: none; overflow: visible; padding: 24px; gap: 20px; }
+  .studio__sidebar { width: 100%; flex: 1 1 auto; min-height: 0; border-left: 0; border-top: 1px solid #e1e5dc; }
+  .studio__sidebar-content { padding: 18px 20px; gap: 16px; }
+  .studio__enter { padding: 9px 16px; }
+  .studio__enter p { display: none; }
   .studio__intro h2 { font-size: 28px; }
   .studio__intro br { display: none; }
-  .studio--walk .viewer-3d { height: 100%; min-height: 600px; }
+  .studio--walk .viewer-3d { flex: 1; min-height: 0; }
 }
 

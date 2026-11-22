@@ -25,7 +25,7 @@ export class PlayerController {
   constructor(
     private readonly camera: THREE.PerspectiveCamera,
     private readonly worldOctree: Octree,
-    private readonly input: MovementInputSource,
+    private readonly input: Pick<MovementInputSource, 'getState'>,
   ) {
     this.collider = new Capsule(
       new THREE.Vector3(0, PLAYER_CAPSULE_RADIUS, 0),

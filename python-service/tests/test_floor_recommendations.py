@@ -1,142 +1,165 @@
+from datetime import UTC, datetime, timedelta
+
 import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
 
-
-@pytest.fixture
-def api(internal_token):
-    with TestClient(app, headers={"X-Materials-Token": internal_token}) as client:
-        yield client
+PATH = "/recommendations/floors"
+TOKEN = "floor-recommendation-test-token-nonsecret"
+client = TestClient(app)
 
 
-def candidate(key: str, price: int | None, **fields) -> dict:
+@pytest.fixture(autouse=True)
+def configured_token(monkeypatch) -> None:
+    monkeypatch.setenv("MATERIALS_API_TOKEN", TOKEN)
+
+
+def publication(key: str, price: int | None, **changes) -> dict:
     return {
         "publication_key": key,
-        "source": "sodimac",
+        "name": f"Piso {key}",
         "category": "ceramic",
-        "currency": "CLP",
+        "source": "sodimac",
         "price_per_box_clp": price,
-        "coverage_per_box_m2": "2",
-        "checked_at": "2026-11-22T12:00:00-03:00",
-        **fields,
+        "coverage_per_box_m2": "1",
+        "currency": "CLP",
+        "price_type": "public",
+        "checked_at": (datetime.now(UTC) - timedelta(hours=3)).isoformat(),
+        "availability": "available",
+        **changes,
     }
 
 
-def payload(*candidates, **fields) -> dict:
-    return {"area_m2": "7", "available_budget_clp": 80_000, "candidates": candidates, **fields}
+def request_data(*publications: dict, **changes) -> dict:
+    return {
+        "budget_clp": 80000,
+        "room": {"room_id": "living", "area_m2": "10", "waste_percent": "0"},
+        "publications": publications,
+        **changes,
+    }
 
 
-def suggest(api, *candidates, **fields) -> dict:
-    response = api.post("/recommendations/floors", json=payload(*candidates, **fields))
-    assert response.status_code == 200, response.text
-    return response.json()
-
-
-def keys(result: dict) -> list[str]:
-    return [item["publication_key"] for item in result["items"]]
-
-
-def test_prefers_category_then_store_then_cost_and_limits_affordable_results(api):
-    offers = (
-        candidate("más-barato-otro-tipo", 12_000, category="laminate", source="easy"),
-        candidate("segunda-tienda", 13_000),
-        candidate("caro-primera-tienda", 19_000, source="easy"),
-        candidate("barato-primera-tienda", 18_000, source="easy"),
-        candidate("fuera-presupuesto", 23_000, source="easy"),
+def post(*publications: dict, **changes):
+    return client.post(
+        PATH,
+        json=request_data(*publications, **changes),
+        headers={"X-Materials-Token": TOKEN},
     )
-    result = suggest(api, *offers, preferred_category="ceramic", preferred_source="easy")
-    assert result["status"] == "within_budget"
-    assert result["rule_version"] == "floor-rules-v1"
-    assert keys(result) == [
-        "barato-primera-tienda", "caro-primera-tienda", "segunda-tienda"
+
+
+def test_ranks_affordable_candidates_by_category_store_then_cost() -> None:
+    data = request_data(
+        publication("laminate-cheapest", 1000, category="laminate"),
+        publication("ceramic-easy", 6000, source="easy"),
+        publication("ceramic-sodimac-2", 8000),
+        publication("ceramic-sodimac-1", 7500),
+        publication("too-expensive", 9200),
+    )
+    data["room"].update(preferred_category="ceramic", preferred_source="sodimac")
+    response = client.post(PATH, json=data, headers={"X-Materials-Token": TOKEN})
+    assert response.status_code == 200
+    result = response.json()
+    assert result["available_budget_clp"] == 80000
+    assert result["empty_reason"] is None
+    assert result["provisional_budget"] is False
+    assert [row["publication_key"] for row in result["suggestions"]] == [
+        "ceramic-sodimac-1",
+        "ceramic-sodimac-2",
+        "ceramic-easy",
     ]
-    item = result["items"][0]
-    assert item["boxes"] == 4
-    assert item["cost_clp"] == 72_000
-    assert item["budget_excess_clp"] == 0
-    assert any("tipo de piso" in reason for reason in item["reasons"])
-    assert any("tienda" in reason for reason in item["reasons"])
-    changed = suggest(api, *offers, preferred_category="laminate", preferred_source="easy")
-    assert keys(changed)[0] == "más-barato-otro-tipo"
+    assert result["suggestions"][0] == {
+        "publication_key": "ceramic-sodimac-1",
+        "boxes": 10,
+        "total_clp": 75000,
+        "fits_budget": True,
+        "budget_excess_clp": 0,
+        "price_stale": False,
+        "reasons": [
+            "Cabe en el presupuesto disponible",
+            "Coincide con el tipo de piso preferido",
+            "Coincide con la tienda preferida",
+        ],
+    }
+    data["room"]["preferred_category"] = "laminate"
+    changed = client.post(PATH, json=data, headers={"X-Materials-Token": TOKEN}).json()
+    assert changed["suggestions"][0]["publication_key"] == "laminate-cheapest"
 
 
-def test_equal_estimates_keep_a_deterministic_order_with_no_preferences(api):
-    offers = (candidate("z", 15_000), candidate("a", 15_000), candidate("b", 14_000))
-    assert keys(suggest(api, *offers)) == ["b", "a", "z"]
-    assert keys(suggest(api, *reversed(offers))) == ["b", "a", "z"]
+def test_uses_project_remaining_and_marks_other_rooms_without_a_cost_as_provisional() -> None:
+    committed = publication("selected", 10000, coverage_per_box_m2="2")
+    committed.pop("category")
+    committed.pop("name")
+    known_room = {
+        "room_id": "bedroom",
+        "length_m": "2.5",
+        "width_m": "4",
+        "waste_percent": 0,
+        "publication": committed,
+    }
+    unpriced_room = {"room_id": "bathroom", "area_m2": "4", "publication": None}
+    room = {"room_id": "living", "area_m2": "10", "waste_percent": 0, "budget_clp": 100000}
+    result = post(
+        publication("floor", 9200),
+        budget_clp=130000,
+        room=room,
+        other_rooms=[known_room, unpriced_room],
+    ).json()
+    assert result["available_budget_clp"] == 80000
+    assert result["provisional_budget"] is True
+    assert result["suggestions"][0]["budget_excess_clp"] == 12000
+    assert result["suggestions"][0]["fits_budget"] is False
+    room["budget_clp"] = 70000
+    result = post(publication("floor", 9200), budget_clp=130000, room=room).json()
+    assert result["available_budget_clp"] == 70000
+    result = post(publication("floor", 9200), budget_clp=10000, other_rooms=[known_room]).json()
+    assert result["available_budget_clp"] == 0
 
 
-def test_when_no_floor_fits_sort_only_by_excess_even_with_preferences(api):
-    result = suggest(
-        api,
-        candidate("con-preferencia", 25_000, source="easy"),
-        candidate("menor-exceso", 23_000, category="laminate"),
-        preferred_category="ceramic",
-        preferred_source="easy",
+def test_orders_excess_by_amount_skips_unavailable_and_identifies_stale_price() -> None:
+    stale_at = (datetime.now(UTC) - timedelta(hours=25)).isoformat()
+    result = post(
+        publication("more", 10000),
+        publication("less", 9200, availability="unknown", checked_at=stale_at),
+        publication("out", 3000, availability="unavailable"),
+        publication("no-coverage", 1500, coverage_per_box_m2=None),
+        publication("no-price", None),
+    ).json()
+    assert [row["publication_key"] for row in result["suggestions"]] == ["less", "more"]
+    assert result["suggestions"][0]["budget_excess_clp"] == 12000
+    assert result["suggestions"][0]["price_stale"] is True
+    assert result["suggestions"][1]["price_stale"] is False
+
+
+def test_excludes_room_dismissals_and_reprices_independent_of_selected_rank() -> None:
+    options = (publication("first", 6000), publication("second", 9200))
+    result = post(*options, exclude=["first"]).json()
+    assert result["suggestions"][0]["publication_key"] == "second"
+    assert post(*options, exclude=["first", "second"]).json()["empty_reason"] == "all_dismissed"
+    assert (
+        post(publication("out", 1, availability="unavailable")).json()["empty_reason"]
+        == "no_calculable_options"
     )
-    assert result["status"] == "over_budget"
-    assert keys(result) == ["menor-exceso", "con-preferencia"]
-    assert result["items"][0]["budget_excess_clp"] == 12_000
-    assert "12000 CLP" in result["items"][0]["reasons"][0]
+    accepted = post(*options, selected_publication_key="second", exclude=["second"]).json()
+    assert [row["publication_key"] for row in accepted["suggestions"]] == ["second"]
+    assert accepted["suggestions"][0]["total_clp"] == 92000
 
 
-@pytest.mark.parametrize("budget, excess", [(0, 36_000), (-4_000, 40_000)])
-def test_zero_and_negative_remaining_balance_are_not_clamped(api, budget, excess):
-    result = suggest(api, candidate("a", 9_000), available_budget_clp=budget)
-    assert result["status"] == "over_budget"
-    assert result["items"][0]["budget_excess_clp"] == excess
-
-
-def test_unknown_stock_is_valid_and_excludes_sold_out_and_uncalculable_offers(api):
-    unusable = (
-        candidate("agotado", 1, availability="unavailable"),
-        candidate("sin-precio", None),
-        candidate("sin-cobertura", 100, coverage_per_box_m2=None),
+def test_design_exposes_authentication_and_rejects_invalid_context(monkeypatch) -> None:
+    data = request_data(publication("one", 12000))
+    assert client.post(PATH, json=data).status_code == 401
+    assert client.post(PATH, json=data, headers={"X-Materials-Token": "invalid"}).status_code == 401
+    schema = client.get("/openapi.json").json()
+    assert schema["paths"][PATH]["post"]["security"] == [{"MaterialsToken": []}]
+    assert schema["paths"]["/floors/budget"]["post"]["security"] == [{"MaterialsToken": []}]
+    assert post(publication("one", 10000), publication("one", 12000)).status_code == 422
+    assert (
+        post(
+            publication("one", 12000),
+            other_rooms=[{"room_id": "living", "area_m2": "8"}],
+        ).status_code
+        == 422
     )
-    result = suggest(api, *unusable, candidate("sin-confirmar", 20_000))
-    assert result["status"] == "within_budget"
-    assert keys(result) == ["sin-confirmar"]
-    assert suggest(api, *unusable)["status"] == "no_candidates"
-    assert suggest(api)["items"] == []
-
-
-def test_dimensions_and_waste_use_exact_box_arithmetic(api):
-    offer = candidate("a", 1, coverage_per_box_m2="0.1")
-    params = {"area_m2": None, "length_m": "0.3", "width_m": "1"}
-    assert suggest(api, offer, **params, waste_percent=0)["items"][0]["boxes"] == 3
-    assert suggest(api, offer, **params, waste_percent=1)["items"][0]["boxes"] == 4
-
-
-@pytest.mark.parametrize("fields", [
-    {"area_m2": True},
-    {"area_m2": "NaN"},
-    {"area_m2": 0},
-    {"area_m2": None, "length_m": 1},
-    {"length_m": 1, "width_m": 1},
-    {"waste_percent": 101},
-    {"available_budget_clp": True},
-    {"available_budget_clp": 10**16},
-    {"preferred_category": "vinyl"},
-    {"preferred_source": "unknown"},
-    {"unsupported": "value"},
-])
-def test_invalid_request_fields_are_rejected(api, fields):
-    assert api.post("/recommendations/floors", json=payload(**fields)).status_code == 422
-
-
-def test_invalid_duplicates_and_oversized_batches_are_rejected(api):
-    path = "/recommendations/floors"
-    offer = candidate("a", 9_000)
-    assert api.post(path, json=payload(offer, offer)).status_code == 422
-    naive_date = candidate("b", 9, checked_at="2026-11-22")
-    assert api.post(path, json=payload(naive_date)).status_code == 422
-    too_many = [candidate(str(index), 1) for index in range(41)]
-    assert api.post(path, json=payload(*too_many)).status_code == 422
-
-
-def test_never_returns_costs_outside_the_shared_integer_range(api):
-    extreme = candidate("a", 1_000_000_000, coverage_per_box_m2="0.000001")
-    response = api.post("/recommendations/floors", json=payload(extreme, area_m2="1000000"))
-    assert response.status_code == 422
-    assert "rango admitido" in response.json()["detail"]
+    assert post(publication("one", 12000), exclude=["a"] * 41).status_code == 422
+    monkeypatch.delenv("MATERIALS_API_TOKEN")
+    assert post(publication("one", 12000)).status_code == 503

@@ -4,6 +4,8 @@ import { BadRequestException } from '@nestjs/common';
 
 import { Prisma } from '../../generated/prisma/client.js';
 
+export const CATALOGUE_IMPORT_LOCK = 72634103;
+
 export interface CapturedPublication {
   publication_key: string;
   source: 'sodimac' | 'easy';

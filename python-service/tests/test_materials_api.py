@@ -48,12 +48,13 @@ class FakeAdapter:
 
 
 @pytest.fixture
-def api(internal_token, tmp_path):
+def api(monkeypatch, tmp_path):
+    monkeypatch.setenv("MATERIALS_API_TOKEN", "unit-test-token-not-real-credentials")
     store = CaptureStore(tmp_path)
     app.dependency_overrides[get_store] = lambda: store
     app.dependency_overrides[get_adapters] = lambda: {"sodimac": FakeAdapter()}
     app.dependency_overrides[get_source_client] = FakeClient
-    with TestClient(app, headers={"X-Materials-Token": internal_token}) as client:
+    with TestClient(app) as client:
         yield client, store
     app.dependency_overrides.clear()
 
@@ -67,7 +68,10 @@ def test_normalize_contract_is_pure_and_deduplicates(api):
             "records": [record, record, {**record, "package_price": -1}],
             "checked_at": "2026-10-18T15:12:00Z",
         },
-        headers={"X-Request-ID": "ep2-contract"},
+        headers={
+            "X-Request-ID": "ep2-contract",
+            "X-Materials-Token": "unit-test-token-not-real-credentials",
+        },
     )
     assert response.status_code == 200
     assert response.headers["X-Request-ID"] == "ep2-contract"
@@ -90,14 +94,14 @@ def test_normalize_requires_explicit_timezone(api, checked_at):
             "records": [raw_record()],
             "checked_at": checked_at,
         },
+        headers={"X-Materials-Token": "unit-test-token-not-real-credentials"},
     )
     assert response.status_code == 422
 
 
 def test_capture_endpoint_requires_token_and_valid_configuration(api, monkeypatch):
     client, store = api
-    response = client.post("/materials/captures", json={}, headers={"X-Materials-Token": ""})
-    assert response.status_code == 401
+    assert client.post("/materials/captures", json={}).status_code == 401
     assert not store.path.exists()
     monkeypatch.delenv("MATERIALS_API_TOKEN")
     assert client.post("/materials/captures", json={}).status_code == 503
@@ -144,6 +148,7 @@ def test_capture_then_budget_from_normalized_real_contract(api):
             ],
             "budget_clp": 50000,
         },
+        headers=headers,
     )
     assert budget.status_code == 200
     assert budget.json()["rooms"][0]["boxes"] == 6
@@ -166,6 +171,21 @@ def test_capture_lock_is_reported_as_conflict(api):
             },
         )
     assert response.status_code == 409
+
+
+def test_health_and_openapi_expose_new_routes_without_removing_demo(api):
+    client, _ = api
+    assert client.get("/health").status_code == 200
+    schema = client.get("/openapi.json").json()
+    for path in (
+        "/recommendations/compare",
+        "/recommendations/floors",
+        "/floors/budget",
+        "/materials/normalize",
+        "/materials/captures",
+        "/materials/status",
+    ):
+        assert path in schema["paths"]
 
 
 @pytest.mark.parametrize(
@@ -204,9 +224,7 @@ def test_schedule_does_not_fetch_when_no_slot_is_due(monkeypatch, tmp_path, caps
     assert "no_pending_slot" in capsys.readouterr().out
 
 
-@pytest.mark.parametrize(
-    "slot", [True, 1234567890, "2026-10-24T08:00:00", "2026-10-24T11:15:00Z"]
-)
+@pytest.mark.parametrize("slot", [True, 1234567890, "2026-10-24T08:00:00", "2026-10-24T11:15:00Z"])
 def test_http_schedule_rejects_invalid_slots(api, slot):
     client, _ = api
     response = client.post(
@@ -222,7 +240,8 @@ def test_http_schedule_records_slot_and_request_correlation(api):
     response = client.post(
         "/materials/captures",
         json={
-            "sources": ["sodimac"], "categories": ["ceramic"],
+            "sources": ["sodimac"],
+            "categories": ["ceramic"],
             "scheduled_for": "2026-10-24T11:00:00Z",
         },
         headers={

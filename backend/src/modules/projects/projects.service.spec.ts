@@ -3,11 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { PrismaService } from '../../database/prisma.service.js';
 import { Prisma } from '../../generated/prisma/client.js';
-import {
-  PythonService,
-  type FloorBudgetResponse,
-  type FloorRoomResponse,
-} from '../../integrations/python/python.service.js';
+import { PythonService } from '../../integrations/python/python.service.js';
 import { ProjectsService, surfaceData } from './projects.service.js';
 
 const key = 'a'.repeat(64);
@@ -43,7 +39,7 @@ const publication = {
   updatedAt: now,
 };
 
-const selected: Prisma.RoomGetPayload<{ include: { publication: true } }> = {
+const selected = {
   id: '32344a38-1e52-4d6f-bdf6-39bd2ce1e5c0',
   projectId: 1,
   name: 'Dormitorio',
@@ -56,13 +52,11 @@ const selected: Prisma.RoomGetPayload<{ include: { publication: true } }> = {
   publicationKey: key,
   publication,
   sceneRoomId: 'bedroom',
-  preferredCategory: null,
-  preferredSource: null,
   createdAt: now,
   updatedAt: now,
 };
 
-const completeBudget: FloorBudgetResponse = {
+const completeBudget = {
   currency: 'CLP',
   status: 'complete',
   rooms: [],
@@ -79,18 +73,14 @@ const completeBudget: FloorBudgetResponse = {
 };
 
 function setup() {
-  const rooms: (typeof selected)[] = [
-    { ...selected, publication: { ...publication } },
-  ];
   const project = {
     id: 1,
     ownerId: 7,
     name: 'Casa de prueba',
     budgetClp: 100_000n,
-    suggestionsEnabled: true,
     createdAt: now,
     updatedAt: now,
-    rooms,
+    rooms: [{ ...selected, publication: { ...publication } }],
   };
   const tx = {
     project: {
@@ -103,12 +93,7 @@ function setup() {
       update: vi.fn(async () => project),
       delete: vi.fn(async () => project),
     },
-    publication: {
-      findUnique: vi.fn(
-        async (): Promise<typeof publication | null> => publication,
-      ),
-      findMany: vi.fn(async () => [publication]),
-    },
+    publication: { findUnique: vi.fn(async (): Promise<typeof publication | null> => publication) },
     room: {
       count: vi.fn(async () => 1),
       findFirst: vi.fn(
@@ -149,29 +134,11 @@ function setup() {
       return { ...completeBudget };
     },
   );
-  const recommendFloors = vi.fn(
-    async (_payload: unknown, _requestId?: string) => {
-      expect(transactionOpen).toBe(false);
-      return {
-        rule_version: 'floor-rules-v1',
-        status: 'within_budget',
-        items: [
-          {
-            publication_key: key,
-            boxes: 6,
-            cost_clp: 60_000,
-            budget_excess_clp: 0,
-            reasons: ['Dentro del presupuesto disponible'],
-          },
-        ],
-      };
-    },
-  );
   const service = new ProjectsService(
     prisma as unknown as PrismaService,
-    { calculateBudget, recommendFloors } as unknown as PythonService,
+    { calculateBudget } as unknown as PythonService,
   );
-  return { service, prisma, tx, project, calculateBudget, recommendFloors };
+  return { service, prisma, tx, project, calculateBudget };
 }
 
 describe('private projects and budgets', () => {
@@ -284,9 +251,8 @@ describe('private projects and budgets', () => {
   it('rereads current prices while retaining the same room and selected publication', async () => {
     const { service, project, calculateBudget } = setup();
     await service.budget(7, 1);
-    const chosen = project.rooms[0].publication!;
-    chosen.pricePerBoxClp = 12_000;
-    chosen.checkedAt = new Date('2026-10-24T16:00:00Z');
+    project.rooms[0].publication.pricePerBoxClp = 12_000;
+    project.rooms[0].publication.checkedAt = new Date('2026-10-24T16:00:00Z');
     await service.budget(7, 1);
     const payload = calculateBudget.mock.calls[1]?.[0] as unknown as {
       rooms: {
@@ -311,8 +277,8 @@ describe('private projects and budgets', () => {
     project.rooms.push({
       ...selected,
       id: 'fd98a455-e6f8-447b-ac4c-81a64eb618de',
-      publication: null,
-      publicationKey: null,
+      publication: null as never,
+      publicationKey: null as never,
     });
     const result = await service.budget(7, 1);
     expect(result).toMatchObject({
@@ -361,199 +327,6 @@ describe('private projects and budgets', () => {
       expect(prisma.project.findFirst).not.toHaveBeenCalled();
     },
   );
-});
-
-describe('floor suggestions and price confirmation', () => {
-  const roomId = selected.id;
-  const discard = 'b'.repeat(64);
-  const roomQuote: FloorRoomResponse = {
-    room_id: roomId,
-    publication_key: key,
-    source: 'sodimac',
-    currency: 'CLP',
-    price_type: 'public',
-    status: 'calculated',
-    reasons: [],
-    area_m2: '10',
-    waste_percent: '10',
-    required_area_m2: '11',
-    coverage_per_box_m2: '2',
-    price_per_box_clp: 10_000,
-    boxes: 6,
-    purchased_area_m2: '12',
-    cost_clp: 60_000,
-    budget_clp: null,
-    budget_difference_clp: null,
-    budget_excess_clp: null,
-    fits_budget: null,
-    availability: 'unknown',
-    checked_at: now.toISOString(),
-    last_check_display: '24/10/2026 09:00',
-  };
-
-  it('uses only other-room costs and both limits, flagging a missing other selection', async () => {
-    const { service, project, calculateBudget, recommendFloors, tx } = setup();
-    project.budgetClp = 150_000n;
-    const target = {
-      ...project.rooms[0],
-      budgetClp: 80_000n,
-      preferredCategory: 'ceramic',
-      preferredSource: 'sodimac',
-    };
-    project.rooms = [
-      target,
-      { ...selected, id: 'chosen-other-room', publication: { ...publication } },
-      { ...selected, id: 'pending-other-room', publication: null },
-    ];
-    const result = await service.suggestions(
-      7,
-      1,
-      roomId,
-      [discard],
-      'example-request',
-    );
-    expect(calculateBudget).toHaveBeenCalledWith(
-      {
-        rooms: [expect.objectContaining({ room_id: 'chosen-other-room' })],
-        budget_clp: 150_000,
-      },
-      'example-request',
-    );
-    expect(tx.publication.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({
-          publicationKey: { notIn: [discard] },
-        }),
-      }),
-    );
-    expect(recommendFloors).toHaveBeenCalledWith(
-      expect.objectContaining({
-        available_budget_clp: 80_000,
-        preferred_category: 'ceramic',
-        preferred_source: 'sodimac',
-        candidates: [
-          expect.objectContaining({
-            publication_key: key,
-            availability: 'unknown',
-          }),
-        ],
-      }),
-      'example-request',
-    );
-    expect(result).toMatchObject({
-      budgetProvisional: true,
-      availableBudgetClp: 80_000,
-      items: [
-        {
-          boxes: 6,
-          costClp: 60_000,
-          isPriceStale: expect.any(Boolean),
-          publication: { publicationKey: key, availability: 'unknown' },
-        },
-      ],
-    });
-  });
-
-  it('leaves Python untouched when suggestions are disabled', async () => {
-    const { service, project, tx, calculateBudget, recommendFloors } = setup();
-    project.suggestionsEnabled = false;
-    await expect(service.suggestions(7, 1, roomId, [])).resolves.toMatchObject({
-      status: 'disabled',
-      availableBudgetClp: null,
-      items: [],
-    });
-    await expect(
-      service.acceptSuggestion(7, 1, roomId, {
-        publicationKey: key,
-        expectedCostClp: 60_000,
-      }),
-    ).rejects.toMatchObject({ response: { code: 'SUGGESTIONS_DISABLED' } });
-    expect(tx.publication.findMany).not.toHaveBeenCalled();
-    expect(calculateBudget).not.toHaveBeenCalled();
-    expect(recommendFloors).not.toHaveBeenCalled();
-  });
-
-  it('returns a new cost without saving until that latest cost is confirmed', async () => {
-    const { service, tx, calculateBudget } = setup();
-    calculateBudget.mockResolvedValue({
-      ...completeBudget,
-      rooms: [roomQuote],
-    });
-    const confirm = (expectedCostClp: number) =>
-      service.acceptSuggestion(7, 1, roomId, {
-        publicationKey: key,
-        expectedCostClp,
-      });
-    await expect(confirm(50_000)).resolves.toMatchObject({
-      status: 'price_changed',
-      costClp: 60_000,
-      boxes: 6,
-    });
-    expect(tx.room.update).not.toHaveBeenCalled();
-    await expect(confirm(60_000)).resolves.toMatchObject({
-      status: 'accepted',
-      costClp: 60_000,
-      room: { publicationKey: key },
-    });
-    expect(tx.room.update).toHaveBeenCalledExactlyOnceWith({
-      where: { id: roomId, projectId: 1 },
-      data: { publicationKey: key },
-      include: { publication: true },
-    });
-  });
-
-  it('blocks the write if the catalog price changed while FastAPI calculated', async () => {
-    const { service, calculateBudget, tx } = setup();
-    calculateBudget.mockResolvedValue({
-      ...completeBudget,
-      rooms: [roomQuote],
-    });
-    tx.publication.findUnique
-      .mockResolvedValueOnce(publication)
-      .mockResolvedValueOnce({ ...publication, pricePerBoxClp: 12_000 });
-    await expect(
-      service.acceptSuggestion(7, 1, roomId, {
-        publicationKey: key,
-        expectedCostClp: 60_000,
-      }),
-    ).rejects.toMatchObject({ response: { code: 'SUGGESTION_CHANGED' } });
-    expect(tx.room.update).not.toHaveBeenCalled();
-  });
-
-  it('blocks the write if the room surface changed while FastAPI calculated', async () => {
-    const { service, calculateBudget, tx } = setup();
-    calculateBudget.mockResolvedValue({
-      ...completeBudget,
-      rooms: [roomQuote],
-    });
-    tx.room.findFirst.mockResolvedValueOnce({
-      ...selected,
-      areaM2: new Prisma.Decimal('12'),
-    });
-    await expect(
-      service.acceptSuggestion(7, 1, roomId, {
-        publicationKey: key,
-        expectedCostClp: 60_000,
-      }),
-    ).rejects.toMatchObject({ response: { code: 'SUGGESTION_CHANGED' } });
-    expect(tx.room.update).not.toHaveBeenCalled();
-  });
-
-  it('keeps an old candidate in the results and marks its price stale', async () => {
-    const { service, tx } = setup();
-    const checkedAt = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    tx.publication.findMany.mockResolvedValueOnce([
-      { ...publication, checkedAt },
-    ]);
-    await expect(service.suggestions(7, 1, roomId, [])).resolves.toMatchObject({
-      items: [
-        {
-          isPriceStale: true,
-          publication: { checkedAt: checkedAt.toISOString() },
-        },
-      ],
-    });
-  });
 });
 
 describe('surface mode', () => {

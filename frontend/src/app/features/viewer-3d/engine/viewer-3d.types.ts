@@ -5,6 +5,12 @@ export interface Viewer3DEngineCallbacks {
   onError?(error: unknown): void;
   onPointerLockChange?(locked: boolean): void;
   onPointerLockError?(): void;
+  onRoomPick?(sceneRoomId: string): void;
+}
+
+export interface InteriorWallColors {
+  all: string | null;
+  rooms: ReadonlyMap<string, string>;
 }
 
 /**

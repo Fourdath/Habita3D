@@ -26,7 +26,7 @@ describe('EP2 explicit UI states', () => {
     const panel = TestBed.runInInjectionContext(() => new CatalogPanelComponent()); await panel.refresh();
     expect(panel.updateFailed()).toBe(true);
     expect(panel.catalog().items[0].checkedAt).toBe(TEST_PUBLICATION.checkedAt);
-    expect(panel.availability('unknown')).toBe('Disponibilidad desconocida');
+    expect(panel.availability('unknown')).toBe('Disponibilidad sin confirmar');
   });
   it('retains the previous catalog on network errors and never manufactures replacement products', async () => {
     const catalog = vi.fn().mockRejectedValue(new Error('offline'));

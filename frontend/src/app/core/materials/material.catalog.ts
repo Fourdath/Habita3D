@@ -45,7 +45,20 @@ export const MATERIAL_CATALOG: Record<MaterialId, MaterialDefinition> = {
   INDUSTRIAL_KITCHEN_BACKSPLASH_GRAY: { id: 'INDUSTRIAL_KITCHEN_BACKSPLASH_GRAY', provider: 'procedural', procedural: procedural({ kind: 'tile', tile: [0.2, 0.1], color: '#8d9295', grout: '#63686b' }), physicalWidthMeters: 0.8, physicalHeightMeters: 0.8, baseColor: 0xffffff, roughness: 0.32, metalness: 0, normalScale: 0.6, clearcoat: 0.35, clearcoatRoughness: 0.25, status: 'READY' },
   INDUSTRIAL_KITCHEN_CABINET: { id: 'INDUSTRIAL_KITCHEN_CABINET', provider: 'procedural', procedural: procedural({ kind: 'paint', color: '#3f4245' }), physicalWidthMeters: 1, physicalHeightMeters: 1, baseColor: 0xffffff, roughness: 0.5, metalness: 0.05, normalScale: 0.12, status: 'READY' },
   INDUSTRIAL_COUNTERTOP: { id: 'INDUSTRIAL_COUNTERTOP', provider: 'procedural', procedural: procedural({ kind: 'stone', color: '#5c5f61' }), physicalWidthMeters: 1.4, physicalHeightMeters: 1.4, baseColor: 0xffffff, roughness: 0.42, metalness: 0.05, normalScale: 0.25, status: 'READY' },
-  INDUSTRIAL_EXTERIOR: { id: 'INDUSTRIAL_EXTERIOR', provider: 'procedural', procedural: procedural({ kind: 'stucco', color: '#b9ada0' }), physicalWidthMeters: 2, physicalHeightMeters: 2, baseColor: 0xffffff, roughness: 0.95, metalness: 0, normalScale: 0.4, status: 'READY' },
+  INDUSTRIAL_EXTERIOR: { id: 'INDUSTRIAL_EXTERIOR', provider: 'polyhaven', assetSlug: 'brick_wall_003', license: 'CC0', maps: pbr('brick_wall_003'), physicalWidthMeters: 4, physicalHeightMeters: 4, baseColor: 0xf4d9c4, roughness: 0.95, metalness: 0, normalScale: 0.55, status: 'READY' },
+
+  MEDITERRANEAN_WALL_IVORY: { id: 'MEDITERRANEAN_WALL_IVORY', provider: 'procedural', procedural: procedural({ kind: 'paint', color: '#f6ecda' }), physicalWidthMeters: 1.5, roughness: 0.94, metalness: 0, normalScale: 0.18, status: 'READY' },
+  MEDITERRANEAN_TILE_BLUE: { id: 'MEDITERRANEAN_TILE_BLUE', provider: 'procedural', procedural: procedural({ kind: 'tile', tile: [0.3, 0.3], color: '#5e92a5', grout: '#d5d2c5' }), physicalWidthMeters: 1.2, roughness: 0.31, metalness: 0, normalScale: 0.4, clearcoat: 0.35, status: 'READY' },
+  MEDITERRANEAN_JOINERY_BLUE: { id: 'MEDITERRANEAN_JOINERY_BLUE', provider: 'procedural', baseColor: 0x315b79, roughness: 0.55, metalness: 0, status: 'READY' },
+  MEDITERRANEAN_EXTERIOR_SAND: { id: 'MEDITERRANEAN_EXTERIOR_SAND', provider: 'procedural', procedural: procedural({ kind: 'stucco', color: '#d2ad7c' }), physicalWidthMeters: 1.6, roughness: 0.97, metalness: 0, normalScale: 0.38, status: 'READY' },
+  CONTEMPORARY_WALL_SAGE: { id: 'CONTEMPORARY_WALL_SAGE', provider: 'procedural', procedural: procedural({ kind: 'paint', color: '#aabda9' }), physicalWidthMeters: 1.6, roughness: 0.89, metalness: 0, normalScale: 0.13, status: 'READY' },
+  CONTEMPORARY_EXTERIOR_SLATE: { id: 'CONTEMPORARY_EXTERIOR_SLATE', provider: 'procedural', procedural: procedural({ kind: 'tile', tile: [0.9, 0.3], color: '#484c50', grout: '#383b3f' }), physicalWidthMeters: 1.8, roughness: 0.91, metalness: 0, normalScale: 0.3, status: 'READY' },
+
+  FLOOR_TILE_TERRACOTTA: { id: 'FLOOR_TILE_TERRACOTTA', provider: 'procedural', procedural: procedural({ kind: 'tile', tile: [0.3, 0.3], color: '#b86543', grout: '#805340' }), physicalWidthMeters: 1.2, physicalHeightMeters: 1.2, roughness: 0.78, metalness: 0, normalScale: 0.37, status: 'READY' },
+  FLOOR_TILE_MARBLE: { id: 'FLOOR_TILE_MARBLE', provider: 'procedural', procedural: procedural({ kind: 'tile', tile: [0.6, 0.6], color: '#e8e4df', grout: '#c9c4bf', pattern: 'marble' }), physicalWidthMeters: 1.8, physicalHeightMeters: 1.8, roughness: 0.29, metalness: 0, normalScale: 0.26, clearcoat: 0.38, clearcoatRoughness: 0.3, status: 'READY' },
+  FLOOR_TILE_WOOD: { id: 'FLOOR_TILE_WOOD', provider: 'procedural', procedural: procedural({ kind: 'tile', tile: [0.2, 0.8], color: '#b38a64', grout: '#775b44', pattern: 'wood' }), physicalWidthMeters: 1.2, physicalHeightMeters: 1.6, roughness: 0.52, metalness: 0, normalScale: 0.3, clearcoat: 0.13, status: 'READY' },
+  FLOOR_LAMINATE_ASH: { id: 'FLOOR_LAMINATE_ASH', provider: 'procedural', procedural: procedural({ kind: 'tile', tile: [0.2, 0.9], color: '#aaa39b', grout: '#72716d', pattern: 'wood' }), physicalWidthMeters: 1.2, physicalHeightMeters: 1.8, roughness: 0.55, metalness: 0, normalScale: 0.2, status: 'READY' },
+  FLOOR_CONCRETE_SMOOTH: { id: 'FLOOR_CONCRETE_SMOOTH', provider: 'polyhaven', assetSlug: 'rough_concrete', license: 'CC0', maps: pbr('rough_concrete'), physicalWidthMeters: 1.8, physicalHeightMeters: 1.8, baseColor: 0xc5c4c3, roughness: 0.76, metalness: 0, normalScale: 0.15, clearcoat: 0.1, status: 'READY' },
 
   CEILING_WHITE: { id: 'CEILING_WHITE', provider: 'procedural', baseColor: 0xf7f7f5, roughness: 0.98, metalness: 0, status: 'READY' },
   BASEBOARD_WHITE: { id: 'BASEBOARD_WHITE', provider: 'procedural', baseColor: 0xfbfaf6, roughness: 0.45, metalness: 0, clearcoat: 0.25, clearcoatRoughness: 0.4, status: 'READY' },
@@ -71,6 +84,7 @@ export const getMaterialDefinition = (id: MaterialId): MaterialDefinition =>
 const CERAMIC_MATERIALS = new Set<MaterialId>([
   'NORDIC_BATH_WALL_TILE_LIGHT', 'NORDIC_BATH_FLOOR_TILE_LIGHT', 'NORDIC_KITCHEN_BACKSPLASH_LIGHT',
   'INDUSTRIAL_BATH_WALL_TILE_GRAY', 'INDUSTRIAL_BATH_FLOOR_TILE_GRAY', 'INDUSTRIAL_KITCHEN_BACKSPLASH_GRAY',
+  'MEDITERRANEAN_TILE_BLUE', 'FLOOR_TILE_TERRACOTTA', 'FLOOR_TILE_MARBLE',
 ]);
 
 export const isCeramicFinish = (materialId: MaterialId): boolean => CERAMIC_MATERIALS.has(materialId);

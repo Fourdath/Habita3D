@@ -1,0 +1,43 @@
+<ion-content [fullscreen]="true">
+  <div class="ep2">
+    <header class="ep2-header">
+      <a routerLink="/landing" aria-label="Habita3D, inicio"><app-brand-mark /></a>
+      <nav aria-label="Navegación de acceso">
+        <a routerLink="/landing">Inicio</a>
+        <a routerLink="/viewer-3d">Visor de ejemplo</a>
+      </nav>
+    </header>
+    <main class="ep2-main">
+      <section class="ep2-card ep2-auth" aria-labelledby="login-title">
+        <h1 #title id="login-title" tabindex="-1">{{ mode() === 'login' ? 'Iniciar sesión' : 'Crear cuenta' }}</h1>
+        <p>Usa una cuenta ficticia para la demostración.</p>
+        @if (reason === 'expired') {
+          <p role="status" class="ep2-notice">Tu sesión venció. Inicia sesión para volver a tu proyecto.</p>
+        }
+        @if (reason === 'unavailable') {
+          <p role="status" class="ep2-notice">No pudimos verificar tu sesión. Cuando se recupere la conexión, vuelve a consultarla.</p>
+          <button type="button" [disabled]="busy()" (click)="retrySession()">Reintentar sesión</button>
+        }
+        @if (error()) { <p role="alert" class="ep2-error">{{ error() }}</p> }
+        <form class="ep2-form" [formGroup]="form" (ngSubmit)="submit()" [attr.aria-busy]="busy()">
+          <label>Correo de demostración
+            <input type="email" formControlName="email" autocomplete="username" maxlength="254" required
+              [attr.aria-invalid]="form.controls.email.touched && form.controls.email.invalid" />
+          </label>
+          <label>Contraseña
+            <input type="password" formControlName="password" [attr.autocomplete]="mode() === 'register' ? 'new-password' : 'current-password'"
+              minlength="12" maxlength="128" aria-describedby="login-password-hint" required
+              [attr.aria-invalid]="form.controls.password.touched && form.controls.password.invalid" />
+          </label>
+          <p id="login-password-hint" class="ep2-hint">Entre 12 y 128 caracteres.</p>
+          <button class="ep2-primary" type="submit" [disabled]="busy()">
+            {{ busy() ? 'Conectando…' : mode() === 'login' ? 'Iniciar sesión' : 'Crear cuenta' }}
+          </button>
+        </form>
+        <button class="ep2-link" type="button" [disabled]="busy()" (click)="changeMode()">
+          {{ mode() === 'login' ? 'Crear una cuenta ficticia' : 'Ya tengo una cuenta' }}
+        </button>
+      </section>
+    </main>
+  </div>
+</ion-content>

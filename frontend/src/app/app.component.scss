@@ -1,0 +1,38 @@
+.app-update {
+  position: fixed;
+  right: max(1rem, env(safe-area-inset-right));
+  bottom: max(1rem, env(safe-area-inset-bottom));
+  left: max(1rem, env(safe-area-inset-left));
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.75rem;
+  max-width: 28rem;
+  margin-inline-start: auto;
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  color: #faf8f3;
+  background: #245442;
+  box-shadow: 0 4px 18px #0e281d40;
+
+  p {
+    flex: 1 1 13rem;
+    margin: 0;
+  }
+
+  button {
+    min-height: 44px;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.4rem;
+    color: #245442;
+    background: #faf8f3;
+    font-weight: 600;
+  }
+
+  button:focus-visible {
+    outline: 2px solid #faf8f3;
+    outline-offset: 3px;
+  }
+}

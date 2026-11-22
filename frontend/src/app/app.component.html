@@ -1,3 +1,9 @@
 <ion-app>
   <ion-router-outlet></ion-router-outlet>
+  @if (updateMessage()) {
+    <aside class="app-update">
+      <p role="status">{{ updateMessage() }}</p>
+      <button type="button" (click)="reloadApp()">Actualizar</button>
+    </aside>
+  }
 </ion-app>

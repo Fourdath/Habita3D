@@ -1,1 +1,52 @@
 :host { display: block; height: 100%; color-scheme: light; }
+.ep2-plan-file {
+  display: grid;
+  gap: .4rem;
+  max-width: 26rem;
+  margin-block-start: 1rem;
+}
+
+.ep2-room-workspace__body {
+  display: grid;
+  gap: 18px;
+  align-items: start;
+}
+
+.ep2-room-workspace__controls,
+.ep2-room-workspace__selection {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.ep2-room-workspace__selection {
+  padding: 14px;
+  border: 1px solid #dde4d7;
+  border-radius: 8px;
+  background: #f8faf6;
+  overflow-wrap: anywhere;
+}
+
+.ep2-room-workspace__cost {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 100px), 1fr));
+  gap: 8px 14px;
+  margin: 4px 0;
+  padding-block: 10px;
+  border-block: 1px solid #dde4d7;
+}
+
+.ep2-room-workspace__cost dt { color: #506451; font-size: 12px; }
+.ep2-room-workspace__cost dd {
+  margin: 0;
+  color: #245442;
+  font: 500 20px var(--h3d-font-display, sans-serif);
+}
+
+@media (min-width: 950px) {
+  .ep2-room-workspace__body:has(app-project-room-map) { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
+}
+
+.ep2-room-management summary { color: #245442; cursor: pointer; font-weight: 600; }
+.ep2-room-management summary:focus-visible { outline: 2px solid #245442; outline-offset: 3px; }
+.ep2-room-management__body { margin-block-start: 16px; }

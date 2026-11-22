@@ -61,21 +61,19 @@ def evaluate_case(call, auth, project_id, room_id):
     # catalogue prices with fresh suggestions or a different room context.
     if catalogue != call(catalogue_path) or project != call(project_path, headers=auth):
         raise ValueError("El catálogo o el proyecto cambió durante la medición. Repita el caso.")
-    if result["status"] == "disabled":
-        raise ValueError("Active las sugerencias en el proyecto para poder compararlas.")
     if len(catalogue["items"]) != catalogue["total"]:
         raise ValueError("La evaluación requiere la muestra completa de hasta 40 publicaciones.")
     available_budget = result["availableBudgetClp"]
     baseline = [compact_result(item, room, available_budget) for item in catalogue["items"][:3]]
     snapshot = {item["publicationKey"]: item for item in catalogue["items"]}
     recommended = []
-    for item in result["items"]:
-        original = snapshot.get(item["publication"]["publicationKey"])
+    for item in result["suggestions"]:
+        original = snapshot.get(item["publicationKey"])
         if original is None:
             raise ValueError("Una sugerencia no pertenece al catálogo medido.")
         scored = compact_result(original, room, available_budget)
-        if (scored["costClp"] != item["costClp"] or scored["boxes"] != item["boxes"]
-                or scored["checkedAt"] != item["publication"]["checkedAt"]):
+        if (scored["costClp"] != item["totalClp"] or scored["boxes"] != item["boxes"]
+                or scored["checkedAt"] != item["checkedAt"]):
             raise ValueError("Una sugerencia no coincide con los precios o cantidades medidos.")
         recommended.append({**scored, "reasons": item["reasons"]})
 
@@ -84,11 +82,11 @@ def evaluate_case(call, auth, project_id, room_id):
         "roomBudgetClp": room["budgetClp"],
         "projectBudgetClp": project["budgetClp"],
         "availableBudgetClp": available_budget,
-        "budgetProvisional": result["budgetProvisional"],
+        "budgetProvisional": result["provisionalBudget"],
         "preferredCategory": room.get("preferredCategory"),
         "preferredSource": room.get("preferredSource"),
-        "status": result["status"],
-        "ruleVersion": result["ruleVersion"],
+        "status": result["emptyReason"] or ("within_budget" if any(item["fitsBudget"] for item in recommended) else "over_budget"),
+        "ruleVersion": "floor-rules-v1",
         "catalogueCount": catalogue["total"],
         "catalogueOrder": evaluated_list(baseline),
         "recommendedOrder": evaluated_list(recommended),

@@ -1,25 +1,19 @@
 :host { display: block; }
 .style-panel { color: #253c30; font-size: 12px; }
-.style-panel__title { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 0; font-size: 14px; font-weight: 600; }
-.style-panel__title span { color: #788476; font: 8px var(--h3d-font-mono, monospace); letter-spacing: .06em; }
+.style-panel__title { margin: 0; font-size: 14px; font-weight: 600; }
 .style-panel__description { margin: 7px 0 14px; color: #6d796d; font-size: 11px; }
-.style-panel__options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin: 0; padding: 0; border: 0; }
+.style-panel__options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; margin: 0; padding: 0; border: 0; }
 .style-panel__legend { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 .style-panel__option { position: relative; display: grid; gap: 9px; padding: 10px 7px; border: 1px solid #e0e5db; border-radius: 8px; text-align: center; cursor: pointer; }
+.style-panel__option:first-of-type { grid-column: 1 / -1; grid-template-columns: 68px 1fr; align-items: center; justify-items: stretch; text-align: left; }
+.style-panel__option:first-of-type .style-panel__palette { height: 21px; }
 .style-panel__option--selected { background: #f0f5eb; border-color: #668660; }
 .style-panel__option:focus-within { outline: 2px solid #245442; outline-offset: 3px; }
 .style-panel__option input { position: absolute; opacity: 0; inset: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
 .style-panel__options:disabled { opacity: .6; }
 .style-panel__options:disabled input { cursor: default; }
 .style-panel__palette { display: flex; height: 35px; overflow: hidden; border-radius: 4px; pointer-events: none; }
-.style-panel__palette i { flex: 1; background: #e4ded2; }
-.style-panel__palette i:nth-child(2) { background: #b9ab97; }
-.style-panel__palette i:nth-child(3) { background: #9aa58f; }
-.style-panel__palette--nordic i:first-child { background: #f3f0e8; }
-.style-panel__palette--nordic i:nth-child(2) { background: #d8cdbe; }
-.style-panel__palette--industrial i:first-child { background: #b2b0aa; }
-.style-panel__palette--industrial i:nth-child(2) { background: #303234; }
-.style-panel__palette--industrial i:nth-child(3) { background: #804b38; }
+.style-panel__palette i { flex: 1; }
 .style-panel__name { font-size: 10px; }
 .style-panel__status { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
 ion-spinner { width: 16px; height: 16px; }

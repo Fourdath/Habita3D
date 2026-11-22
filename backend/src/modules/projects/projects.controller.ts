@@ -3,46 +3,36 @@ import {
   Controller,
   Delete,
   Get,
-  Header,
   HttpCode,
   Param,
   ParseIntPipe,
   ParseUUIDPipe,
+  Put,
   Patch,
   Post,
   Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
-import {
-  ApiBearerAuth,
-  ApiConflictResponse,
-  ApiNotFoundResponse,
-  ApiOkResponse,
-  ApiOperation,
-  ApiQuery,
-  ApiTags,
-  ApiUnauthorizedResponse,
-  ApiServiceUnavailableResponse,
-} from '@nestjs/swagger';
-import { Throttle } from '@nestjs/throttler';
 
 import type { AuthenticatedRequest } from '../auth/session-auth.guard.js';
 import { SessionAuthGuard } from '../auth/session-auth.guard.js';
 import { CreateProjectDto } from './dto/create-project.dto.js';
+import { PreviewProjectDto } from './dto/preview-project.dto.js';
+import { ProjectFloorDto } from './dto/project-floor.dto.js';
+import { ProjectFloorplanDto } from './dto/project-floorplan.dto.js';
+import { CreateRoomDto, UpdateRoomDto } from './dto/room.dto.js';
 import {
   AcceptFloorSuggestionDto,
-  AcceptFloorSuggestionResponseDto,
-  FloorSuggestionsQueryDto,
-  FloorSuggestionsResponseDto,
-} from './dto/floor-suggestions.dto.js';
-import { PreviewProjectDto } from './dto/preview-project.dto.js';
-import { CreateRoomDto, UpdateRoomDto } from './dto/room.dto.js';
+  SuggestionQueryDto,
+  UpdateFloorPreferencesDto,
+  UpdateSuggestionSettingsDto,
+} from './dto/suggestions.dto.js';
 import { UpdateProjectDto } from './dto/update-project.dto.js';
+import { floorSuggestionsOpenApi } from './floor-suggestions.openapi.js';
 import { ProjectPreviewService } from './project-preview.service.js';
 import { ProjectsService } from './projects.service.js';
 
-@ApiTags('projects')
 @Controller('projects')
 export class ProjectsController {
   constructor(
@@ -51,36 +41,24 @@ export class ProjectsController {
   ) {}
 
   @Post('preview')
-  @Throttle({ default: { limit: 15, ttl: 60_000 } })
-  preview(
-    @Body() dto: PreviewProjectDto,
-    @Req() request: AuthenticatedRequest,
-  ) {
-    const requestId = request.headers['x-request-id'];
-    return this.previews.create(
-      dto,
-      typeof requestId === 'string' ? requestId : undefined,
-    );
+  preview(@Body() dto: PreviewProjectDto) {
+    return this.previews.create(dto);
   }
 
   @Post()
   @UseGuards(SessionAuthGuard)
-  @ApiBearerAuth()
   create(@Req() request: AuthenticatedRequest, @Body() dto: CreateProjectDto) {
     return this.projects.createForUser(request.authenticatedUser.id, dto);
   }
 
   @Get()
   @UseGuards(SessionAuthGuard)
-  @ApiBearerAuth()
   findAll(@Req() request: AuthenticatedRequest) {
     return this.projects.findAll(request.authenticatedUser.id);
   }
 
   @Get(':id/budget')
   @UseGuards(SessionAuthGuard)
-  @ApiBearerAuth()
-  @Throttle({ default: { limit: 30, ttl: 60_000 } })
   budget(
     @Req() request: AuthenticatedRequest,
     @Param('id', ParseIntPipe) id: number,
@@ -93,9 +71,80 @@ export class ProjectsController {
     );
   }
 
+  @Get('suggestions/openapi.json')
+  suggestionsContract() {
+    return floorSuggestionsOpenApi;
+  }
+
+  @Patch(':id/suggestions/settings')
+  @UseGuards(SessionAuthGuard)
+  updateSuggestionSettings(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateSuggestionSettingsDto,
+  ) {
+    return this.projects.updateSuggestionSettings(
+      request.authenticatedUser.id,
+      id,
+      dto,
+    );
+  }
+
+  @Patch(':id/rooms/:roomId/suggestions/preferences')
+  @UseGuards(SessionAuthGuard)
+  updateFloorPreferences(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseIntPipe) id: number,
+    @Param('roomId', new ParseUUIDPipe({ version: '4' })) roomId: string,
+    @Body() dto: UpdateFloorPreferencesDto,
+  ) {
+    return this.projects.updateFloorPreferences(
+      request.authenticatedUser.id,
+      id,
+      roomId,
+      dto,
+    );
+  }
+
+  @Get(':id/rooms/:roomId/suggestions')
+  @UseGuards(SessionAuthGuard)
+  suggestions(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseIntPipe) id: number,
+    @Param('roomId', new ParseUUIDPipe({ version: '4' })) roomId: string,
+    @Query() query: SuggestionQueryDto,
+  ) {
+    const requestId = request.headers['x-request-id'];
+    return this.projects.suggestions(
+      request.authenticatedUser.id,
+      id,
+      roomId,
+      query.exclude ?? [],
+      typeof requestId === 'string' ? requestId : undefined,
+    );
+  }
+
+  @Post(':id/rooms/:roomId/suggestions/accept')
+  @HttpCode(200)
+  @UseGuards(SessionAuthGuard)
+  acceptSuggestion(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseIntPipe) id: number,
+    @Param('roomId', new ParseUUIDPipe({ version: '4' })) roomId: string,
+    @Body() dto: AcceptFloorSuggestionDto,
+  ) {
+    const requestId = request.headers['x-request-id'];
+    return this.projects.acceptSuggestion(
+      request.authenticatedUser.id,
+      id,
+      roomId,
+      dto,
+      typeof requestId === 'string' ? requestId : undefined,
+    );
+  }
+
   @Get(':id')
   @UseGuards(SessionAuthGuard)
-  @ApiBearerAuth()
   findOne(
     @Req() request: AuthenticatedRequest,
     @Param('id', ParseIntPipe) id: number,
@@ -103,9 +152,18 @@ export class ProjectsController {
     return this.projects.findOne(request.authenticatedUser.id, id);
   }
 
+  @Put(':id/floorplan')
+  @UseGuards(SessionAuthGuard)
+  saveFloorplan(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: ProjectFloorplanDto,
+  ) {
+    return this.projects.saveFloorplan(request.authenticatedUser.id, id, dto);
+  }
+
   @Patch(':id')
   @UseGuards(SessionAuthGuard)
-  @ApiBearerAuth()
   update(
     @Req() request: AuthenticatedRequest,
     @Param('id', ParseIntPipe) id: number,
@@ -117,7 +175,6 @@ export class ProjectsController {
   @Delete(':id')
   @HttpCode(204)
   @UseGuards(SessionAuthGuard)
-  @ApiBearerAuth()
   remove(
     @Req() request: AuthenticatedRequest,
     @Param('id', ParseIntPipe) id: number,
@@ -127,7 +184,6 @@ export class ProjectsController {
 
   @Post(':id/rooms')
   @UseGuards(SessionAuthGuard)
-  @ApiBearerAuth()
   createRoom(
     @Req() request: AuthenticatedRequest,
     @Param('id', ParseIntPipe) id: number,
@@ -136,9 +192,22 @@ export class ProjectsController {
     return this.projects.createRoom(request.authenticatedUser.id, id, dto);
   }
 
+  @Patch(':id/floors')
+  @UseGuards(SessionAuthGuard)
+  applyProjectFloor(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: ProjectFloorDto,
+  ) {
+    return this.projects.applyProjectFloor(
+      request.authenticatedUser.id,
+      id,
+      dto,
+    );
+  }
+
   @Patch(':id/rooms/:roomId')
   @UseGuards(SessionAuthGuard)
-  @ApiBearerAuth()
   updateRoom(
     @Req() request: AuthenticatedRequest,
     @Param('id', ParseIntPipe) id: number,
@@ -156,86 +225,11 @@ export class ProjectsController {
   @Delete(':id/rooms/:roomId')
   @HttpCode(204)
   @UseGuards(SessionAuthGuard)
-  @ApiBearerAuth()
   removeRoom(
     @Req() request: AuthenticatedRequest,
     @Param('id', ParseIntPipe) id: number,
     @Param('roomId', new ParseUUIDPipe({ version: '4' })) roomId: string,
   ) {
     return this.projects.removeRoom(request.authenticatedUser.id, id, roomId);
-  }
-
-  @Get(':id/rooms/:roomId/suggestions')
-  @Header('Cache-Control', 'private, no-store')
-  @UseGuards(SessionAuthGuard)
-  @Throttle({ default: { limit: 30, ttl: 60_000 } })
-  @ApiBearerAuth()
-  @ApiOperation({
-    summary: 'Calcular sugerencias de piso con el catálogo persistido',
-  })
-  @ApiQuery({
-    name: 'exclude',
-    required: false,
-    type: String,
-    description: 'Hasta 40 claves de publicación SHA-256 separadas por comas',
-  })
-  @ApiOkResponse({ type: FloorSuggestionsResponseDto })
-  @ApiUnauthorizedResponse({ description: 'Sesión ausente o vencida' })
-  @ApiServiceUnavailableResponse({
-    description: 'Servicio Python no disponible',
-  })
-  @ApiNotFoundResponse({
-    description: 'Proyecto o habitación no encontrado para esta cuenta',
-  })
-  suggestions(
-    @Req() request: AuthenticatedRequest,
-    @Param('id', ParseIntPipe) id: number,
-    @Param('roomId', new ParseUUIDPipe({ version: '4' })) roomId: string,
-    @Query() query: FloorSuggestionsQueryDto,
-  ) {
-    const requestId = request.headers['x-request-id'];
-    return this.projects.suggestions(
-      request.authenticatedUser.id,
-      id,
-      roomId,
-      query.exclude?.split(',') ?? [],
-      typeof requestId === 'string' ? requestId : undefined,
-    );
-  }
-
-  @Post(':id/rooms/:roomId/suggestions/accept')
-  @HttpCode(200)
-  @UseGuards(SessionAuthGuard)
-  @Throttle({ default: { limit: 15, ttl: 60_000 } })
-  @ApiBearerAuth()
-  @ApiOperation({
-    summary: 'Verificar el costo vigente antes de guardar el piso sugerido',
-  })
-  @ApiOkResponse({ type: AcceptFloorSuggestionResponseDto })
-  @ApiUnauthorizedResponse({ description: 'Sesión ausente o vencida' })
-  @ApiServiceUnavailableResponse({
-    description: 'Servicio Python no disponible',
-  })
-  @ApiNotFoundResponse({
-    description: 'Proyecto o habitación no encontrado para esta cuenta',
-  })
-  @ApiConflictResponse({
-    description:
-      'Sugerencias desactivadas, publicación no utilizable o cambio concurrente',
-  })
-  acceptSuggestion(
-    @Req() request: AuthenticatedRequest,
-    @Param('id', ParseIntPipe) id: number,
-    @Param('roomId', new ParseUUIDPipe({ version: '4' })) roomId: string,
-    @Body() dto: AcceptFloorSuggestionDto,
-  ) {
-    const requestId = request.headers['x-request-id'];
-    return this.projects.acceptSuggestion(
-      request.authenticatedUser.id,
-      id,
-      roomId,
-      dto,
-      typeof requestId === 'string' ? requestId : undefined,
-    );
   }
 }

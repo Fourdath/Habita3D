@@ -1,65 +1,62 @@
 import {
-  BadGatewayException,
   BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
 
 import { PrismaService } from '../../database/prisma.service.js';
-import type {
-  Project,
-  Publication,
-  Room,
+import {
   Prisma,
+  type Project,
+  type ProjectFloorplan,
+  type Room,
 } from '../../generated/prisma/client.js';
+import type { FloorSuggestionRequest } from '../../integrations/python/floor-suggestions-contract.js';
+import { internalPythonToken } from '../../integrations/python/internal-python-token.js';
 import { PythonService } from '../../integrations/python/python.service.js';
+import { CATALOGUE_IMPORT_LOCK } from '../materials/capture-contract.js';
 import { serializePublication } from '../materials/publication-view.js';
 import { CreateProjectDto } from './dto/create-project.dto.js';
-import { AcceptFloorSuggestionDto } from './dto/floor-suggestions.dto.js';
+import type { ProjectFloorDto } from './dto/project-floor.dto.js';
+import type { ProjectFloorplanDto } from './dto/project-floorplan.dto.js';
 import { CreateRoomDto, UpdateRoomDto } from './dto/room.dto.js';
+import type {
+  AcceptFloorSuggestionDto,
+  UpdateFloorPreferencesDto,
+  UpdateSuggestionSettingsDto,
+} from './dto/suggestions.dto.js';
 import { UpdateProjectDto } from './dto/update-project.dto.js';
 import {
-  publicationFloorInput,
-  roomBudgetInput,
-  roomFloorInput,
-} from './project-floor-input.js';
+  quoteTermsDigest,
+  snapshotPublication,
+  snapshotRoom,
+  suggestionView,
+  validQuote,
+} from './floor-suggestion-view.js';
 
 type RoomWithPublication = Prisma.RoomGetPayload<{
   include: { publication: true };
 }>;
-type ProjectWithRooms = Project & { rooms?: RoomWithPublication[] };
+type ProjectWithRooms = Project & {
+  rooms?: RoomWithPublication[];
+  floorplan?: Pick<ProjectFloorplan, 'name' | 'svg' | 'revision'> | null;
+};
 
 const missingProject = () => new NotFoundException('Proyecto no encontrado');
 const missingRoom = () => new NotFoundException('Habitación no encontrada');
-const disabledSuggestions = () =>
-  new ConflictException({
-    code: 'SUGGESTIONS_DISABLED',
-    message: 'Las sugerencias están desactivadas para este proyecto',
+const suggestionNotFound = () =>
+  new NotFoundException({
+    code: 'room_not_found',
+    message: 'No se encontró la habitación',
   });
-const unavailableSuggestion = () =>
+const unavailablePublication = () =>
   new ConflictException({
-    code: 'SUGGESTION_UNAVAILABLE',
-    message: 'La publicación ya no está disponible para esta sugerencia',
+    code: 'publication_unavailable',
+    message: 'La publicación ya no está disponible para sugerencias',
   });
-const changedSuggestion = () =>
-  new ConflictException({
-    code: 'SUGGESTION_CHANGED',
-    message:
-      'La publicación o la habitación cambió; vuelve a revisar la sugerencia',
-  });
-const PRICE_STALE_MS = 24 * 60 * 60 * 1000;
-
-function isPriceStale(publication: Publication, now: number) {
-  return now - publication.checkedAt.getTime() >= PRICE_STALE_MS;
-}
-
-function canRecommend(publication: Publication) {
-  return (
-    publication.availability !== 'unavailable' &&
-    publication.coveragePerBoxM2 !== null
-  );
-}
 
 function projectId(id: number) {
   if (!Number.isInteger(id) || id < 1 || id > 2_147_483_647) {
@@ -79,6 +76,7 @@ function serializeRoom(room: RoomWithPublication) {
     wastePercent: room.wastePercent.toString(),
     budgetClp: room.budgetClp === null ? null : Number(room.budgetClp),
     publicationKey: room.publicationKey,
+    lastSuggestedPublicationKey: room.lastSuggestedPublicationKey ?? null,
     sceneRoomId: room.sceneRoomId,
     preferredCategory: room.preferredCategory,
     preferredSource: room.preferredSource,
@@ -99,6 +97,7 @@ function serializeProject(project: ProjectWithRooms) {
     createdAt: project.createdAt,
     updatedAt: project.updatedAt,
     ...(project.rooms ? { rooms: project.rooms.map(serializeRoom) } : {}),
+    ...(project.floorplan !== undefined ? { floorplan: project.floorplan } : {}),
   };
 }
 
@@ -189,8 +188,8 @@ export class ProjectsService {
         data: {
           name: dto.name,
           budgetClp: BigInt(dto.budgetClp),
-          suggestionsEnabled: dto.suggestionsEnabled ?? true,
           ownerId: userId,
+          suggestionsEnabled: dto.suggestionsEnabled ?? true,
         },
       }),
     );
@@ -209,52 +208,87 @@ export class ProjectsService {
     tx: Prisma.TransactionClient,
     userId: number,
     id: number,
+    inaccessible = missingProject,
   ) {
     projectId(id);
     // A project row lock serializes mutations, including room additions and deletions.
     const locked = await tx.$queryRaw<{ id: number }[]>`
       SELECT id FROM "Project" WHERE id = ${id} AND "ownerId" = ${userId} FOR UPDATE
     `;
-    if (!locked.length) throw missingProject();
+    if (!locked.length) throw inaccessible();
     const project = await tx.project.findFirst({
       where: { id, ownerId: userId },
     });
-    if (!project) throw missingProject();
-    return project;
-  }
-
-  private async findOwnedWithRooms(
-    tx: Prisma.TransactionClient,
-    userId: number,
-    id: number,
-  ) {
-    projectId(id);
-    const project = await tx.project.findFirst({
-      where: { id, ownerId: userId },
-      include: {
-        rooms: {
-          include: { publication: true },
-          orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
-        },
-      },
-    });
-    if (!project) throw missingProject();
+    if (!project) throw inaccessible();
     return project;
   }
 
   async findOne(userId: number, id: number) {
-    return serializeProject(
-      await this.findOwnedWithRooms(this.prisma, userId, id),
+    projectId(id);
+    const project = await this.prisma.$transaction(
+      (tx) => tx.project.findFirst({
+        where: { id, ownerId: userId },
+        include: {
+          floorplan: { select: { name: true, svg: true, revision: true } },
+          rooms: {
+            include: { publication: true },
+            orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+          },
+        },
+      }),
+      { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
     );
+    if (!project) throw missingProject();
+    return serializeProject(project);
+  }
+
+  async saveFloorplan(userId: number, id: number, dto: ProjectFloorplanDto) {
+    if (
+      Buffer.byteLength(dto.svg) > 1_048_576 ||
+      /<!\s*(?:DOCTYPE|ENTITY)\b/i.test(dto.svg) ||
+      !/<svg[\s>]/.test(dto.svg) ||
+      !/<\/svg\s*>/.test(dto.svg)
+    ) {
+      throw new BadRequestException('El plano debe ser un SVG CubiCasa de hasta 1 MB.');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      await this.owned(tx, userId, id);
+      const previous = await tx.projectFloorplan.findUnique({ where: { projectId: id } });
+      const changed = previous?.svg !== dto.svg;
+      if (changed) {
+        // Parsed room IDs depend on the drawing. Old IDs cannot safely identify rooms in a new drawing.
+        await tx.room.updateMany({
+          where: { projectId: id, sceneRoomId: { not: null } },
+          data: { sceneRoomId: null },
+        });
+      }
+      if (changed && !(await tx.room.count({ where: { projectId: id } }))) {
+        await tx.room.createMany({
+          data: dto.rooms.map((room) => ({
+            projectId: id,
+            name: room.name,
+            sceneRoomId: room.id,
+            areaMode: 'area',
+            areaM2: room.areaM2,
+          })),
+        });
+      }
+      const { name, svg } = dto;
+      const revision = !changed && previous ? previous.revision : randomUUID();
+      const floorplan = await tx.projectFloorplan.upsert({
+        where: { projectId: id },
+        create: { projectId: id, name, svg, revision },
+        update: { name, svg, revision },
+        select: { name: true, svg: true, revision: true },
+      });
+      return { floorplan };
+    });
   }
 
   async update(userId: number, id: number, dto: UpdateProjectDto) {
-    if (
-      dto.name === undefined &&
-      dto.budgetClp === undefined &&
-      dto.suggestionsEnabled === undefined
-    ) {
-      throw new BadRequestException('Indique algún campo del proyecto');
+    if (dto.name === undefined && dto.budgetClp === undefined && dto.suggestionsEnabled === undefined) {
+      throw new BadRequestException('Indique nombre o presupuesto');
     }
     return this.prisma.$transaction(async (tx) => {
       await this.owned(tx, userId, id);
@@ -297,10 +331,21 @@ export class ProjectsService {
     }
   }
 
+  private async checkFloorplanRevision(tx: Prisma.TransactionClient, id: number, revision?: string) {
+    const floorplan = await tx.projectFloorplan.findUnique({
+      where: { projectId: id },
+      select: { revision: true },
+    });
+    if (floorplan?.revision !== revision) {
+      throw new ConflictException({ code: 'floorplan_changed', message: 'El plano cambió. Abre el proyecto nuevamente.' });
+    }
+  }
+
   async createRoom(userId: number, id: number, dto: CreateRoomDto) {
     const surface = surfaceData(dto);
     return this.prisma.$transaction(async (tx) => {
       await this.owned(tx, userId, id);
+      if (dto.sceneRoomId) await this.checkFloorplanRevision(tx, id, dto.floorplanRevision);
       if ((await tx.room.count({ where: { projectId: id } })) >= 100) {
         throw new BadRequestException(
           'Un proyecto admite hasta 100 habitaciones',
@@ -319,12 +364,87 @@ export class ProjectsService {
               : BigInt(dto.budgetClp),
           publicationKey: dto.publicationKey ?? null,
           sceneRoomId: dto.sceneRoomId ?? null,
-          preferredCategory: dto.preferredCategory ?? null,
-          preferredSource: dto.preferredSource ?? null,
+          preferredCategory: dto.preferredCategory,
+          preferredSource: dto.preferredSource,
         },
         include: { publication: true },
       });
       return serializeRoom(room);
+    });
+  }
+
+  async applyProjectFloor(userId: number, id: number, dto: ProjectFloorDto) {
+    return this.prisma.$transaction(async (tx) => {
+      await this.owned(tx, userId, id);
+      await this.checkFloorplanRevision(tx, id, dto.floorplanRevision);
+      const product = await tx.publication.findUnique({
+        where: { publicationKey: dto.publicationKey },
+      });
+      if (
+        !product ||
+        product.availability === 'unavailable' ||
+        product.saleUnit !== 'box' ||
+        product.pricePerBoxClp <= 0 ||
+        !product.coveragePerBoxM2?.gt(0)
+      ) {
+        throw new BadRequestException(
+          'Elige un piso disponible con precio y cobertura por caja',
+        );
+      }
+      const existing = await tx.room.findMany({
+        where: { projectId: id },
+        select: { sceneRoomId: true },
+      });
+      const planIds = new Set(dto.rooms.map((room) => room.id));
+      const attached = existing.flatMap((room) =>
+        room.sceneRoomId && planIds.has(room.sceneRoomId)
+          ? [room.sceneRoomId]
+          : [],
+      );
+      const linked = new Set(attached);
+      if (linked.size !== attached.length) {
+        throw new BadRequestException(
+          'Corrige los recintos vinculados a más de una habitación',
+        );
+      }
+      const missing = dto.rooms.filter((room) => !linked.has(room.id));
+      if (existing.length + missing.length > 100)
+        throw new BadRequestException(
+          'Un proyecto admite hasta 100 habitaciones',
+        );
+      if (missing.length)
+        await tx.room.createMany({
+          data: missing.map((room) => ({
+            projectId: id,
+            sceneRoomId: room.id,
+            name: room.name,
+            areaMode: 'area',
+            areaM2: String(room.areaM2),
+            publicationKey: dto.publicationKey,
+          })),
+        });
+      if (linked.size)
+        await tx.room.updateMany({
+          where: {
+            projectId: id,
+            sceneRoomId: { in: [...linked] },
+            OR: [
+              { publicationKey: null },
+              { publicationKey: { not: dto.publicationKey } },
+            ],
+          },
+          data: { publicationKey: dto.publicationKey },
+        });
+      const project = await tx.project.findUniqueOrThrow({
+        where: { id },
+        include: {
+          rooms: {
+            include: { publication: true },
+            orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+          },
+        },
+      });
+      return serializeProject(project);
     });
   }
 
@@ -344,15 +464,16 @@ export class ProjectsService {
       });
       if (!room) throw missingRoom();
       const surface = surfaceData(dto, room);
+      if (dto.sceneRoomId) await this.checkFloorplanRevision(tx, id, dto.floorplanRevision);
       await this.selectedPublication(tx, dto.publicationKey);
       return serializeRoom(
         await tx.room.update({
           where: { id: roomId, projectId: id },
           data: {
             name: dto.name,
+            ...surface,
             preferredCategory: dto.preferredCategory,
             preferredSource: dto.preferredSource,
-            ...surface,
             ...(dto.wastePercent !== undefined
               ? { wastePercent: String(dto.wastePercent) }
               : {}),
@@ -385,102 +506,65 @@ export class ProjectsService {
     });
   }
 
+  async updateSuggestionSettings(
+    userId: number,
+    id: number,
+    dto: UpdateSuggestionSettingsDto,
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      await this.owned(tx, userId, id);
+      return tx.project.update({
+        where: { id },
+        data: dto,
+        select: { suggestionsEnabled: true },
+      });
+    });
+  }
+
+  async updateFloorPreferences(
+    userId: number,
+    id: number,
+    roomId: string,
+    dto: UpdateFloorPreferencesDto,
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      await this.owned(tx, userId, id, suggestionNotFound);
+      const room = await tx.room.findFirst({
+        where: { id: roomId, projectId: id },
+      });
+      if (!room) throw suggestionNotFound();
+      return serializeRoom(
+        await tx.room.update({
+          where: { id: roomId, projectId: id },
+          data: dto,
+          include: { publication: true },
+        }),
+      );
+    });
+  }
+
   async suggestions(
     userId: number,
     id: number,
     roomId: string,
-    excluded: string[],
+    exclude: string[],
     requestId?: string,
   ) {
-    const { project, room, candidates } = await this.prisma.$transaction(
-      async (tx) => {
-        const project = await this.findOwnedWithRooms(tx, userId, id);
-        const room = project.rooms.find((value) => value.id === roomId);
-        if (!room) throw missingRoom();
-        const candidates = project.suggestionsEnabled
-          ? await tx.publication.findMany({
-              where: {
-                availability: { not: 'unavailable' },
-                coveragePerBoxM2: { not: null },
-                publicationKey: { notIn: excluded },
-              },
-              orderBy: { publicationKey: 'asc' },
-              take: 40,
-            })
-          : [];
-        return { project, room, candidates };
-      },
+    projectId(id);
+    const context = await this.prisma.$transaction(
+      (tx) => this.suggestionContext(tx, userId, id, roomId),
       { isolationLevel: 'RepeatableRead' },
     );
-    if (!project.suggestionsEnabled) {
-      return {
-        roomId,
-        status: 'disabled' as const,
-        ruleVersion: null,
-        availableBudgetClp: null,
-        budgetProvisional: false,
-        items: [],
-      };
-    }
-
-    // The context and all candidate prices came from one snapshot; no HTTP call holds a lock.
-    const otherRooms = project.rooms.filter((value) => value.id !== roomId);
-    const selected = otherRooms.flatMap((value) =>
-      value.publication ? [roomBudgetInput(value, value.publication)] : [],
-    );
-    const otherCosts = selected.length
-      ? await this.python.calculateBudget(
-          { rooms: selected, budget_clp: Number(project.budgetClp) },
-          requestId,
-        )
-      : null;
-    const remaining =
-      Number(project.budgetClp) - (otherCosts?.calculable_subtotal_clp ?? 0);
-    const availableBudgetClp =
-      room.budgetClp === null
-        ? remaining
-        : Math.min(remaining, Number(room.budgetClp));
-    const budgetProvisional =
-      (otherCosts?.calculated_rooms ?? 0) < otherRooms.length;
-    const result = await this.python.recommendFloors(
-      {
-        ...roomFloorInput(room),
-        available_budget_clp: availableBudgetClp,
-        preferred_category: room.preferredCategory,
-        preferred_source: room.preferredSource,
-        candidates: candidates.map((value) => ({
-          ...publicationFloorInput(value),
-          category: value.category,
-        })),
-      },
-      requestId,
-    );
-    const publicationByKey = new Map(
-      candidates.map((value) => [value.publicationKey, value]),
-    );
-    const now = Date.now();
+    const input = { ...context.input, exclude };
+    const result = await this.python.recommendFloors(input, requestId);
+    const secret = internalPythonToken();
     return {
-      roomId,
-      status: result.status,
-      ruleVersion: result.rule_version,
-      availableBudgetClp,
-      budgetProvisional,
-      items: result.items.map((item) => {
-        const publication = publicationByKey.get(item.publication_key);
-        if (!publication) {
-          throw new BadGatewayException(
-            'La sugerencia no corresponde al catálogo consultado',
-          );
-        }
-        return {
-          publication: serializePublication(publication),
-          boxes: item.boxes,
-          costClp: item.cost_clp,
-          budgetExcessClp: item.budget_excess_clp,
-          reasons: item.reasons,
-          isPriceStale: isPriceStale(publication, now),
-        };
-      }),
+      availableBudgetClp: result.available_budget_clp,
+      provisionalBudget: result.provisional_budget,
+      emptyReason: result.empty_reason,
+      suggestions: result.suggestions.map((item) =>
+        suggestionView(input, item, userId, id, secret, context.photoUrls.get(item.publication_key) ?? null),
+      ),
     };
   }
 
@@ -491,105 +575,173 @@ export class ProjectsService {
     dto: AcceptFloorSuggestionDto,
     requestId?: string,
   ) {
-    const { room, publication } = await this.prisma.$transaction(
-      async (tx) => {
-        const project = await this.findOwnedWithRooms(tx, userId, id);
-        const room = project.rooms.find((value) => value.id === roomId);
-        if (!room) throw missingRoom();
-        if (!project.suggestionsEnabled) throw disabledSuggestions();
-        const publication = await tx.publication.findUnique({
-          where: { publicationKey: dto.publicationKey },
-        });
-        if (!publication || !canRecommend(publication))
-          throw unavailableSuggestion();
-        return { room, publication };
-      },
-      { isolationLevel: 'RepeatableRead' },
-    );
-    const result = await this.python.calculateBudget(
-      { rooms: [roomBudgetInput(room, publication)], budget_clp: null },
-      requestId,
-    );
-    const quote = result.rooms[0];
-    if (
-      !quote ||
-      quote.status !== 'calculated' ||
-      quote.cost_clp === null ||
-      quote.boxes === null
-    ) {
-      throw new BadGatewayException(
-        'No se pudo comprobar el costo de la sugerencia',
-      );
-    }
-    return this.prisma.$transaction(async (tx) => {
-      const project = await this.owned(tx, userId, id);
-      if (!project.suggestionsEnabled) throw disabledSuggestions();
-      const currentRoom = await tx.room.findFirst({
-        where: { id: roomId, projectId: id },
-      });
-      if (!currentRoom) throw missingRoom();
-      if (
-        currentRoom.updatedAt.getTime() !== room.updatedAt.getTime() ||
-        currentRoom.publicationKey !== room.publicationKey ||
-        JSON.stringify(roomFloorInput(currentRoom)) !==
-          JSON.stringify(roomFloorInput(room))
-      ) {
-        throw changedSuggestion();
-      }
+    projectId(id);
+    const key = dto.publicationKey;
 
-      // Keep the price row stable between the final comparison and the choice write.
-      await tx.$queryRaw`
-        SELECT "publicationKey" FROM "Publication"
-        WHERE "publicationKey" = ${publication.publicationKey} FOR SHARE
-      `;
-      const currentPublication = await tx.publication.findUnique({
-        where: { publicationKey: publication.publicationKey },
-      });
-      if (!currentPublication || !canRecommend(currentPublication))
-        throw unavailableSuggestion();
-      if (
-        currentPublication.pricePerBoxClp !== publication.pricePerBoxClp ||
-        currentPublication.coveragePerBoxM2?.toString() !==
-          publication.coveragePerBoxM2?.toString() ||
-        currentPublication.availability !== publication.availability
-      ) {
-        throw changedSuggestion();
+    // The Python calculation stays outside the SQL transaction. Recheck all price inputs
+    // at save time while project and catalogue rows are locked against concurrent writes.
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const { input, photoUrls } = await this.prisma.$transaction(
+        (tx) => this.suggestionContext(tx, userId, id, roomId, key),
+        { isolationLevel: 'RepeatableRead' },
+      );
+      const secret = internalPythonToken();
+      if (!validQuote(secret, userId, id, roomId, key, dto.quoteId)) {
+        throw new BadRequestException({
+          code: 'invalid_recommendation_request',
+          message: 'La cotización no es válida para esta habitación',
+        });
       }
-      const details = {
-        boxes: quote.boxes,
-        costClp: quote.cost_clp,
-        publication: serializePublication(currentPublication),
-        isPriceStale: isPriceStale(currentPublication, Date.now()),
-      };
-      if (quote.cost_clp !== dto.expectedCostClp) {
-        return { status: 'price_changed' as const, ...details };
-      }
-      const updatedRoom = await tx.room.update({
-        where: { id: roomId, projectId: id },
-        data: { publicationKey: publication.publicationKey },
-        include: { publication: true },
+      if (!input.publications.length) throw unavailablePublication();
+      const result = await this.python.recommendFloors(input, requestId);
+      const ranked = result.suggestions[0];
+      if (!ranked) throw unavailablePublication();
+      const quote = suggestionView(input, ranked, userId, id, secret, photoUrls.get(key) ?? null);
+      if (quote.quoteId !== dto.quoteId)
+        throw new ConflictException({ status: 'price_changed', quote });
+      const hash = quoteTermsDigest(input, key);
+      const accepted = await this.prisma.$transaction(async (tx) => {
+        await this.owned(tx, userId, id, suggestionNotFound);
+        // Capture imports can update several publications at once. Coordinate with their
+        // exclusive lock before taking row locks, while letting other acceptances proceed.
+        await tx.$queryRaw`SELECT pg_advisory_xact_lock_shared(${CATALOGUE_IMPORT_LOCK})::text AS locked`;
+        const watched = await tx.room.findMany({
+          where: { projectId: id, id: { not: roomId } },
+          select: { publicationKey: true },
+        });
+        const keys = [
+          ...new Set([
+            key,
+            ...watched.flatMap((room) =>
+              room.publicationKey ? [room.publicationKey] : [],
+            ),
+          ]),
+        ];
+        await tx.$queryRaw`SELECT "publicationKey" FROM "Publication"
+          WHERE "publicationKey" IN (${Prisma.join(keys)}) ORDER BY "publicationKey" FOR SHARE`;
+        const current = await this.suggestionContext(
+          tx,
+          userId,
+          id,
+          roomId,
+          key,
+        );
+        if (
+          !current.input.publications.length ||
+          quoteTermsDigest(current.input, key) !== hash
+        )
+          return null;
+        if (current.room.publicationKey === key && current.room.lastSuggestedPublicationKey === key)
+          return serializeRoom(current.room);
+        const room = await tx.room.update({
+          where: { id: roomId, projectId: id },
+          data: { publicationKey: key, lastSuggestedPublicationKey: key },
+          include: { publication: true },
+        });
+        return serializeRoom(room);
       });
-      return {
-        status: 'accepted' as const,
-        ...details,
-        room: serializeRoom(updatedRoom),
-      };
+      if (accepted) return { status: 'accepted', room: accepted };
+    }
+    throw new ServiceUnavailableException({
+      code: 'recommendations_unavailable',
+      message: 'El catálogo está cambiando. Vuelve a consultar las sugerencias',
     });
   }
 
+  private async suggestionContext(
+    tx: Prisma.TransactionClient,
+    userId: number,
+    id: number,
+    roomId: string,
+    selected?: string,
+  ) {
+    const project = await tx.project.findFirst({
+      where: { id, ownerId: userId },
+      include: {
+        rooms: { include: { publication: true }, orderBy: { id: 'asc' } },
+      },
+    });
+    const target = project?.rooms.find((room) => room.id === roomId);
+    if (!project || !target) throw suggestionNotFound();
+    if (!project.suggestionsEnabled)
+      throw new ConflictException({
+        code: 'suggestions_disabled',
+        message: 'Las sugerencias están desactivadas',
+      });
+    const candidates = await tx.publication.findMany({
+      where: {
+        ...(selected ? { publicationKey: selected } : {}),
+        category: { in: ['ceramic', 'laminate'] },
+        source: { in: ['easy', 'sodimac'] },
+        currency: 'CLP',
+        priceType: 'public',
+        saleUnit: 'box',
+        communeCode: '13110',
+        pricePerBoxClp: { gt: 0 },
+        coveragePerBoxM2: { gt: 0 },
+      },
+      orderBy: [{ checkedAt: 'desc' }, { publicationKey: 'asc' }],
+      take: 40,
+    });
+    const input: FloorSuggestionRequest = {
+      budget_clp: Number(project.budgetClp),
+      room: {
+        ...snapshotRoom(target),
+        preferred_category: target.preferredCategory,
+        preferred_source: target.preferredSource,
+      },
+      other_rooms: project.rooms
+        .filter((room) => room.id !== roomId)
+        .map((room) => ({
+          ...snapshotRoom(room),
+          publication:
+            room.publication?.saleUnit === 'box'
+              ? snapshotPublication(room.publication)
+              : null,
+        })),
+      publications: candidates.map((item) => ({
+        ...snapshotPublication(item),
+        name: item.name,
+        category: item.category,
+      })),
+      ...(selected ? { selected_publication_key: selected } : {}),
+    };
+    return { room: target, input, photoUrls: new Map(candidates.map(item => [item.publicationKey, item.imageUrl])) };
+  }
+
   async budget(userId: number, id: number, requestId?: string) {
+    projectId(id);
     // All room selections and prices belong to the same DB snapshot. No DB transaction spans HTTP.
     const project = await this.prisma.$transaction(
-      (tx) => this.findOwnedWithRooms(tx, userId, id),
+      async (tx) => {
+        const found = await tx.project.findFirst({
+          where: { id, ownerId: userId },
+          include: {
+            rooms: {
+              include: { publication: true },
+              orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+            },
+          },
+        });
+        if (!found) throw missingProject();
+        return found;
+      },
       { isolationLevel: 'RepeatableRead' },
     );
 
     const unselected = project.rooms
       .filter((room) => room.publication === null)
       .map((room) => room.id);
-    const rooms = project.rooms.flatMap((room) =>
-      room.publication ? [roomBudgetInput(room, room.publication)] : [],
-    );
+    const rooms = project.rooms.flatMap((room) => {
+      const publication = room.publication;
+      if (!publication) return [];
+      return [
+        {
+          ...snapshotRoom(room),
+          publication: snapshotPublication(publication),
+        },
+      ];
+    });
     const common = {
       project_id: project.id,
       total_rooms: project.rooms.length,

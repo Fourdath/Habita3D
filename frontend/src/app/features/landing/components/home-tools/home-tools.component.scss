@@ -141,62 +141,6 @@
   color: var(--h3d-muted);
 }
 
-.budget-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.chip {
-  margin-bottom: 14px;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: var(--h3d-sage-soft);
-  color: var(--h3d-forest);
-  font-size: 0.75rem;
-  font-weight: 600;
-}
-
-table {
-  width: 100%;
-  margin-top: 20px;
-  border-collapse: collapse;
-  font-size: 0.875rem;
-}
-
-caption {
-  padding-bottom: 8px;
-  color: var(--h3d-muted);
-  font: 0.6875rem var(--h3d-font-mono);
-  letter-spacing: 0.04em;
-  text-align: left;
-  text-transform: uppercase;
-}
-
-th,
-td {
-  padding: 9px 0;
-  border-top: 1px solid var(--h3d-line);
-  text-align: left;
-  font-weight: 400;
-}
-
-td {
-  padding-left: 12px;
-  text-align: right;
-  font-family: var(--h3d-font-mono);
-  font-size: 0.8125rem;
-  white-space: nowrap;
-}
-
-tfoot th,
-tfoot td {
-  border-top: 2px solid var(--h3d-forest);
-  color: var(--h3d-forest);
-  font-weight: 600;
-}
-
 .tool .fine {
   margin-top: 12px;
   font-size: 0.8125rem;
