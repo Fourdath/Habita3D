@@ -166,6 +166,7 @@
               <section class="studio__room-budget" aria-labelledby="viewer-room-budget-title" aria-live="polite">
                 <h3 id="viewer-room-budget-title">{{ room ? 'Presupuesto de ' + room.name : 'Presupuesto de pisos' }}</h3>
                 @if (floorCatalogMessage()) { <p role="status">{{ floorCatalogMessage() }}</p> }
+                @if (floorCatalogError()) { <p role="alert">{{ floorCatalogError() }}</p> }
                 @if (floorAppearanceError()) { <p role="alert">{{ floorAppearanceError() }}</p> }
                 @if (room?.publication; as floor) {
                   <div class="studio__saved-floor">
@@ -186,11 +187,19 @@
                   <p>Última comprobación: {{ cost.last_check_display }}</p>
                 }
                 @if (room && room.budgetClp !== null) { <p>Límite de la habitación: {{ money(room.budgetClp) }}.</p> }
+                @if (room?.publicationKey) {
+                  <button type="button" class="studio__secondary" [disabled]="projectFloorBusy()" (click)="saveCatalogFloor(null)">Quitar piso de esta habitación</button>
+                }
                 @if (projectBudget(); as costs) {
-                  @if (costs.total_cost_clp === null) {
-                    <p>Subtotal de pisos del proyecto: {{ money(costs.calculable_subtotal_clp) }}. Quedan habitaciones o datos pendientes.</p>
+                  @if (!costs.rooms.length) {
+                    <p>Sin pisos seleccionados para presupuestar.</p>
+                  } @else if (costs.rooms.length === calculatedRoomCount()) {
+                    <p>Total de pisos seleccionados: <strong>{{ money(costs.calculable_subtotal_clp) }}</strong>.</p>
                   } @else {
-                    <p>Total de pisos del proyecto: {{ money(costs.total_cost_clp) }}.</p>
+                    <p>Subtotal de pisos seleccionados: <strong>{{ money(costs.calculable_subtotal_clp) }}</strong>. Faltan datos de algunos pisos seleccionados.</p>
+                  }
+                  @if (costs.unselected_room_ids.length && costs.rooms.length) {
+                    <p>Las habitaciones sin piso seleccionado quedan fuera de este importe.</p>
                   }
                 } @else if (projectLoading() || floorUpdating()) {
                   <p>Consultando presupuesto…</p>
@@ -204,7 +213,6 @@
                 <app-viewer-floor-catalog [roomId]="room?.id ?? null" [currentKey]="room?.publicationKey ?? null"
                   [wholeHouseCount]="sceneRooms().length" [busy]="projectFloorBusy()"
                   (choose)="saveCatalogFloor($event)" (chooseWholeHouse)="saveCatalogFloor($event, true)" />
-                @if (floorCatalogError()) { <p role="alert">{{ floorCatalogError() }}</p> }
               </div>
             </section>
           } @else if (!projectMode()) {

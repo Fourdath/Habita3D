@@ -369,6 +369,54 @@ describe('Viewer3DPage', () => {
     expect(component.activeFloorPreview()).toBeUndefined();
     expect(budget).toHaveBeenCalledTimes(2);
   });
+  it('removes only the selected room floor and shows the total for the two remaining rooms', async () => {
+    const rooms = ['Dormitorio', 'Cocina', 'Estar'].map((name, index) => ({
+      ...TEST_PROJECT.rooms[0], id: `room-${index}`, sceneRoomId: `scene-${index}`, name,
+      publicationKey: TEST_PUBLICATION.publicationKey, publication: TEST_PUBLICATION,
+    }));
+    const [selected, ...remaining] = rooms;
+    engine.getSceneRooms.mockReturnValue(rooms.map(room => ({ id: room.sceneRoomId, name: room.name, areaM2: 10.25 })));
+    const host = ready();
+    const api = TestBed.inject(Ep2ApiService);
+    TestBed.inject(SessionService).user.set({ id: 1, email: 'demo@example.test' });
+    vi.spyOn(api, 'project').mockResolvedValue({ ...TEST_PROJECT, rooms, floorplan: uploaded, suggestionsEnabled: false });
+    vi.spyOn(api, 'status').mockResolvedValue(TEST_STATUS);
+    const budgetRows = rooms.map(room => ({
+      room_id: room.id, publication_key: room.publicationKey, status: 'calculated' as const, reasons: [],
+      area_m2: '10.25', waste_percent: '10', required_area_m2: '11.275', coverage_per_box_m2: '2',
+      price_per_box_clp: 10000, boxes: 6, purchased_area_m2: '12', cost_clp: 60000,
+      budget_clp: null, budget_excess_clp: null, fits_budget: null, checked_at: TEST_PUBLICATION.checkedAt,
+      last_check_display: TEST_PUBLICATION.lastCheckedDisplay,
+    }));
+    const initialBudget = { ...TEST_BUDGET, total_rooms: 3, unselected_room_ids: [], rooms: budgetRows,
+      status: 'complete' as const, calculable_subtotal_clp: 180000, total_cost_clp: 180000 };
+    const budget = vi.spyOn(api, 'budget').mockResolvedValueOnce(initialBudget).mockResolvedValue({
+      ...initialBudget, status: 'partial', unselected_room_ids: [selected.id], rooms: budgetRows.slice(1),
+      calculable_subtotal_clp: 120000, total_cost_clp: null,
+    });
+    const save = vi.spyOn(api, 'saveRoom').mockResolvedValue({ ...selected, publicationKey: null, publication: null });
+    component.projectMode.set(true);
+    component.projectId.set(TEST_PROJECT.id);
+    component.projectRoomId.set(selected.id);
+    await component.loadActiveProject();
+    await fixture.whenStable();
+
+    const roomBudget = host.querySelector('.studio__room-budget')!;
+    expect(roomBudget.textContent).toMatch(/Total de pisos seleccionados:.*180\.000/);
+    button('Quitar piso de esta habitación').click();
+    await fixture.whenStable();
+
+    expect(save).toHaveBeenCalledExactlyOnceWith(TEST_PROJECT.id, { publicationKey: null }, selected.id);
+    expect(component.selectedProjectRoom()?.publicationKey).toBeNull();
+    expect(component.project()?.rooms.slice(1)).toEqual(remaining);
+    expect(engine.setRoomFloorSelections).toHaveBeenLastCalledWith(remaining.map(room =>
+      expect.objectContaining({ sceneRoomId: room.sceneRoomId, publicationKey: room.publicationKey }),
+    ));
+    expect(budget).toHaveBeenCalledTimes(2);
+    expect(roomBudget.textContent).toMatch(/Total de pisos seleccionados:.*120\.000/);
+    expect(roomBudget.textContent).toContain('Las habitaciones sin piso seleccionado quedan fuera de este importe.');
+    expect(button('Quitar piso de esta habitación')).toBeUndefined();
+  });
   it('accepts the quoted floor of the current room and refreshes the 3D floor and budget below suggestions', async () => {
     engine.getSceneRooms.mockReturnValue([{ id: 'scene-test', name: 'Living', areaM2: 12 }]);
     ready();
