@@ -86,6 +86,7 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
       : rooms.find(room => room.id === this.projectRoomId()) ?? rooms[0] ?? null;
   });
   readonly selectedRoomBudget = computed(() => this.projectBudget()?.rooms.find(room => room.room_id === this.selectedProjectRoom()?.id) ?? null);
+  readonly calculatedRoomCount = computed(() => this.projectBudget()?.rooms.filter(room => room.status === 'calculated').length ?? 0);
   readonly money = money;
   readonly sceneRooms = signal<SceneRoom[]>([]);
   private readonly freeFloorRoomId = signal<string | null>(null);
@@ -338,10 +339,11 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
     return this.updateFloorAppearance(this.activeFloorPreview() ?? {}, this.sceneRooms().map(room => room.id));
   }
 
-  async saveCatalogFloor(publication: Publication, wholeHouse = false): Promise<void> {
+  async saveCatalogFloor(publication: Publication | null, wholeHouse = false): Promise<void> {
     const project = this.project();
     const room = this.selectedProjectRoom();
-    if (this.projectFloorBusy() || !project || (!wholeHouse && (!room || room.publicationKey === publication.publicationKey))) return;
+    const publicationKey = publication?.publicationKey ?? null;
+    if (this.projectFloorBusy() || !project || (wholeHouse ? !publication : !room || room.publicationKey === publicationKey)) return;
     if (wholeHouse && this.unmappedRooms().length) {
       this.floorCatalogError.set('Vincula las habitaciones existentes al plano antes de aplicar el piso a toda la casa.');
       return;
@@ -352,14 +354,15 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
     this.floorCatalogError.set('');
     this.floorAppearanceError.set('');
     try {
-      const updated = wholeHouse
+      const updated = wholeHouse && publication
         ? await this.api.saveProjectFloor(project.id, publication.publicationKey, this.sceneRooms().map(scene => ({
             id: scene.id, name: scene.name.slice(0, 120), areaM2: scene.areaM2.toFixed(6),
           })), this.projectFloorplan()?.revision)
-        : this.withUpdatedRoom(project, await this.api.saveRoom(project.id, { publicationKey: publication.publicationKey }, room!.id));
+        : this.withUpdatedRoom(project, await this.api.saveRoom(project.id, { publicationKey }, room!.id));
       if (request !== this.projectRequest) return;
       await this.applySavedFloors(
-        updated, request, wholeHouse ? 'Piso guardado en todos los recintos del plano.' : 'Piso guardado en la habitación.',
+        updated, request, wholeHouse ? 'Piso guardado en todos los recintos del plano.'
+          : publication ? 'Piso guardado en la habitación.' : 'Piso quitado de esta habitación y excluido del presupuesto.',
       );
     } catch (error) {
       if (request === this.projectRequest) this.floorCatalogError.set(apiError(error));
@@ -486,7 +489,7 @@ export class Viewer3DPage implements AfterViewInit, OnDestroy {
       this.api.budget(updated.id),
     ]);
     if (request !== this.projectRequest) return;
-    if (appearance.status === 'rejected') this.floorAppearanceError.set('El piso se guardó. Reabre el visor para actualizar el modelo.');
+    if (appearance.status === 'rejected') this.floorAppearanceError.set('La selección se actualizó. Reabre el visor para actualizar el modelo.');
     this.showProjectBudget(budget);
   }
 

@@ -23,7 +23,8 @@ La vista de planchas y revestimientos ofrece una estimación demostrativa.
 | Evidencias | [Pruebas de integración con datos de prueba y ensayos en Windows](docs/final/evidencias-windows.md). |
 | Staging de la demo | `http://127.0.0.1:18080` en el PC Windows de Matías. La comprobación del despliegue de la versión evaluable está pendiente. Véase la [guía de cierre](docs/final/cierre-windows.md). |
 | Tag o release evaluable | Pendiente de la validación en Windows. Se publica sobre la SHA desplegada y comprobada. |
-| Figma y tablero | Matías incorporará ambos enlaces y verificará su acceso para la revisión docente. |
+| Prototipo de interfaz | [Abrir el recorrido navegable en Figma](https://www.figma.com/proto/BM2OugBtrQzN4nHde4VtA0/Habita3D?node-id=2-374&starting-point-node-id=2%3A374). |
+| Tablero de gestión | [Habita3D · Entrega final](https://github.com/users/Fourdath/projects/2/views/1?layout_template=board&pane=info). |
 
 ### Aportes del equipo
 
